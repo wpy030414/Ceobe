@@ -6,7 +6,8 @@
 
   <groupId>im.xrl</groupId>
   <artifactId>ceobe</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <!-- CalVer（YY.MM.DD-HH）：本处为唯一权威，CI 只读不写；发版时手动 bump 四处 -->
+  <version>26.10.15-14</version>
   <packaging>pom</packaging>
 
   <name>ceobe</name>

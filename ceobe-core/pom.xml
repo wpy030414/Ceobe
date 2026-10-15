@@ -7,7 +7,7 @@
   <parent>
     <groupId>im.xrl</groupId>
     <artifactId>ceobe</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>26.10.15-14</version>
   </parent>
 
   <artifactId>ceobe-core</artifactId>

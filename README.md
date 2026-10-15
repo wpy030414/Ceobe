@@ -32,7 +32,7 @@
 ## 仓库结构（Maven 多模块单仓 / monorepo）
 
 ```
-ceobe/                聚合 POM（groupId im.xrl，统一版本 0.1.0-SNAPSHOT）
+ceobe/                聚合 POM（groupId im.xrl，统一版本 CalVer `YY.MM.DD-HH`，见根 pom.xml）
 ├── ceobe-core/       域核心：实例 / 进程 / provider / 配置 / Mod / 穿透（无 UI 依赖）
 ├── ceobe-cli/        无头 CLI（picocli，docker 风格语法）
 └── ceobe-gui/        JavaFX 界面（shadcn 风格主题）
@@ -91,9 +91,16 @@ $J rm smp --purge                           # 删除实例（含世界数据）
 - 无镜像的源（PaperMC Fill、Purpur API、`maven.neoforged.net`、`api.modrinth.com`）仍直连。
 - 可用 `-Dceobe.mirror=off` 关闭镜像，或 `-Dceobe.mirror.bmclapi=` / `-Dceobe.mirror.modrinth=` 覆盖基址。
 
+## 版本号与发布
+
+- 版本号 = **CalVer `YY.MM.DD-HH`**（如 `26.10.15-14`），**根 `pom.xml` 是唯一权威**，CI 只读不写；三个子模块的 `<parent>` 版本号需同步。
+- 发版（一次改四处）：`mvn versions:set -DnewVersion=26.10.15-14 -DprocessAllModules`
+- 安装包版号取 CalVer 去掉 `-HH` 后的前三段（`26.10.15`）——macOS 上 jpackage 只接受 1–3 段数字且不以 0 开头（该限制 JDK 27 才放宽，见 ADR-017）。
+- CI 构建成功后自动发布 GitHub Release：tag = `v<CalVer>`，**标题 = 本次 commit subject，正文 = commit body**，附件为三平台安装包；同名 Release 已存在则删除重建。
+
 ## 打包与发布（CI）
 
-- `.github/workflows/gui-release.yml`：push 到 `main` 触发，并**自动取消同名旧任务**；矩阵构建三平台 GUI 安装包：
+- `.github/workflows/gui-release.yml`：push 到 `main` 触发，并**自动取消同名旧任务**；矩阵构建三平台 GUI 安装包，再由汇总 job 发布 Release：
   - Windows `.exe`（jpackage + WiX）
   - macOS `.dmg`（jpackage）
   - Linux `.AppImage`（jpackage app-image + appimagetool）

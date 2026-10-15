@@ -16,6 +16,7 @@ ceobe 是 Java 25 编写的 Minecraft 服务器编排系统（Maven 多模块：
 - 如何理解本项目：先读 `docs/ARCHITECTURE.md`（模块与外部 API 契约）与 `docs/DECISIONS.md`（已定技术决策，含穿透方案实测依据），再进对应模块 spec。
 - 全局规则 / 约定：
   - 构建一律 Maven：`mvn -pl <module> -am package`；测试 `mvn test`。不引入 Gradle。
+  - 版本号为 CalVer `YY.MM.DD-HH`（如 `26.10.15-14`），**根 `pom.xml` 的 `<version>` 是唯一权威**，CI 只读不写；三子模块 `<parent>` 版本须同步（bump 用 `mvn versions:set -DnewVersion=<v> -DprocessAllModules`）。安装包版号取前三段（`26.10.15`）——macOS jpackage 仅接受 1–3 段数字且不以 0 开头（ADR-017）。
   - 命名空间：groupId `im.xrl`，Java 包前缀 `im.xrl.ceobe`；资源路径同前缀（如 `/im/xrl/ceobe/gui/shadcn.css`）。
   - 测试分组：需真实下载/联网的用例打 `@Tag("network")`，`mvn test -Dtest.excludedGroups= -Dgroups=network` 才跑。
   - 测试方法名用中文标识符时不得含空格（Java 标识符规则）。
@@ -34,5 +35,5 @@ ceobe 是 Java 25 编写的 Minecraft 服务器编排系统（Maven 多模块：
 - `ceobe-cli/` — picocli 无头入口（docker 风格语法）
 - `ceobe-gui/` — JavaFX 界面（shadcn 风格定制主题）
 - `scripts/smoke-cli.sh` — CLI 端到端冒烟（创建→启动→命令→穿透→重启→停止→删除，断言式）
-- `.github/workflows/gui-release.yml` — CI：main 推送即打包 GUI（Windows .exe / macOS .dmg / Linux AppImage），同名旧任务自动取消
+- `.github/workflows/gui-release.yml` — CI：main 推送即打包 GUI（Windows .exe / macOS .dmg / Linux AppImage）并发布 Release（tag `v<CalVer>`，标题/正文复用 commit msg），同名旧任务自动取消
 - `docs/PRD.md` — 产品需求；`docs/ARCHITECTURE.md` — 结构与外部契约；`docs/DECISIONS.md` — ADR；`docs/specs/` — 模块规格

@@ -173,3 +173,17 @@
 - 为什么不选其他：Electron/打包器（jlink+自写脚本）重复造轮子；仅 app-image 不满足"安装包"诉求（Linux 额外用 appimagetool 包 AppImage）。
 - 后果：CI 需要 WiX（Windows 上按需 `choco install wixtoolset`）与 appimagetool（Linux 上现取）；产物未签名（macOS 会有 Gatekeeper 提示）。
 - 何时重新审视：需要签名/公证（macOS notarization、Windows 代码签名）或自动发布 Release 时。
+
+## ADR-017：版本号改 CalVer + CI 自动发布 Release
+- 日期：2026-10-15
+- 状态：已采纳
+- 背景：项目此前用 `0.1.0-SNAPSHOT`（无发布语义），CI 只上传 Actions artifact、不进 Releases，且安装包版号硬编码 `1.0.0`；同时 CI 报出 actions Node 20 弃用、`setup-java@v4` 停止维护等警告。项目所有者要求：版本号改 CalVer、以根目录 pom 为唯一权威，并在 CI 通过后自动发布 Release（tag `v<CalVer>`，标题与正文复用 commit message）。
+- 决策：
+  1. 版本号 = **CalVer `YY.MM.DD-HH`**（如 `26.10.15-14`），唯一权威为根 `pom.xml` 的 `<version>`；CI 只读不写；三个子模块的 `<parent>` 版本同步。
+  2. jpackage `--app-version` 取 CalVer 去掉 `-HH` 后的**前三段**（`26.10.15`）。依据：macOS 上 jpackage 强制「1–3 段数字 + 不以 0 开头」（JDK-8380634，JDK 24/25/26 均受影响，**JDK 27 才移除**），且 Apple `CFBundleVersion` 只认数字与点——故含 `-` 或 4 段的完整版号无法直接喂 jpackage。
+  3. CI 拆为 `version`（读根 pom 版本并断言包版号合法）/ `package`（三平台矩阵）/ `release`（汇总产物发布）三个 job；`release` 用 `gh release create`，tag `v<CalVer>`，**标题 = commit subject、正文 = commit body**，同名 Release 先删后建（幂等收敛）。
+  4. actions 升级到各自的 **Node 24 大版本**（`checkout@v5`、`setup-java@v5`、`upload-artifact@v6`、`download-artifact@v7`；注意 upload 与 download 的 Node 24 大版本号并不对齐）以消除 Node 20 弃用警告；`ubuntu-latest` pin 为 `ubuntu-24.04`（避免 Ubuntu 26 迁移 notice）。
+- 为什么选这个：CalVer 让"哪次构建"一目了然；根 pom 单点权威避免多处版本漂移；拆开包版号是 macOS 打包硬约束下唯一可行解。
+- 为什么不选其他：`${revision}` + flatten 的 CI-friendly 版本会增加构建期不确定性（当前 `mvn package` 已够用）；给 macOS 单独用完整版号会使三平台包版号不一致。
+- 后果：发版需手动 bump 根 pom 四处（`mvn versions:set -DnewVersion=<v> -DprocessAllModules`）；安装包内版号（`26.10.15`）与 Release 版号（`v26.10.15-14`）不同；同一小时内多次 push 会撞同一 tag，由「删除重建」收敛。
+- 何时重新审视：JDK 27 移除 macOS 版本限制后，可让包版号直接采用完整 CalVer；或需要签名/公证时。
