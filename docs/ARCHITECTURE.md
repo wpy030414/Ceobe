@@ -32,7 +32,7 @@
 
 ## 模块关系
 
-- gui / cli → core 单向依赖；core 不感知 UI。并发：多进程（CLI+GUI 同时）通过每实例 `.lock` 文件锁 + 中央 `~/.ceobe/instances.json` 索引互斥。
+- gui / cli → core 单向依赖；core 不感知 UI。并发：实例列表由扫描 `~/.ceobe/instances/*` 得出（无中央索引）；运行态互斥靠「监督进程 + 控制通道」（`.ctl` 随机 token）+ `.state`/`.pid` 文件，见 ADR-007。
 
 ## 数据流
 

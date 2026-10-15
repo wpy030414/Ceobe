@@ -23,8 +23,6 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 
 /** 主界面：左侧实例列表 + 右侧功能页签 + 底部状态栏。 */
@@ -123,13 +121,14 @@ public final class MainView {
     /** 外部进程改变状态时也能刷新（每 3 秒）。 */
     private void startPoller() {
         javafx.animation.Timeline timeline = new javafx.animation.Timeline(
-                new javafx.animation.KeyFrame(javafx.util.Duration.seconds(3), e -> {
+                new javafx.animation.KeyFrame(javafx.util.Duration.seconds(1.5), e -> {
                     InstanceStatus sel = list.getSelectionModel().getSelectedItem();
                     refresh();
                     if (sel != null && selected != null && selected.equals(sel.meta().name)) {
                         manager.find(selected).ifPresent(s -> {
                             if (console != null) console.setLive(s.state().isLive());
                         });
+                        if (console != null) console.pollExternalLog();
                     }
                 }));
         timeline.setCycleCount(javafx.animation.Animation.INDEFINITE);
@@ -158,6 +157,11 @@ public final class MainView {
     private void select(InstanceStatus status) {
         selected = status.meta().name;
         console = new ConsolePane(manager, status);
+        console.setOnDeleted(() -> {
+            selected = null;
+            contentArea.setCenter(emptyHint);
+            refresh();
+        });
         config = new ConfigPane(manager, status);
         mods = new ModPane(manager, status);
         tunnelPane = new TunnelPane(manager, tunnels, status);
@@ -214,8 +218,4 @@ public final class MainView {
         }
     }
 
-    /** 判断实例是否有世界数据（删除时提示用）。 */
-    static boolean hasWorld(Path instanceDir) {
-        return Files.isDirectory(instanceDir.resolve("world"));
-    }
 }

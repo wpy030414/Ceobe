@@ -16,6 +16,9 @@ ceobe 是 Java 25 编写的 Minecraft 服务器编排系统（Maven 多模块：
 - 如何理解本项目：先读 `docs/ARCHITECTURE.md`（模块与外部 API 契约）与 `docs/DECISIONS.md`（已定技术决策，含穿透方案实测依据），再进对应模块 spec。
 - 全局规则 / 约定：
   - 构建一律 Maven：`mvn -pl <module> -am package`；测试 `mvn test`。不引入 Gradle。
+  - 命名空间：groupId `im.xrl`，Java 包前缀 `im.xrl.ceobe`；资源路径同前缀（如 `/im/xrl/ceobe/gui/shadcn.css`）。
+  - 测试分组：需真实下载/联网的用例打 `@Tag("network")`，`mvn test -Dtest.excludedGroups= -Dgroups=network` 才跑。
+  - 测试方法名用中文标识符时不得含空格（Java 标识符规则）。
   - 网络下载默认走中国镜像（Maven 仓库用 Aliyun）；外部 MC API 直连。
   - `ceobe-core` 不得依赖 JavaFX / picocli；CLI 与 GUI 只通过 core 的公共 API 工作。
   - 所有对外 HTTP 请求必须带 User-Agent（Modrinth 要求，Fill v3 建议）。

@@ -15,12 +15,9 @@ import im.xrl.ceobe.core.util.CeobeException;
 import im.xrl.ceobe.core.util.Json;
 
 import java.io.IOException;
-import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -312,21 +309,4 @@ public final class InstanceManager {
         }
     }
 
-    /** 供 CLI 互斥检查：尝试独占实例锁（不阻塞）。 */
-    public static boolean tryLock(Path dir) {
-        try {
-            FileChannel ch = FileChannel.open(dir.resolve(".lock"),
-                    StandardOpenOption.CREATE, StandardOpenOption.WRITE);
-            FileLock lock = ch.tryLock();
-            if (lock == null) {
-                ch.close();
-                return false;
-            }
-            lock.release();
-            ch.close();
-            return true;
-        } catch (IOException e) {
-            return false;
-        }
-    }
 }

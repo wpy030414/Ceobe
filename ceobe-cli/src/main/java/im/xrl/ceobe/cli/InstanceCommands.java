@@ -1,6 +1,5 @@
 package im.xrl.ceobe.cli;
 
-import im.xrl.ceobe.core.event.InstanceEvent;
 import im.xrl.ceobe.core.model.InstanceSpec;
 import im.xrl.ceobe.core.model.InstanceState;
 import im.xrl.ceobe.core.model.ServerType;
@@ -24,15 +23,18 @@ import java.util.concurrent.Callable;
 /** 实例生命周期命令族。 */
 public final class InstanceCommands {
 
-    @Command(name = "ps", aliases = {"ls", "list"}, description = "列出所有实例")
+    @Command(name = "ps", aliases = {"ls", "list"}, description = "列出实例（默认仅运行中）")
     static final class Ps implements Callable<Integer> {
-        @Option(names = {"-a", "--all"}, description = "包含已停止实例（默认全部显示）")
+        @Option(names = {"-a", "--all"}, description = "包含已停止实例")
         boolean all;
 
         @Override
         public Integer call() {
             InstanceManager manager = new InstanceManager();
-            List<InstanceStatus> statuses = manager.list();
+            List<InstanceStatus> statuses = new ArrayList<>(manager.list());
+            if (!all) {
+                statuses.removeIf(s -> !s.state().isLive());
+            }
             if (Output.json) {
                 Output.json(Output.map("instances", statuses.stream().map(s -> Output.map(
                         "name", s.meta().name,
@@ -47,7 +49,10 @@ public final class InstanceCommands {
                 return 0;
             }
             if (statuses.isEmpty()) {
-                Output.info("暂无实例。用 `ceobe create <名称> --type paper` 创建一个。");
+                boolean any = !manager.list().isEmpty();
+                Output.info(any
+                        ? "无运行中的实例（`ceobe ps -a` 显示全部）"
+                        : "暂无实例。用 `ceobe create <名称> --type paper` 创建一个。");
                 return 0;
             }
             List<String[]> rows = new ArrayList<>();
@@ -159,15 +164,19 @@ public final class InstanceCommands {
             return 0;
         }
 
-        /** 后台拉起监督进程并等待服务端就绪。 */
+        /** 后台拉起监督进程并等待服务端就绪（容忍通道尚未建立的窗口期）。 */
         static void startDetached(InstanceManager manager, String name) throws Exception {
-            spawnSupervisor(manager.dir(name), name);
             Path dir = manager.dir(name);
+            // 清理上一轮遗留的控制通道信息，避免读到已失效端口
+            InstanceControl.clear(dir);
+            spawnSupervisor(dir, name);
             long deadline = System.currentTimeMillis() + 300_000;
             while (System.currentTimeMillis() < deadline) {
-                if (InstanceControl.isAvailable(dir)) {
+                try {
                     var state = InstanceControl.state(dir);
                     if (state.isPresent() && state.get() == InstanceState.RUNNING) return;
+                } catch (CeobeException e) {
+                    // 通道尚未就绪（拒绝连接 / 超时）——继续等待
                 }
                 Thread.sleep(1000);
             }
@@ -401,11 +410,6 @@ public final class InstanceCommands {
         } catch (NumberFormatException e) {
             throw new CeobeException("内存格式错误: %s（示例 4G / 4096M）".formatted(raw));
         }
-    }
-
-    /** 供日志事件流复用（GUI 之外的 CLI 场景）。 */
-    static void printEvent(InstanceEvent event) {
-        if (event instanceof InstanceEvent.LogLine l) System.out.println(l.line());
     }
 
     private InstanceCommands() {

@@ -20,7 +20,6 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Window;
 
-import java.util.List;
 
 /** 新建实例对话框：服务端与版本 → 资源与端口 → 创建（带进度）。 */
 public final class CreateDialog {
@@ -151,10 +150,5 @@ public final class CreateDialog {
             stage.setText("创建失败: " + err.getMessage());
             progress.setProgress(0);
         });
-    }
-
-    /** 预留：未来支持从模板批量创建。 */
-    static List<String> templateNames() {
-        return List.of();
     }
 }

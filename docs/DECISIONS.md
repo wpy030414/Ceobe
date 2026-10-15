@@ -52,10 +52,11 @@
 - 状态：已采纳
 - 背景：CLI 与 GUI 可能并发操作同一实例；无守护进程架构（对齐 docker 直觉但避免常驻 daemon）。
 - 考虑过的方案：常驻 daemon + 本地 socket（docker 模式）；SQLite；纯文件。
-- 决策：纯文件——`~/.ceobe/instances.json`（索引）+ `~/.ceobe/instances/<name>/`（instance.json + 服务器目录）；运行态互斥用 `<dir>/.lock`（FileLock）+ `<dir>/.pid`。
+- 决策：纯文件——`~/.ceobe/instances/<name>/`（`instance.json` 元数据 + 服务器目录 + `.state`/`.pid` 运行态 + `.ctl` 控制通道凭据）；实例列表通过扫描目录得出（不维护中央索引，避免索引与目录不一致）。
 - 为什么选这个：无 daemon 意味着崩溃后零残留状态、可用任意编辑器抢救；可调试性最高。
 - 为什么不选其他：daemon 增加一层生命周期管理；SQLite 对"一个实例一个目录"的直觉不友好。
-- 后果：跨进程日志流（`logs -f`）通过读实例 `logs/latest.log` + core 写的 `console.log` 追加实现。
+- 后果：跨进程日志流（`logs -f`）通过 core 统一落盘的 `console.log` 追加实现；强制停止导致控制通道凭据残留时，客户端按「连接被拒」自动清理（见 ADR-007 与 `InstanceControl.call`）。
+- 修订（同日）：原方案的 `<dir>/.lock`（FileLock）在实现中由 ADR-007 的监督进程独占 + 控制通道 token 取代——单实例只能有一个监督进程持有进程句柄，互斥语义更强且无需锁文件。
 - 何时重新审视：引入远程多机管理时。
 
 ## ADR-006：MC 版本策略 = 26.x 新纪年 + 1.21.x 兼容线

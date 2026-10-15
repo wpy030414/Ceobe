@@ -8,7 +8,6 @@ import im.xrl.ceobe.core.tunnel.CloudflareQuickTunnel;
 import im.xrl.ceobe.core.tunnel.LanDirect;
 import im.xrl.ceobe.core.tunnel.PinggyTunnel;
 import im.xrl.ceobe.core.tunnel.TunnelKind;
-import im.xrl.ceobe.core.tunnel.TunnelProvider;
 import im.xrl.ceobe.core.util.CeobeException;
 import im.xrl.ceobe.core.webconsole.WebConsole;
 import picocli.CommandLine.Command;
@@ -141,14 +140,6 @@ public final class MiscCommands {
         }
     }
 
-    /** 供 doctor 复用的通道预检（保留扩展位）。 */
-    static Map<String, Boolean> tunnelAvailability() {
-        Map<String, Boolean> m = new LinkedHashMap<>();
-        for (TunnelProvider p : List.of(new PinggyTunnel(), new CloudflareQuickTunnel(), new LanDirect())) {
-            m.put(p.kind().id(), p.available());
-        }
-        return m;
-    }
 
     private MiscCommands() {
     }
