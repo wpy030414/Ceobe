@@ -124,3 +124,32 @@
 - 为什么不选其他：方案① 把兼容负担丢给用户；方案② 体验割裂。
 - 后果：引入对 Adoptium API/镜像与归档解压的依赖；`instance.json` 的 `javaHome` 可能是自管路径（非用户原始输入）。
 - 何时重新审视：Adoptium 变更 API，或需支持更多架构/发行版时。
+
+## ADR-012：下载一律优先国内镜像站（回退上游）
+- 日期：2026-10-15
+- 状态：已采纳
+- 背景：Mojang / Modrinth / Adoptium 等源在国内直连缓慢（实测 vanilla 26.3 服务端 62MB 直连约 57s）。项目所有者要求「任何下载，无论开发期还是运行期，一律走镜像站」。
+- 考虑过的方案：① 每个 provider 各自处理镜像；② 在 HTTP 层统一改写 URL 并回退。
+- 决策：方案 ② —— 新增 `core/util/Mirrors`，在 `Http.get/getBytes/download` 统一「镜像优先、失败回退上游」。映射（实测可用）：Mojang piston-meta/piston-data/launcher → BMCLAPI（同路径换主机）；Fabric meta → BMCLAPI `/fabric-meta`；Modrinth CDN → `mod.mcimirror.top`；Temurin JDK 已在 `JdkInstaller` 走清华。可用 `-Dceobe.mirror=off` 关闭、`-Dceobe.mirror.<name>=` 覆盖基址。
+- 为什么选这个：一处改写覆盖全部下载路径（含未来新 provider 的 `Http` 调用）；回退保证了镜像故障时不阻塞。
+- 为什么不选其他：逐 provider 处理会重复逻辑且易漏。
+- 后果：镜像可能内容滞后/损坏 → 通过既有 sha1/sha256 校验兜底，校验失败即回退上游重下。**无镜像的源**（PaperMC Fill、Purpur API、`maven.neoforged.net`、`maven.fabricmc.net`、`api.modrinth.com`）仍直连，需在新增源时确认镜像可用性。
+- 修订（同日）：Fabric 安装改为「先经镜像预拉原版 server.jar，再让安装器生成本加载器」，避免安装器内部从 Mojang 慢下载（去掉 `-downloadMinecraft`）。
+- 何时重新审视：出现更优镜像，或某个镜像长期不可用时。
+
+## ADR-013：整合包（Modrinth `.mrpack`）接入
+- 日期：2026-10-15
+- 状态：已采纳
+- 背景：项目所有者要求「允许接入整合包」。`.mrpack` 实为 zip，含 `modrinth.index.json`（`files[]` + `dependencies` + `overrides/`）。
+- 决策：新增 `mods/MrpackInstaller`（解析索引、按 `env.server != unsupported` 下载 files、解包 `server-overrides` 优先再 `overrides`）与 CLI `ceobe modpack search|info|install|new`。`new` 按索引 dependencies（minecraft + fabric-loader/neoforge）自动创建匹配实例再安装（一键）；`install` 校验已有实例的加载器与版本一致后安装。
+- 为什么选这个：`new` 给出一键体验；`install` 允许装进既有实例，两种用法互补。
+- 后果：仅支持 fabric / neoforge 加载器（forge/quilt 的整合包报错说明）；文件经 `Http` 下载故自动走镜像（Modrinth CDN → mcimirror）。
+- 何时重新审视：需支持 forge/quilt 整合包，或 CurseForge 平台时。
+
+## ADR-014：Modrinth 版本选择取「首个 release」
+- 日期：2026-10-15
+- 状态：已采纳
+- 背景：接入整合包时发现 `ModrinthClient.pickPreferred` 取「最后一个 release」，而 Modrinth 版本接口按发布时间**降序**返回 → 实际拿到最老版本（Fabulously Optimized 解析成了 1.12.1 / MC 1.16.5）。
+- 决策：改为取**首个** release（最新正式版）；无 release 时取第一个。
+- 后果：mod 与整合包的版本解析都偏向最新正式版；用户可用显式版本覆盖。
+- 何时重新审视：需按语义化版本而非发布时间排序时。
