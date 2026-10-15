@@ -23,17 +23,17 @@
     <dependency>
       <groupId>org.openjfx</groupId>
       <artifactId>javafx-controls</artifactId>
-      <classifier>win</classifier>
+      <classifier>${javafx.platform}</classifier>
     </dependency>
     <dependency>
       <groupId>org.openjfx</groupId>
       <artifactId>javafx-fxml</artifactId>
-      <classifier>win</classifier>
+      <classifier>${javafx.platform}</classifier>
     </dependency>
     <dependency>
       <groupId>org.openjfx</groupId>
       <artifactId>javafx-graphics</artifactId>
-      <classifier>win</classifier>
+      <classifier>${javafx.platform}</classifier>
     </dependency>
     <dependency>
       <groupId>io.github.mkpaz</groupId>

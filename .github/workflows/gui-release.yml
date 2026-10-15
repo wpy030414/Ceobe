@@ -1,0 +1,162 @@
+name: GUI Release
+
+# main 推送即构建；也支持手动触发
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+# 同名工作流的旧任务在 main 推送后一律中止
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  APP_NAME: Ceobe
+  # 注意：jpackage 要求版本首段不得为 0（macOS 尤其严格），故安装包用 1.0.0，
+  # 而非 Maven 工程版本 0.1.0-SNAPSHOT。
+  APP_VERSION: 1.0.0
+  MAIN_CLASS: im.xrl.ceobe.gui.Launcher
+
+jobs:
+  package:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, label: "Windows (.exe)",  kind: exe,       artifact: ceobe-windows-exe }
+          - { os: macos-latest,   label: "macOS (.dmg)",    kind: dmg,       artifact: ceobe-macos-dmg }
+          - { os: ubuntu-latest,  label: "Linux (AppImage)", kind: appimage, artifact: ceobe-linux-appimage }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Configure Maven mirror (Aliyun)
+        shell: bash
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<'XML'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <settings>
+            <mirrors>
+              <mirror>
+                <id>aliyun</id>
+                <name>Aliyun Public</name>
+                <url>https://maven.aliyun.com/repository/public</url>
+                <mirrorOf>central</mirrorOf>
+              </mirror>
+            </mirrors>
+          </settings>
+          XML
+
+      - name: Build (skip tests)
+        run: mvn -B -DskipTests package
+
+      - name: Stage application jar
+        shell: bash
+        run: |
+          rm -rf staging && mkdir -p staging
+          cp ceobe-gui/target/ceobe-gui.jar staging/
+
+      # ---------- Windows: .exe（jpackage 需要 WiX）----------
+      - name: Ensure WiX (Windows)
+        if: matrix.kind == 'exe'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command candle.exe -ErrorAction SilentlyContinue)) {
+            choco install wixtoolset --no-progress -y
+          }
+
+      - name: jpackage → .exe
+        if: matrix.kind == 'exe'
+        shell: pwsh
+        run: |
+          jpackage --type exe --name "$env:APP_NAME" --app-version "$env:APP_VERSION" `
+            --input staging --main-jar ceobe-gui.jar --main-class "$env:MAIN_CLASS" `
+            --dest dist --java-options "-Dfile.encoding=UTF-8" `
+            --win-menu --win-shortcut --win-dir-chooser
+
+      # ---------- macOS: .dmg ----------
+      - name: jpackage → .dmg
+        if: matrix.kind == 'dmg'
+        run: |
+          jpackage --type dmg --name "$APP_NAME" --app-version "$APP_VERSION" \
+            --input staging --main-jar ceobe-gui.jar --main-class "$MAIN_CLASS" \
+            --dest dist --java-options "-Dfile.encoding=UTF-8"
+
+      # ---------- Linux: app-image → AppImage ----------
+      - name: jpackage → app-image
+        if: matrix.kind == 'appimage'
+        run: |
+          jpackage --type app-image --name "$APP_NAME" --app-version "$APP_VERSION" \
+            --input staging --main-jar ceobe-gui.jar --main-class "$MAIN_CLASS" \
+            --dest dist --java-options "-Dfile.encoding=UTF-8"
+
+      - name: Wrap AppImage (Linux)
+        if: matrix.kind == 'appimage'
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq squashfs-tools
+
+          rm -rf AppDir
+          mkdir -p AppDir/usr
+          cp -r "dist/${APP_NAME}/." AppDir/usr/
+
+          # 图标：复用 jpackage 生成的 PNG，避免依赖 ImageMagick
+          ICON="$(find "dist/${APP_NAME}/lib" -maxdepth 1 -name '*.png' -print -quit)"
+          [ -n "$ICON" ] || ICON="$(find "dist/${APP_NAME}" -name '*.png' -print -quit)"
+          [ -n "$ICON" ] || { echo "找不到 jpackage 图标"; exit 1; }
+          cp "$ICON" AppDir/ceobe.png
+
+          cat > AppDir/AppRun <<'EOF'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "$0")")"
+          exec "$HERE/usr/bin/Ceobe" "$@"
+          EOF
+          chmod +x AppDir/AppRun
+
+          cat > AppDir/ceobe.desktop <<EOF
+          [Desktop Entry]
+          Type=Application
+          Name=Ceobe
+          Comment=Minecraft 私有服务器编排引擎
+          Exec=Ceobe
+          Icon=ceobe
+          Categories=Game;Utility;
+          Terminal=false
+          EOF
+
+          # appimagetool：官方源优先，失败回退旧仓库
+          curl -fsSL -o appimagetool \
+            "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage" \
+            || curl -fsSL -o appimagetool \
+            "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x appimagetool
+          ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir "dist/ceobe-${APP_VERSION}-x86_64.AppImage"
+
+      - name: List artifacts
+        shell: bash
+        run: ls -la dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.AppImage
+          if-no-files-found: error
+          retention-days: 14
