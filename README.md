@@ -18,15 +18,29 @@
 - 安装步骤：
 
   ```bash
-  mvn -pl ceobe-cli -am package        # 构建全部模块
+  mvn package                # 全量构建（core + cli + gui）
+  mvn -pl ceobe-cli -am package   # 仅重建 CLI（含依赖模块）
   ```
 
 - 运行 / 启动：
 
   ```bash
   java -jar ceobe-gui/target/ceobe-gui.jar          # GUI
-  java -jar ceobe-cli/target/ceobe-cli.jar ps       # 无头 CLI（docker 风格）
+  java -jar ceobe-cli/target/ceobe.jar ps           # 无头 CLI（docker 风格）
   ```
+
+## 仓库结构（Maven 多模块单仓 / monorepo）
+
+```
+ceobe/                聚合 POM（groupId im.xrl，统一版本 0.1.0-SNAPSHOT）
+├── ceobe-core/       域核心：实例 / 进程 / provider / 配置 / Mod / 穿透（无 UI 依赖）
+├── ceobe-cli/        无头 CLI（picocli，docker 风格语法）
+└── ceobe-gui/        JavaFX 界面（shadcn 风格主题）
+```
+
+- 包名与坐标：`im.xrl:ceobe-*`，Java 包前缀 `im.xrl.ceobe.*`。
+- 依赖方向单向：`cli`/`gui` → `core`；`core` 不感知 UI（保证无头环境可跑）。
+- 构建/测试：`mvn test`（默认跳过需真实下载的 `network` 组）；`mvn test -Dtest.excludedGroups= -Dgroups=network` 跑端到端。
 
 ## 当前状态
 

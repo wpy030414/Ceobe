@@ -21,16 +21,9 @@ import picocli.CommandLine.ScopeType;
                 InstanceCommands.Rm.class,
                 InstanceCommands.Logs.class,
                 InstanceCommands.Exec.class,
-                ConfigCommands.Get.class,
-                ConfigCommands.Set.class,
-                ConfigCommands.Ls.class,
-                ModCommands.Search.class,
-                ModCommands.Install.class,
-                ModCommands.Rm.class,
-                ModCommands.Ls.class,
-                TunnelCommands.Up.class,
-                TunnelCommands.Down.class,
-                TunnelCommands.Status.class,
+                ConfigCommands.Root.class,
+                ModCommands.Root.class,
+                TunnelCommands.Root.class,
                 MiscCommands.Versions.class,
                 MiscCommands.Doctor.class,
                 MiscCommands.Web.class
@@ -49,6 +42,14 @@ public final class CeobeCli implements Runnable {
     }
 
     public static void main(String[] args) {
+        // Windows 控制台默认非 UTF-8，统一以 UTF-8 输出，避免中文乱码
+        System.setOut(new java.io.PrintStream(
+                new java.io.FileOutputStream(java.io.FileDescriptor.out), true,
+                java.nio.charset.StandardCharsets.UTF_8));
+        System.setErr(new java.io.PrintStream(
+                new java.io.FileOutputStream(java.io.FileDescriptor.err), true,
+                java.nio.charset.StandardCharsets.UTF_8));
+
         CommandLine cmd = new CommandLine(new CeobeCli());
         cmd.setExecutionExceptionHandler((ex, commandLine, parseResult) -> {
             Output.error(ex.getMessage() == null ? ex.toString() : ex.getMessage());

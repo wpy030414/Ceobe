@@ -5,6 +5,8 @@ import im.xrl.ceobe.core.model.InstanceState;
 import im.xrl.ceobe.core.runtime.ControlServer;
 import im.xrl.ceobe.core.runtime.InstanceManager;
 import im.xrl.ceobe.core.runtime.ServerProcess;
+import im.xrl.ceobe.core.tunnel.TunnelManager;
+import im.xrl.ceobe.core.webconsole.WebConsole;
 
 import java.nio.file.Path;
 import java.util.concurrent.CountDownLatch;
@@ -33,6 +35,7 @@ public final class Supervisor {
         var meta = manager.meta(name);
         Path dir = manager.dir(name);
         ServerProcess process = new ServerProcess(meta, dir);
+        TunnelManager tunnels = new TunnelManager(manager);
         CountDownLatch finished = new CountDownLatch(1);
 
         process.addListener(event -> {
@@ -51,7 +54,12 @@ public final class Supervisor {
             }
         });
 
-        try (ControlServer control = new ControlServer(process, dir)) {
+        try (ControlServer control = new ControlServer(process, dir, name, tunnels);
+             WebConsole web = new WebConsole(manager, 0)) {
+            tunnels.webConsolePort(web.port());
+            if (foreground) {
+                System.out.println("[ceobe] Web 控制台: http://127.0.0.1:" + web.port());
+            }
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 if (process.isAlive()) {
                     if (foreground) System.out.println("[ceobe] 收到中断，正在优雅停止…");
@@ -60,6 +68,8 @@ public final class Supervisor {
             }, "ceobe-shutdown"));
             process.start();
             finished.await();
+        } finally {
+            tunnels.close();
         }
         return 0;
     }

@@ -26,13 +26,18 @@ public final class ControlServer implements AutoCloseable {
 
     private final ServerProcess process;
     private final Path instanceDir;
+    private final String instanceName;
+    private final im.xrl.ceobe.core.tunnel.TunnelManager tunnels;
     private final ServerSocket server;
     private final String token = UUID.randomUUID().toString().replace("-", "");
     private final AtomicBoolean closed = new AtomicBoolean();
 
-    public ControlServer(ServerProcess process, Path instanceDir) {
+    public ControlServer(ServerProcess process, Path instanceDir, String instanceName,
+                         im.xrl.ceobe.core.tunnel.TunnelManager tunnels) {
         this.process = process;
         this.instanceDir = instanceDir;
+        this.instanceName = instanceName;
+        this.tunnels = tunnels;
         try {
             this.server = new ServerSocket();
             this.server.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 4);
@@ -96,6 +101,8 @@ public final class ControlServer implements AutoCloseable {
                 out.flush();
                 Thread.ofVirtual().start(() -> process.stop(java.time.Duration.ofSeconds(90)));
                 return;
+            } else if (line.startsWith("TUNNEL ")) {
+                dispatchTunnel(line.substring(7).trim(), out);
             } else if (line.equals("KILL")) {
                 process.kill();
                 out.println("OK");
@@ -106,6 +113,37 @@ public final class ControlServer implements AutoCloseable {
             out.println("ERR " + e.getMessage());
         }
         out.println("END");
+    }
+
+    /** 隧道子命令：UP <kind> / DOWN <kind> / STATUS（由 dispatch 统一补 END）。 */
+    private void dispatchTunnel(String args, PrintWriter out) {
+        try {
+            if (tunnels == null) {
+                out.println("ERR 该实例未启用隧道管理");
+                return;
+            }
+            if (args.equals("STATUS")) {
+                out.println("OK");
+                for (var s : tunnels.activeOf(instanceName)) {
+                    out.println(s.kind.id() + "|" + s.publicUrl + "|"
+                            + (s.expiresAt == null ? "-" : s.expiresAt));
+                }
+            } else if (args.startsWith("UP ")) {
+                var kind = im.xrl.ceobe.core.tunnel.TunnelKind.fromId(args.substring(3).trim());
+                var session = tunnels.up(instanceName, kind);
+                out.println("OK");
+                out.println(session.publicUrl == null ? "-" : session.publicUrl);
+                out.println(session.expiresAt == null ? "-" : session.expiresAt.toString());
+            } else if (args.startsWith("DOWN ")) {
+                var kind = im.xrl.ceobe.core.tunnel.TunnelKind.fromId(args.substring(5).trim());
+                tunnels.down(instanceName, kind);
+                out.println("OK");
+            } else {
+                out.println("ERR 未知隧道命令: " + args);
+            }
+        } catch (RuntimeException e) {
+            out.println("ERR " + e.getMessage());
+        }
     }
 
     @Override

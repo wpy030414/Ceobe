@@ -65,3 +65,26 @@
 - 决策：版本选择器按"26.x / 1.21.x / 1.20.x"分组展示；实例记录 javaHome（默认继承系统 JAVA_HOME）；server.properties 采用 26.3 实测生成的键集为 schema 基线（含新键 `management-server-*`、`pause-when-empty-seconds`、`chat/command-spam-threshold-seconds` 等；`white-list` 生成默认已为 true）。
 - 后果：1.20.5 前版本需 Java 17/21 运行时，UI 需提示（MVP 仅支持 1.20.5+）。
 - 何时重新审视：Mojang 再改版本语义时。
+
+## ADR-007：进程托管 = 每实例「监督进程 + 本机控制通道」（无全局 daemon）
+- 日期：2026-10-15
+- 状态：已采纳
+- 背景：CLI 语法对齐 docker（`start/stop/exec/logs`），但 docker 依赖常驻 daemon 保存进程句柄；本项目要求无 daemon 也能跨进程优雅停止服务端（stdin 直写 `stop`，避免强杀导致世界损坏）。
+- 考虑过的方案：
+  1. 纯文件状态 + 强杀停止：简单，但无法优雅停机，有存档损坏风险；
+  2. 全局常驻 daemon + 本地 socket：最贴近 docker，但引入 daemon 生命周期、端口占用与崩溃恢复成本；
+  3. 每实例监督进程 + 控制通道。
+- 决策：方案 3 —— `ceobe start -d` 派生独立 JVM（`Supervisor`），它托管 `ServerProcess` 并在 `127.0.0.1:随机端口` 开放控制通道（`ControlServer`），凭据为随机 token 写入实例目录 `.ctl`；`stop/exec/logs/tunnel` 等由任意 CLI 进程经该通道下发。
+- 为什么选这个：无需常驻进程即可跨进程优雅停止；崩溃后零残留状态（无 daemon 需恢复）；GUI 启动实例时同样只是"另一个监督进程"，CLI 与 GUI 可混合使用同一实例。
+- 为什么不选其他：方案 1 有数据风险；方案 2 复杂度与故障面显著更高，收益不明显。
+- 后果：`Supervisor` 属于 `ceobe-cli` 模块（core 只提供 `ControlServer`/`InstanceControl` 原语）；控制通道仅绑定环回地址，必须保持"本机可信"假设。
+- 何时重新审视：需要远程（跨机）管理时，届时控制通道需升级为带认证的网络协议。
+
+## ADR-008：包名与 Maven 坐标 = `im.xrl.ceobe.*` / `im.xrl:ceobe-*`
+- 日期：2026-10-15
+- 状态：已采纳
+- 背景：初始骨架使用 `im.xrl.ceobe` 作为临时命名空间；项目所有者要求改为自有域名反写。
+- 决策：groupId `im.xrl`，artifactId `ceobe` / `ceobe-core` / `ceobe-cli` / `ceobe-gui`；Java 包前缀 `im.xrl.ceobe`；资源路径随之迁移（`/im/xrl/ceobe/gui/shadcn.css`）。
+- 为什么不选其他：`im.xrl.ceobe` 不是任何真实持有域，作为长期坐标不合适。
+- 后果：历史提交已整体重写以保持一致（仓库为新建，无外部引用）。
+- 何时重新审视：项目发布到公共仓库并确定最终域名时。

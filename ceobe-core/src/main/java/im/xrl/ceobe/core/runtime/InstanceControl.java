@@ -1,5 +1,6 @@
 package im.xrl.ceobe.core.runtime;
 
+import im.xrl.ceobe.core.model.InstanceState;
 import im.xrl.ceobe.core.util.CeobeException;
 
 import java.io.BufferedReader;
@@ -87,7 +88,8 @@ public final class InstanceControl {
             if (!lines.isEmpty() && lines.get(0).startsWith("ERR ")) {
                 throw new CeobeException(lines.get(0).substring(4));
             }
-            if (!lines.isEmpty() && lines.get(0).startsWith("OK ")) {
+            // 剥离应答前缀行（"OK" 或 "OK …"）
+            if (!lines.isEmpty() && (lines.get(0).equals("OK") || lines.get(0).startsWith("OK "))) {
                 lines.remove(0);
             }
             return lines;
@@ -121,5 +123,19 @@ public final class InstanceControl {
 
     public static List<String> logs(Path instanceDir, int tail) {
         return call(instanceDir, "LOGS " + tail);
+    }
+
+    /** 开启隧道，返回 [公网地址, 有效期]（第二项可能为 "-"）。 */
+    public static List<String> tunnelUp(Path instanceDir, String kindId) {
+        return call(instanceDir, "TUNNEL UP " + kindId);
+    }
+
+    public static void tunnelDown(Path instanceDir, String kindId) {
+        call(instanceDir, "TUNNEL DOWN " + kindId);
+    }
+
+    /** 活动通道列表，每项形如 {@code kind|url|expiresAt}。 */
+    public static List<String> tunnelStatus(Path instanceDir) {
+        return call(instanceDir, "TUNNEL STATUS");
     }
 }

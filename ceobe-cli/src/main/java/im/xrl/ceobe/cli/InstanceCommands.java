@@ -109,12 +109,12 @@ public final class InstanceCommands {
             InstanceSpec spec = new InstanceSpec(name, serverType, gameVersion, loader, memoryMb,
                     jvmArgs, port, javaHome);
 
-            long lastPrint = 0;
+            long[] lastPrint = {0};
             var meta = manager.create(spec, (stage, done, total) -> {
                 if (Output.json) return;
                 long now = System.currentTimeMillis();
-                if (now - lastPrint < 700 && total != done) return;
-                lastPrint = now;
+                if (now - lastPrint[0] < 700 && total != done) return;
+                lastPrint[0] = now;
                 if (total > 0) {
                     System.out.printf("\r%-40s %d%%", stage, done * 100 / total);
                 } else {
@@ -163,7 +163,7 @@ public final class InstanceCommands {
         static void startDetached(InstanceManager manager, String name) throws Exception {
             spawnSupervisor(manager.dir(name), name);
             Path dir = manager.dir(name);
-            long deadline = System.currentTimeMillis() + 180_000;
+            long deadline = System.currentTimeMillis() + 300_000;
             while (System.currentTimeMillis() < deadline) {
                 if (InstanceControl.isAvailable(dir)) {
                     var state = InstanceControl.state(dir);
@@ -188,7 +188,7 @@ public final class InstanceCommands {
             String java = Path.of(System.getProperty("java.home"), "bin", "java"
                     + (System.getProperty("os.name", "").toLowerCase().contains("win") ? ".exe" : ""))
                     .toString();
-            String classpath = System.getProperty("java.class.path");
+            String classpath = selfClasspath();
             String home = System.getProperty("ceobe.home");
             List<String> cmd = new ArrayList<>(List.of(java));
             cmd.add("-Dfile.encoding=UTF-8");
@@ -203,6 +203,19 @@ public final class InstanceCommands {
                     instanceDir.resolve("supervisor.log").toFile()));
             pb.redirectErrorStream(true);
             pb.start();
+        }
+
+        /** 定位 ceobe 自身 jar/classes 目录：{@code java -jar} 下 java.class.path 不可靠。 */
+        static String selfClasspath() {
+            try {
+                var cs = CeobeCli.class.getProtectionDomain().getCodeSource();
+                if (cs != null) {
+                    return Path.of(cs.getLocation().toURI()).toString();
+                }
+            } catch (Exception ignored) {
+                // 回退到 java.class.path
+            }
+            return System.getProperty("java.class.path", "");
         }
     }
 
