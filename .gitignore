@@ -10,3 +10,4 @@ target/
 dependency-reduced-pom.xml
 .ceobe-home/
 .e2e-home/
+.smoke-home/

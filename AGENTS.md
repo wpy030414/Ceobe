@@ -30,4 +30,5 @@ ceobe 是 Java 25 编写的 Minecraft 服务器编排系统（Maven 多模块：
 - `ceobe-core/` — 域核心：实例模型、进程管理、jar 提供者、配置、Modrinth、穿透 SPI
 - `ceobe-cli/` — picocli 无头入口（docker 风格语法）
 - `ceobe-gui/` — JavaFX 界面（shadcn 风格定制主题）
+- `scripts/smoke-cli.sh` — CLI 端到端冒烟（创建→启动→命令→穿透→重启→停止→删除，断言式）
 - `docs/PRD.md` — 产品需求；`docs/ARCHITECTURE.md` — 结构与外部契约；`docs/DECISIONS.md` — ADR；`docs/specs/` — 模块规格

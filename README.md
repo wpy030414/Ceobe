@@ -72,6 +72,14 @@ $J rm smp --purge                           # 删除实例（含世界数据）
 - 因此：**CF 隧道用于远程查看服务器状态（Web 控制台），玩家连接走 Pinggy**。决策依据与实测记录见 `docs/DECISIONS.md` ADR-003。
 - 需要稳定地址时：改用 Cloudflare Named Tunnel（需 CF 账号，且玩家侧需 cloudflared 客户端）或在配置中接入 playit.gg（SPI 已预留扩展位）。
 
+## 验收与测试
+
+```bash
+mvn test                                   # 单元测试（默认跳过需联网下载的用例）
+mvn test -Dtest.excludedGroups= -Dgroups=network   # 端到端：真实下载 vanilla 服务端并跑完整生命周期
+bash scripts/smoke-cli.sh                  # CLI 全链路冒烟（断言式，独立 HOME，可接 CI）
+```
+
 ## 当前状态
 
 - 阶段：开发中（原型 → MVP）。
