@@ -8,8 +8,9 @@
 - `versions(projectId|slug, gameVersion, loader)`：取匹配版本，选最新 stable。
 - `install(instance, version)`：下载 `files[0](primary).url` → `mods/<filename>`；记录到 instance.json 的 mods[]（projectId, versionId, filename, sha1, env）。
 - `uninstall(instance, modId)`：删文件 + 记录；`list(instance)`。
-- 服务端侧过滤：`env.server ∈ {required, optional, unsupported}` —— unsupported 默认排除并在 UI 说明；依赖 (`dependencies[]`) 提示但 MVP 不自动装。
-- 客户端专属 mod（env.server=unsupported 且 env.client=required）装服务端 → 阻止并解释。
+- 服务端侧过滤：以 `version.environment`（Modrinth 字符串枚举：`client_only` / `server_only` / `client_and_server` / `client_or_server*` / `unknown`）判定——仅 `client_only` 视为服务端不可用。
+- 客户端专属 mod（`version.environment == client_only`）装服务端 → 阻止并解释（注意：`environment` 在 version 对象中是字符串，不是 `{client,server}` 对象）。
+- 依赖（`dependencies[]`）仅提示，MVP 不自动安装。
 
 ## 输入 / 输出
 - 输入：查询/项目/版本；实例。

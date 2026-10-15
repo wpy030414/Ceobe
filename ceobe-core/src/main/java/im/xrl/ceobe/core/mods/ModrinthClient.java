@@ -77,12 +77,15 @@ public final class ModrinthClient {
         JsonNode file = primaryFile(version);
         if (file == null) throw new CeobeException("该版本无可下载文件");
 
-        String envServer = version.path("environment").path("server").asText("unknown");
-        String envClient = version.path("environment").path("client").asText("unknown");
-        if ("unsupported".equals(envServer)) {
+        // version.environment 是字符串枚举（如 client_only / client_or_server_prefers_both），
+        // 不是 {client,server} 对象；仅 client_only 表示无法用于服务端
+        String environment = version.path("environment").asText("unknown");
+        if (clientOnly(environment)) {
             throw CeobeException.of("「%s」是客户端专属模组，不能装到服务端",
                     version.path("name").asText(projectIdOrSlug));
         }
+        String envServer = "optional";
+        String envClient = "server_only".equals(environment) ? "unsupported" : "optional";
 
         String fileName = file.path("filename").asText();
         String downloadUrl = file.path("url").asText();
@@ -142,6 +145,11 @@ public final class ModrinthClient {
             case PAPER, PURPUR -> "paper";
             case VANILLA -> "datapack";
         };
+    }
+
+    /** 该 {@code version.environment} 字符串是否表示客户端专属（无法用于服务端）。 */
+    static boolean clientOnly(String environment) {
+        return "client_only".equals(environment);
     }
 
     private static String enc(String s) {
