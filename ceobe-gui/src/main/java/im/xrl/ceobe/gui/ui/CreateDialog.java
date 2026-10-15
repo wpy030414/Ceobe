@@ -83,7 +83,10 @@ public final class CreateDialog {
         progress.setPrefWidth(420);
         HBox step1 = new HBox(8, step("1 服务端与版本"), step("2 资源与端口"), step("3 创建"));
         step1.setAlignment(Pos.CENTER_LEFT);
-        VBox content = new VBox(10, step1, grid, progress, stage);
+        Label portHint = new Label("端口在实例间必须唯一（否则玩家的穿透地址会指向错误的实例）；此处已自动填入当前空闲端口。");
+        portHint.getStyleClass().add("ceobe-muted");
+        portHint.setWrapText(true);
+        VBox content = new VBox(10, step1, grid, portHint, progress, stage);
         content.setPadding(new Insets(6));
         dialog.getDialogPane().setContent(content);
         dialog.getDialogPane().getButtonTypes().addAll(createBtn, ButtonType.CANCEL);
@@ -107,6 +110,11 @@ public final class CreateDialog {
 
         typeBox.valueProperty().addListener((o, a, b) -> loadVersions(b));
         loadVersions(typeBox.getValue());
+
+        // 端口排他：默认填入当前可用端口（避开已登记实例与本机占用）
+        Fx.background(() -> manager.suggestFreePort(25565),
+                p -> portSpinner.getValueFactory().setValue(p),
+                err -> {});
     }
 
     private Label step(String text) {

@@ -48,7 +48,7 @@ ceobe/                聚合 POM（groupId im.xrl，统一版本 0.1.0-SNAPSHOT�
 J="java -jar ceobe-cli/target/ceobe.jar"
 
 $J doctor                                   # 环境自检（JDK / cloudflared / ssh / 目录）
-$J create smp --type paper --version 26.3 --mem 4G --port 25565   # 创建并下载服务端
+$J create smp --type paper --version 26.3 --mem 4G --port 25565   # 创建并下载服务端（端口需排他；--port auto 自动选空）
 $J start -d smp                             # 后台启动（独立监督进程，可跨终端管理）
 $J ps                                       # 运行中实例；ps -a 含已停止
 $J config set smp view-distance 12          # 改配置（类型校验；运行中需重启生效）

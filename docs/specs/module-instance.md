@@ -4,7 +4,7 @@
 - 目标：实例的创建、启动、停止、删除、状态查询；进程的可靠托管。
 
 ## 行为
-- 创建：校验名称（`[a-z0-9_-]{1,32}`）唯一 → 建目录 → 下载 jar（provider）→ 写 `eula.txt`（eula=true）→ 生成默认 `server.properties`（若缺）→ 写 `instance.json`。
+- 创建：校验名称（`[a-z0-9_-]{1,32}`）唯一 → **校验端口在实例间排他**（不得与其它实例已登记端口相同，且本机当前可独占绑定）→ 建目录 → 下载 jar（provider）→ 写 `eula.txt`（eula=true）→ 生成默认 `server.properties`（若缺）→ 写 `instance.json`。
 - 启动：校验 jar 存在 → `ProcessBuilder` 派生 `java {-Xms -Xmx 用户jvmArgs} -jar <launchJar> nogui`，工作目录=实例目录 → 状态机推进；同时开启控制通道（`.ctl`）。
 - 状态机：`CREATED → STARTING →（日志匹配 `Done \(\d+\.\d+s\)!`）→ RUNNING →（`stop` 命令或 destroy）→ STOPPING → STOPPED`；异常退出 → `CRASHED(exitCode)`。
 - 停止：向 stdin 写 `stop\n`，宽限 60s（max-tick-time 默认 60s）后 `destroyForcibly()`。
@@ -17,7 +17,7 @@
 
 ## 约束
 - 同一实例跨进程互斥：同一时刻只允许一个监督进程托管（`ProcessHandle` 存活 + `.state`/`.pid` 判定）；跨进程操作一律经控制通道（`.ctl` token 鉴权）。
-- 端口占用预检（bind test）在启动前给出明确错误。
+- 端口排他：`InstanceManager.assertPortExclusive` 在创建/启动前拒绝与其它实例重复的端口并报占用者名称（穿透地址须唯一对应一个服务端）；`suggestFreePort` / CLI `--port auto` / GUI 自动填入空闲端口。启动时另做 OS 层 bind 预检（`ServerProcess.checkPortFree`）。
 - core 不准弹任何 UI/交互。
 
 ## 边界条件
@@ -30,6 +30,7 @@
 - [ ] 已运行实例再次 start 被拒绝并提示当前状态。
 - [ ] 服务端进程被外部结束 → 状态转 CRASHED，可再次启动。
 - [ ] 监督进程被强杀后，`stop`/`exec` 给出「控制通道已失效」并自愈。
+- [ ] 与其它实例端口冲突时 create/start 被拒绝并给出占用者名称；`--port auto` 选出空闲端口。
 
 ## 完成定义
 - core JUnit E2E 全绿；CLI `ps` 能展示五态。

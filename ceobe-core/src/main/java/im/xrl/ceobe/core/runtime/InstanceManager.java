@@ -13,6 +13,7 @@ import im.xrl.ceobe.core.provider.ProviderRegistry;
 import im.xrl.ceobe.core.store.CeobeHome;
 import im.xrl.ceobe.core.util.CeobeException;
 import im.xrl.ceobe.core.util.Json;
+import im.xrl.ceobe.core.util.Ports;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -73,6 +74,32 @@ public final class InstanceManager {
         return CeobeHome.instanceDir(name);
     }
 
+    // —— 端口排他性 ——
+
+    /**
+     * 校验端口在实例间排他：不得与其它实例已登记的端口相同。
+     * <p>穿透通道直接指向该端口，若两个实例共用端口，玩家的地址会连到错误的服务端。
+     */
+    public void assertPortExclusive(String self, int port) {
+        for (InstanceMeta m : loadAllMetas()) {
+            if (!m.name.equals(self) && m.port == port) {
+                throw CeobeException.of(
+                        "端口 %d 已被实例 %s 占用；端口需在实例间排他。可改用 `--port auto` 自动选取空闲端口",
+                        port, m.name);
+            }
+        }
+    }
+
+    /** 从 {@code from} 起找一个未被任何实例登记、且本机可独占绑定的空闲端口。 */
+    public int suggestFreePort(int from) {
+        java.util.Set<Integer> taken = new java.util.HashSet<>();
+        for (InstanceMeta m : loadAllMetas()) taken.add(m.port);
+        for (int p = Math.max(1, from); p <= 65535; p++) {
+            if (!taken.contains(p) && Ports.isFree(p)) return p;
+        }
+        throw CeobeException.of("从端口 %d 起找不到可用端口", from);
+    }
+
     private InstanceStatus statusOf(InstanceMeta meta) {
         Path dir = CeobeHome.instanceDir(meta.name);
         ServerProcess hostedProcess = hosted.get(meta.name);
@@ -100,6 +127,12 @@ public final class InstanceManager {
         Path dir = CeobeHome.instanceDir(spec.name());
         if (Files.exists(dir.resolve("instance.json"))) {
             throw CeobeException.of("实例已存在: %s", spec.name());
+        }
+        // 端口排他性：先于任何下载/落盘校验，避免冲突时才失败
+        assertPortExclusive(spec.name(), spec.port());
+        if (!Ports.isFree(spec.port())) {
+            throw CeobeException.of(
+                    "端口 %d 当前已被本机其它程序占用；可改用 `--port auto` 自动选取空闲端口", spec.port());
         }
         CeobeHome.ensure(dir);
         // 先按最终参数生成基础文件，再安装服务端
@@ -167,6 +200,7 @@ public final class InstanceManager {
 
     public void start(String name) {
         InstanceStatus s = require(name);
+        assertPortExclusive(name, s.meta().port);
         if (!hosted.containsKey(name)) {
             verifyNotRunningElsewhere(name, s);
         }

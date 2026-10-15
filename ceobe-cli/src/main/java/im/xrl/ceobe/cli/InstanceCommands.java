@@ -90,8 +90,9 @@ public final class InstanceCommands {
         @Option(names = "--mem", paramLabel = "SIZE", defaultValue = "2G", description = "内存上限，如 4G / 4096M")
         String mem;
 
-        @Option(names = "--port", defaultValue = "25565", description = "服务器端口")
-        int port;
+        @Option(names = "--port", paramLabel = "PORT", defaultValue = "25565",
+                description = "服务器端口；auto = 自动选取空闲端口（默认 25565）")
+        String port;
 
         @Option(names = "--jvm", paramLabel = "ARGS", defaultValue = "", description = "附加 JVM 参数")
         String jvmArgs;
@@ -111,8 +112,9 @@ public final class InstanceCommands {
                 Output.info("未指定版本，使用最新正式版: %s", gameVersion);
             }
             int memoryMb = parseMemory(mem);
+            int portNum = resolvePort(port, manager);
             InstanceSpec spec = new InstanceSpec(name, serverType, gameVersion, loader, memoryMb,
-                    jvmArgs, port, javaHome);
+                    jvmArgs, portNum, javaHome);
 
             long[] lastPrint = {0};
             var meta = manager.create(spec, (stage, done, total) -> {
@@ -397,6 +399,21 @@ public final class InstanceCommands {
             return ServerType.valueOf(raw.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new CeobeException("未知服务端类型: %s（可选 vanilla/paper/fabric/purpur）".formatted(raw));
+        }
+    }
+
+    /** "auto"/空 → 自动选取空闲端口；否则解析为 1-65535 的整数。 */
+    static int resolvePort(String raw, InstanceManager manager) {
+        String s = raw == null ? "" : raw.trim();
+        if (s.isEmpty() || s.equalsIgnoreCase("auto")) {
+            return manager.suggestFreePort(25565);
+        }
+        try {
+            int p = Integer.parseInt(s);
+            if (p < 1 || p > 65535) throw new NumberFormatException();
+            return p;
+        } catch (NumberFormatException e) {
+            throw new CeobeException("端口格式错误: %s（应为 1-65535 的整数或 auto）".formatted(raw));
         }
     }
 

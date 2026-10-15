@@ -24,6 +24,7 @@ ceobe 是 Java 25 编写的 Minecraft 服务器编排系统（Maven 多模块：
   - 所有对外 HTTP 请求必须带 User-Agent（Modrinth 要求，Fill v3 建议）。
   - git commit 遵循 Conventional Commits，subject ≤72 字符，body 分点。
   - server.properties 写回必须保序、保注释、保转义（`minecraft\:normal` 形式）。
+  - 端口在实例间排他：创建/启动经 `InstanceManager.assertPortExclusive` 校验，空闲端口用 `suggestFreePort` / CLI `--port auto`；穿透通道一律指向实例自己的 `meta.port`。
 
 ## 目录速查
 

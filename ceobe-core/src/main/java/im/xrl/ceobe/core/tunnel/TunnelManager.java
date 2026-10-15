@@ -69,6 +69,11 @@ public final class TunnelManager implements AutoCloseable {
         TunnelProvider provider = provider(kind);
         if (!provider.available()) throw new CeobeException(provider.unavailableReason());
 
+        // 玩家通道直指 MC 端口：服务端未就绪时会得到一个指向空端口的“死”通道，先行拦截
+        if (kind == TunnelKind.PINGGY && !status.state().isLive()) {
+            throw CeobeException.of("实例 %s 未运行，玩家通道需在服务端就绪后开启", instance);
+        }
+
         int localPort = switch (kind) {
             case PINGGY, LAN -> status.meta().port;
             case CLOUDFLARE -> {
