@@ -41,8 +41,9 @@ public final class PinggyTunnel implements TunnelProvider {
     public TunnelSession start(String instance, Path instanceDir, int localPort, Consumer<String> logSink) {
         if (!available()) throw new CeobeException(unavailableReason());
         Path knownHosts = instanceDir.resolve("pinggy_known_hosts");
+        // -4 强制 IPv4：部分网络到 pinggy.io 的 IPv6 路径会被 Connection reset（实测）
         ProcessBuilder pb = new ProcessBuilder(
-                "ssh", "-p", "443",
+                "ssh", "-4", "-p", "443",
                 "-o", "StrictHostKeyChecking=accept-new",
                 "-o", "UserKnownHostsFile=" + knownHosts.toAbsolutePath(),
                 "-o", "ServerAliveInterval=30",

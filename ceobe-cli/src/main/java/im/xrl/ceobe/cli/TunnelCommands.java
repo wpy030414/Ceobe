@@ -48,7 +48,8 @@ public final class TunnelCommands {
                 throw new CeobeException("实例 %s 无控制通道（需以受控方式启动）".formatted(instance));
             }
             TunnelKind k = TunnelKind.fromId(kind);
-            List<String> result = InstanceControl.call(manager.dir(instance), "TUNNEL UP " + k.id());
+            // 建链（Pinggy 约 20-45s）需长超时，不能用默认 15s
+            List<String> result = InstanceControl.tunnelUp(manager.dir(instance), k.id());
             String url = result.isEmpty() ? "(未返回地址)" : result.get(0);
             String expires = result.size() > 1 ? result.get(1) : "";
             if (Output.json) {
