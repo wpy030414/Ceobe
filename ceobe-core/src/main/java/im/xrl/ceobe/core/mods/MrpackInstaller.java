@@ -29,6 +29,18 @@ public final class MrpackInstaller {
     public record Result(String name, String versionId, int files, int skipped, int overrides) {
     }
 
+    /** 下载整合包 `.mrpack` 到缓存目录，返回本地路径（已存在则复用）。 */
+    public static Path fetch(ModrinthClient.PackVersion pv, ProgressListener progress) {
+        Path cache = CeobeHome.ensure(CeobeHome.root().resolve("cache").resolve("packs"));
+        String fileName = pv.slug() + "-" + pv.versionNumber().replaceAll("[^A-Za-z0-9._+-]", "_") + ".mrpack";
+        Path target = cache.resolve(fileName);
+        if (!Files.isRegularFile(target)) {
+            Http.download(pv.url(), target, pv.sha1(), null,
+                    (d, t) -> progress.update("下载整合包 " + fileName, d, t));
+        }
+        return target;
+    }
+
     /** 解析 {@code modrinth.index.json}（仅读头部信息，不解包）。 */
     public static Index readIndex(Path mrpack) {
         Path tmp = CeobeHome.ensure(

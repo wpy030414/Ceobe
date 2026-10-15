@@ -168,33 +168,17 @@ public final class ModpackCommands {
 
     /** 下载 .mrpack 到缓存目录，返回本地路径。 */
     static Path downloadPack(String pack, String version, String loader) {
-        ModrinthClient.PackVersion pv = new ModrinthClient().resolvePack(pack, version, loader);
-        Path cache = CeobeHome.ensure(CeobeHome.root().resolve("cache").resolve("packs"));
-        String fileName = pv.slug() + "-" + pv.versionNumber().replaceAll("[^A-Za-z0-9._+-]", "_") + ".mrpack";
-        Path target = cache.resolve(fileName);
-        if (!java.nio.file.Files.isRegularFile(target)) {
-            Http.download(pv.url(), target, pv.sha1(), null, (d, t) -> {
-            });
-        }
-        return target;
+        return MrpackInstaller.fetch(new ModrinthClient().resolvePack(pack, version, loader),
+                (s, d, t) -> {
+                });
     }
 
     static String loaderOf(ServerType type) {
-        return switch (type) {
-            case FABRIC -> "fabric";
-            case NEOFORGE -> "neoforge";
-            default -> null;
-        };
+        return type.loaderId();
     }
 
     static ServerType typeOfLoader(String loader) {
-        if (loader == null) throw new CeobeException("整合包未声明加载器，无法自动创建实例");
-        return switch (loader) {
-            case "fabric" -> ServerType.FABRIC;
-            case "neoforge" -> ServerType.NEOFORGE;
-            default -> throw new CeobeException(
-                    "暂不支持的整合包加载器: %s（当前支持 fabric / neoforge）".formatted(loader));
-        };
+        return ServerType.fromLoaderId(loader);
     }
 
     static void checkCompat(InstanceStatus status, MrpackInstaller.Index idx) {

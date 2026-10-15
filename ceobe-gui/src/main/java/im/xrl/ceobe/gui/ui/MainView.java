@@ -49,6 +49,7 @@ public final class MainView {
     private ServerPane serverPane;
     private GamePane gamePane;
     private ModPane mods;
+    private ModpackPane packs;
     private TunnelPane tunnelPane;
     private String selected;
 
@@ -196,6 +197,7 @@ public final class MainView {
         liveApplied = live;
         if (console != null) console.setLive(live);
         if (tunnelPane != null) tunnelPane.setLive(live);
+        if (packs != null) packs.setLive(live);
     }
 
     /** 仅供快照自检：选中首个实例并切到指定页签。 */
@@ -245,6 +247,7 @@ public final class MainView {
         serverPane = new ServerPane(manager, status, this::reselect);
         gamePane = new GamePane(manager, status);
         mods = new ModPane(manager, status);
+        packs = new ModpackPane(manager, status, this::refresh);
         tunnelPane = new TunnelPane(manager, tunnels, status);
 
         tabs.getTabs().setAll(
@@ -252,6 +255,7 @@ public final class MainView {
                 tab("服务器配置", serverPane.node()),
                 tab("游戏配置", gamePane.node()),
                 tab("Mod", mods.node()),
+                tab("整合包", packs.node()),
                 tab("穿透", tunnelPane.node()));
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         contentArea.setCenter(tabs);

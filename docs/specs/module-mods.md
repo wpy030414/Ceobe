@@ -27,7 +27,7 @@
 ## 整合包（Modrinth `.mrpack`）
 - `MrpackInstaller.readIndex(zip)`：解析 `modrinth.index.json` 的 `name` / `versionId` / `dependencies`（`minecraft` 与 `fabric-loader`/`neoforge`/`forge`/`quilt-loader`）。
 - `MrpackInstaller.install(instanceDir, zip, progress)`：按 `files[]` 下载（跳过 `env.server = unsupported`；`path` 归一化防穿越；sha1 校验）；先解 `server-overrides/` 再解 `overrides/`（前者优先）。
-- CLI：`ceobe modpack search | info <标识> | install <实例> <标识> | new <名称> <标识>`；`new` 依 `dependencies` 自动创建匹配实例（fabric / neoforge）后安装（一键）。
+- CLI：`ceobe modpack search | info <标识> | install <实例> <标识> | new <名称> <标识>`；`new` 依 `dependencies` 自动创建匹配实例（fabric / neoforge）后安装（一键）。GUI 在「整合包」页签提供同样能力（搜索 / 安装到本实例 / 新建并安装）。
 - 文件经 `Http` 下载 → 自动走 Modrinth CDN 镜像（见 ADR-012）；加载器 forge/quilt 的整合包暂不支持并明确报错。
 
 ## 验收标准

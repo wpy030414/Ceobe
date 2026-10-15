@@ -11,6 +11,7 @@
 - 顶部栏右侧「⚙ 设置」弹窗（当前仅暴露主题一项）。
 - 开发自检：`-Dceobe.snapshot=<png> [-Dceobe.snapshot.tab=配置]` 启动即自动选中首个实例、切页签并把 Scene 导出为 PNG（无需窗口焦点，便于 UI 回归）。
 - Mod 页：搜索框+结果卡（图标/简介/下载量/env 徽标）→ 安装；已装列表可卸载；vanilla/paper 实例显示"无 mods 目录"空态。
+- 整合包页：搜索 Modrinth 整合包（可勾选「仅适配本实例」按当前版本/加载器过滤）→「安装到本实例」（校验加载器/版本一致）或「新建实例并安装」（依索引 dependencies 自动建 fabric/neoforge 实例再装）；带进度条与阶段文案。
 - 穿透页：每通道开关卡（CF Web 控制台 / Pinggy 玩家连接 / 局域网直连）；地址大字 + 一键复制 + "地址已轮换"横幅；剩余有效期倒计时。
 - 主题：**浅色默认**、深色可选；在右侧「⚙ 设置」对话框切换并持久化到 `~/.ceobe/settings.json`（`theme`）。token 驱动（`.theme-light` / `.theme-dark`），8px 圆角、1px hairline 边框、focus ring。字体中文优先「Microsoft YaHei UI」（避免细点位字体的像素感），拉丁回退 Inter（内嵌）。
 

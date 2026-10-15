@@ -26,4 +26,23 @@ public enum ServerType {
     public boolean hasModsDir() {
         return hasModsDir;
     }
+
+    /** 对应的 Modrinth 加载器 id（fabric/neoforge）；无模组加载器的类型返回 null。 */
+    public String loaderId() {
+        return switch (this) {
+            case FABRIC -> "fabric";
+            case NEOFORGE -> "neoforge";
+            default -> null;
+        };
+    }
+
+    /** Modrinth 加载器 id → 服务端类型；不支持时抛业务异常。 */
+    public static ServerType fromLoaderId(String loaderId) {
+        return switch (loaderId == null ? "" : loaderId) {
+            case "fabric" -> FABRIC;
+            case "neoforge" -> NEOFORGE;
+            default -> throw im.xrl.ceobe.core.util.CeobeException.of(
+                    "暂不支持该整合包加载器: %s（当前支持 fabric / neoforge）", loaderId);
+        };
+    }
 }
