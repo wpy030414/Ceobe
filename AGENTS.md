@@ -26,6 +26,7 @@ ceobe 是 Java 25 编写的 Minecraft 服务器编排系统（Maven 多模块：
   - server.properties 写回必须保序、保注释、保转义（`minecraft\:normal` 形式）。
   - 端口在实例间排他：创建/启动经 `InstanceManager.assertPortExclusive` 校验，空闲端口用 `suggestFreePort` / CLI `--port auto`；穿透通道一律指向实例自己的 `meta.port`。
   - 实例所需 Java 由 `im.xrl.ceobe.core.jdk` 探测/托管：`create` 自动解析并写入 `meta.javaHome`（显式 > 自管 JDK 命中 > 宿主）；缺则提醒，`ceobe jdk install <n>` 一键装（Adoptium + 清华镜像）。
+  - GUI 自检：`-Dceobe.snapshot=<png> [-Dceobe.snapshot.tab=配置]` 启动即导出 Scene 快照（无需窗口焦点），用于 UI 回归。
 
 ## 目录速查
 
@@ -33,4 +34,5 @@ ceobe 是 Java 25 编写的 Minecraft 服务器编排系统（Maven 多模块：
 - `ceobe-cli/` — picocli 无头入口（docker 风格语法）
 - `ceobe-gui/` — JavaFX 界面（shadcn 风格定制主题）
 - `scripts/smoke-cli.sh` — CLI 端到端冒烟（创建→启动→命令→穿透→重启→停止→删除，断言式）
+- `.github/workflows/gui-release.yml` — CI：main 推送即打包 GUI（Windows .exe / macOS .dmg / Linux AppImage），同名旧任务自动取消
 - `docs/PRD.md` — 产品需求；`docs/ARCHITECTURE.md` — 结构与外部契约；`docs/DECISIONS.md` — ADR；`docs/specs/` — 模块规格

@@ -131,6 +131,87 @@ public final class InstanceManager {
         saveMeta(dir, meta);
     }
 
+    // —— 实例设置（名称/内存/端口/JVM/authlib）——
+
+    private static final java.util.regex.Pattern NAME_RE =
+            java.util.regex.Pattern.compile("[a-z0-9_-]{1,32}");
+
+    public static void validateName(String name) {
+        if (name == null || !NAME_RE.matcher(name).matches()) {
+            throw CeobeException.of("实例名只能是小写字母/数字/_/-，长度 1-32：%s", name);
+        }
+    }
+
+    /** 重命名实例（要求已停止；目录与元数据同步改名）。 */
+    public void rename(String oldName, String newName) {
+        if (oldName.equals(newName)) return;
+        validateName(newName);
+        InstanceStatus s = require(oldName);
+        if (s.state().isLive()) throw CeobeException.of("实例 %s 正在运行，请先停止", oldName);
+        if (find(newName).isPresent()) throw CeobeException.of("实例已存在: %s", newName);
+        Path from = CeobeHome.instanceDir(oldName);
+        Path to = CeobeHome.instanceDir(newName);
+        try {
+            Files.move(from, to);
+        } catch (IOException e) {
+            throw new CeobeException("重命名失败: " + e.getMessage(), e);
+        }
+        InstanceMeta meta = readMeta(to);
+        meta.name = newName;
+        saveMeta(to, meta);
+        hosted.remove(oldName);
+    }
+
+    /**
+     * 更新实例设置（要求已停止）。参数为 null 表示不改动。
+     * <p>端口变更会同步写入 {@code server.properties} 的 server-port/query.port；
+     * 设置 authlib-injector 时自动关闭正版验证（三方鉴权需要）。
+     */
+    public void updateInstance(String name, Integer memoryMb, Integer port, String jvmArgs,
+                               String authlibInjectorUrl) {
+        InstanceStatus s = require(name);
+        if (s.state().isLive()) {
+            throw CeobeException.of("实例 %s 正在运行，请先停止再修改", name);
+        }
+        Path dir = CeobeHome.instanceDir(name);
+        InstanceMeta meta = readMeta(dir);
+
+        if (memoryMb != null && memoryMb > 0) meta.memoryMb = memoryMb;
+        if (jvmArgs != null) meta.jvmArgs = jvmArgs.trim();
+
+        if (port != null && port != meta.port) {
+            if (port < 1 || port > 65535) throw CeobeException.of("端口需在 1-65535：%d", port);
+            assertPortExclusive(name, port);
+            if (!Ports.isFree(port)) throw CeobeException.of("端口 %d 已被本机占用", port);
+            meta.port = port;
+            syncPortToProps(dir, port);
+        }
+
+        if (authlibInjectorUrl != null) {
+            String url = authlibInjectorUrl.trim();
+            meta.authlibInjectorUrl = url.isEmpty() ? null : url;
+            if (!url.isEmpty()) setOnlineModeFalse(dir);
+        }
+        saveMeta(dir, meta);
+    }
+
+    private static void syncPortToProps(Path dir, int port) {
+        Path props = dir.resolve("server.properties");
+        if (!Files.isRegularFile(props)) return;
+        ServerPropertiesFile f = ServerPropertiesFile.load(props);
+        if (f.contains("server-port")) f.set("server-port", String.valueOf(port));
+        if (f.contains("query.port")) f.set("query.port", String.valueOf(port));
+        f.save();
+    }
+
+    private static void setOnlineModeFalse(Path dir) {
+        Path props = dir.resolve("server.properties");
+        if (!Files.isRegularFile(props)) return;
+        ServerPropertiesFile f = ServerPropertiesFile.load(props);
+        if (f.contains("online-mode")) f.set("online-mode", "false");
+        f.save();
+    }
+
     // —— 创建/删除 ——
 
     public InstanceMeta create(InstanceSpec spec, ProgressListener progress) {

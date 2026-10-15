@@ -46,7 +46,8 @@ public final class MainView {
     private BorderPane contentArea;
 
     private ConsolePane console;
-    private ConfigPane config;
+    private ServerPane serverPane;
+    private GamePane gamePane;
     private ModPane mods;
     private TunnelPane tunnelPane;
     private String selected;
@@ -93,7 +94,7 @@ public final class MainView {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         Button settings = new Button("设置");
-        settings.getStyleClass().addAll("button", "ceobe-primary");
+        settings.getStyleClass().addAll("button", "ceobe-icon-button");
         settings.setOnAction(e -> SettingsDialog.show(root.getScene().getWindow(), root.getScene()));
         HBox topbar = new HBox(8, topTitle, spacer, settings);
         topbar.getStyleClass().add("ceobe-topbar");
@@ -197,6 +198,30 @@ public final class MainView {
         if (tunnelPane != null) tunnelPane.setLive(live);
     }
 
+    /** 仅供快照自检：选中首个实例并切到指定页签。 */
+    public void debugSelect(String tabName) {
+        if (list.getItems().isEmpty()) return;
+        list.getSelectionModel().select(0);
+        for (Tab t : tabs.getTabs()) {
+            if (t.getText().equals(tabName)) {
+                tabs.getSelectionModel().select(t);
+                break;
+            }
+        }
+    }
+
+    /** 实例改名后按新名字重建页签（先清空选中以绕过「同名不重建」守卫）。 */
+    private void reselect(String name) {
+        selected = null;
+        liveApplied = null;
+        Fx.background(manager::list, statuses -> {
+            currentSig = signature(statuses);
+            list.getItems().setAll(statuses);
+            statuses.stream().filter(s -> s.meta().name.equals(name)).findFirst()
+                    .ifPresent(s -> list.getSelectionModel().select(s));
+        }, t -> statusBar.setText("刷新失败: " + t.getMessage()));
+    }
+
     private String statusText(List<InstanceStatus> statuses) {
         long running = statuses.stream().filter(s -> s.state() == InstanceState.RUNNING).count();
         String web = webConsole != null ? "Web 控制台 http://127.0.0.1:" + webConsole.port() : "Web 控制台未启用";
@@ -217,13 +242,15 @@ public final class MainView {
             contentArea.setCenter(emptyHint);
             refresh();
         });
-        config = new ConfigPane(manager, status);
+        serverPane = new ServerPane(manager, status, this::reselect);
+        gamePane = new GamePane(manager, status);
         mods = new ModPane(manager, status);
         tunnelPane = new TunnelPane(manager, tunnels, status);
 
         tabs.getTabs().setAll(
                 tab("控制台", console.node()),
-                tab("配置", config.node()),
+                tab("服务器配置", serverPane.node()),
+                tab("游戏配置", gamePane.node()),
                 tab("Mod", mods.node()),
                 tab("穿透", tunnelPane.node()));
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);

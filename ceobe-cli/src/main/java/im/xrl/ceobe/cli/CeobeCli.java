@@ -19,6 +19,7 @@ import picocli.CommandLine.ScopeType;
                 InstanceCommands.Stop.class,
                 InstanceCommands.Restart.class,
                 InstanceCommands.Rm.class,
+                InstanceCommands.Update.class,
                 InstanceCommands.Logs.class,
                 InstanceCommands.Exec.class,
                 ConfigCommands.Root.class,

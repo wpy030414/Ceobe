@@ -54,6 +54,7 @@ $J create smp --type paper --version 26.3 --mem 4G --port 25565   # 创建并下
 $J start -d smp                             # 后台启动（独立监督进程，可跨终端管理）
 $J ps                                       # 运行中实例；ps -a 含已停止
 $J config set smp view-distance 12          # 改配置（类型校验；运行中需重启生效）
+$J update smp --mem 4G --port auto          # 改实例设置（名称/内存/端口/JVM/authlib-injector）
 $J exec smp "say 大家好啊"                   # 下发服务端命令
 $J logs -f smp                              # 实时跟随日志（Ctrl+C 退出且不杀服）
 $J tunnel up smp --kind pinggy              # 开玩家通道 → 得到 tcp://… 地址发给朋友
@@ -89,6 +90,14 @@ $J rm smp --purge                           # 删除实例（含世界数据）
 - 实测：vanilla 26.3（62MB）镜像 ON 约 16s、OFF 约 57s（≈3.5×），且 sha1 与官方一致。
 - 无镜像的源（PaperMC Fill、Purpur API、`maven.neoforged.net`、`api.modrinth.com`）仍直连。
 - 可用 `-Dceobe.mirror=off` 关闭镜像，或 `-Dceobe.mirror.bmclapi=` / `-Dceobe.mirror.modrinth=` 覆盖基址。
+
+## 打包与发布（CI）
+
+- `.github/workflows/gui-release.yml`：push 到 `main` 触发，并**自动取消同名旧任务**；矩阵构建三平台 GUI 安装包：
+  - Windows `.exe`（jpackage + WiX）
+  - macOS `.dmg`（jpackage）
+  - Linux `.AppImage`（jpackage app-image + appimagetool）
+- JavaFX 依赖按构建机平台自动选择 classifier（`win` / `linux` / `mac` / `mac-aarch64`），无需手工改 pom。
 
 ## 验收与测试
 

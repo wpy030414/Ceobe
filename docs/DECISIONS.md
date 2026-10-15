@@ -153,3 +153,23 @@
 - 决策：改为取**首个** release（最新正式版）；无 release 时取第一个。
 - 后果：mod 与整合包的版本解析都偏向最新正式版；用户可用显式版本覆盖。
 - 何时重新审视：需按语义化版本而非发布时间排序时。
+
+## ADR-015：实例设置后置可改 + authlib-injector 三方鉴权
+- 日期：2026-10-15
+- 状态：已采纳
+- 背景：此前内存/端口/JVM 参数只能在创建时确定，建成后无法修改（只能重建实例）；且非正版玩家无法接入（正版验证）。
+- 决策：新增 `InstanceManager.updateInstance`（内存/端口/JVM/authlib）与 `rename`（改目录名 + 元数据），均要求实例已停止；**改端口同步写回 `server.properties`**（server-port/query.port）以免配置与元数据打架；配置 authlib-injector 时按需下载其 jar（`~/.ceobe/cache/jars/`）并以 `-javaagent:authlib-injector.jar=<Yggdrasil 地址>` 注入，同时自动将 `online-mode=false`。GUI 把实例级项（名称/内存/端口/JVM/authlib）单列「服务器配置」页签，与 `server.properties` 的「游戏配置」页签分开；CLI 提供 `ceobe update`。
+- 为什么选这个：把"改配置要重建实例"的痛点消掉；authlib 是接三方登录（如 LittleSkin）的标准做法，注入 + 关正版验证必须成对。
+- 为什么不选其他：扩建实例（复制目录）成本高且易错；仅文档说明让用户手改 `instance.json` 不友好。
+- 后果：`rename` 会改变实例目录名，GUI 需按新名字重建页签（`MainView.reselect`）；`instance.json` 新增 `authlibInjectorUrl`。
+- 何时重新审视：需要热改（不停止实例）内存/端口时。
+
+## ADR-016：GUI 默认浅色 + 跨平台打包（CI 产出 exe/dmg/AppImage）
+- 日期：2026-10-15
+- 状态：已采纳
+- 背景：项目所有者要求默认白色主题（深色手动切换）、侧栏占满 100vh、设置项收敛到弹窗；并要求「main 推送即取消同名旧任务，构建 exe/dmg/AppImage」。
+- 决策：主题改为 token 驱动、**浅色默认**、深色可选（`~/.ceobe/settings.json` 持久化，顶部栏「设置」弹窗切换）；字体中文优先「Microsoft YaHei UI」以消除像素感。JavaFX 依赖按构建机平台自动选 classifier（pom profiles），并用 GitHub Actions（`gui-release.yml`，`concurrency.cancel-in-progress`）在 Windows/macOS/Linux 上经 jpackage 产出 `.exe`/`.dmg`/`.AppImage`。
+- 为什么选这个：默认浅色符合需求；jpackage 是 JDK 自带的标准打包器，避免引入第三方打包工具链；cancel-in-progress 防止旧构建抢占。
+- 为什么不选其他：Electron/打包器（jlink+自写脚本）重复造轮子；仅 app-image 不满足"安装包"诉求（Linux 额外用 appimagetool 包 AppImage）。
+- 后果：CI 需要 WiX（Windows 上按需 `choco install wixtoolset`）与 appimagetool（Linux 上现取）；产物未签名（macOS 会有 Gatekeeper 提示）。
+- 何时重新审视：需要签名/公证（macOS notarization、Windows 代码签名）或自动发布 Release 时。

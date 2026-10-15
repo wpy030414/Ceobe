@@ -47,6 +47,19 @@ public final class CeobeGui extends Application {
         });
         stage.show();
         view.refresh();
+
+        // 开发自检：-Dceobe.snapshot=<png> 时自动选实例/切页签并导出 Scene 快照
+        String snap = System.getProperty("ceobe.snapshot");
+        if (snap != null) {
+            var pause = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(4));
+            pause.setOnFinished(e -> {
+                view.debugSelect(System.getProperty("ceobe.snapshot.tab", "服务器配置"));
+                var p2 = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(1.5));
+                p2.setOnFinished(e2 -> writeSnapshot(scene, snap));
+                p2.play();
+            });
+            pause.play();
+        }
     }
 
     /** 本进程托管的运行实例：关闭前确认并优雅停止（避免留下无控制通道的孤儿进程）。 */
@@ -84,6 +97,26 @@ public final class CeobeGui extends Application {
     @Override
     public void stop() {
         shutdown();
+    }
+
+    /** 把当前 Scene 渲染成 PNG（开发自检用，借助 java.desktop 的 ImageIO）。 */
+    private static void writeSnapshot(Scene scene, String path) {
+        try {
+            javafx.scene.image.WritableImage img = scene.snapshot(null);
+            int w = (int) img.getWidth();
+            int h = (int) img.getHeight();
+            var bi = new java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+            var pr = img.getPixelReader();
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    bi.setRGB(x, y, pr.getArgb(x, y));
+                }
+            }
+            javax.imageio.ImageIO.write(bi, "png", new java.io.File(path));
+            System.out.println("[snapshot] " + path);
+        } catch (Exception e) {
+            System.err.println("[snapshot] failed: " + e);
+        }
     }
 
     public static void main(String[] args) {

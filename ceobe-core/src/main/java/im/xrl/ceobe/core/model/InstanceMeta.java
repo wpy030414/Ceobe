@@ -21,6 +21,8 @@ public final class InstanceMeta {
     public String launchJar = "server.jar";
     /** 非空时改用参数文件启动（NeoForge）：{@code java @<launchArgsFile> nogui}。 */
     public String launchArgsFile;
+    /** 非空时注入 authlib-injector 做三方鉴权：{@code -javaagent:authlib-injector.jar=<url>}。 */
+    public String authlibInjectorUrl;
     public Instant createdAt = Instant.now();
     public List<ModEntry> mods = new ArrayList<>();
     /** 最近一次各通道公网地址（便于重启后展示历史）。 */

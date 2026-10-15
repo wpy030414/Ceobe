@@ -400,11 +400,68 @@ public final class InstanceCommands {
         }
     }
 
+    @Command(name = "update", description = "修改实例设置（名称/内存/端口/JVM 参数/authlib-injector）")
+    static final class Update implements Callable<Integer> {
+        @Parameters(index = "0", paramLabel = "<名称>") String name;
+
+        @Option(names = "--name", paramLabel = "新名", description = "重命名实例")
+        String newName;
+
+        @Option(names = "--mem", paramLabel = "SIZE", description = "内存上限，如 4G")
+        String mem;
+
+        @Option(names = "--port", paramLabel = "PORT", description = "端口或 auto")
+        String port;
+
+        @Option(names = "--jvm", paramLabel = "ARGS", description = "附加 JVM 参数（传空串可清空）")
+        String jvm;
+
+        @Option(names = "--authlib", paramLabel = "URL", description = "authlib-injector Yggdrasil 地址（传空串关闭）")
+        String authlib;
+
+        @Override
+        public Integer call() {
+            InstanceManager manager = new InstanceManager();
+            manager.require(name);
+            String target = name;
+            if (newName != null && !newName.isBlank() && !newName.equals(name)) {
+                manager.rename(name, newName);
+                target = newName;
+            }
+            Integer memMb = mem == null ? null : parseMemory(mem);
+            Integer portNum = port == null ? null
+                    : (port.equalsIgnoreCase("auto") ? manager.suggestFreePort(25565) : parsePort(port));
+            if (memMb == null && portNum == null && jvm == null && authlib == null) {
+                Output.info("未指定任何改动（--name/--mem/--port/--jvm/--authlib）");
+                return 0;
+            }
+            manager.updateInstance(target, memMb, portNum, jvm, authlib);
+            if (Output.json) {
+                Output.json(Output.map("name", target, "memoryMb", memMb, "port", portNum,
+                        "jvmArgs", jvm, "authlibInjector", authlib));
+            } else {
+                Output.info("实例 %s 已更新", target);
+            }
+            return 0;
+        }
+    }
+
     static ServerType parseType(String raw) {
         try {
             return ServerType.valueOf(raw.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new CeobeException("未知服务端类型: %s（可选 vanilla/paper/fabric/neoforge/purpur）".formatted(raw));
+        }
+    }
+
+    /** 解析为 1-65535 的整数（不接受 auto）。 */
+    static int parsePort(String raw) {
+        try {
+            int p = Integer.parseInt(raw.trim());
+            if (p < 1 || p > 65535) throw new NumberFormatException();
+            return p;
+        } catch (NumberFormatException e) {
+            throw new CeobeException("端口格式错误: %s（应为 1-65535 的整数或 auto）".formatted(raw));
         }
     }
 

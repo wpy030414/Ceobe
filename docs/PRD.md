@@ -23,6 +23,8 @@
 | 多实例管理（创建/启停/删除/克隆） | 一台机器多服并存 | 每个实例独立目录、端口、内存，互不污染 |
 | 版本与加载器选配 | vanilla/paper/fabric/neoforge/purpur × 26.3/1.21.x… | 用户不想自己去五个网站下 jar |
 | 配置可视化（server.properties 表单） | 人数/游戏模式/视距/难度/端口等键改不动 | 类型化控件替代文本编辑，写回保序保注释 |
+| 实例设置可编辑（名称/内存/端口/JVM） | 创建后改不了内存/端口，只能重建实例 | 停止后即可修改；改端口同步 server.properties |
+| 三方鉴权（authlib-injector） | 正版验证把非正版玩家挡在门外 | 填 Yggdrasil API 地址即以 `-javaagent` 注入并自动关闭正版验证 |
 | Mod 选配（Modrinth 搜索/安装/卸载） | 手动下 jar 丢 mods/ 且分不清客户端服端 | 按 game version + loader 过滤，按 env 标记只装服务端侧 |
 | 整合包一键装（`.mrpack`） | 手动凑整合包（几十个 mod + 配置覆盖）费时易错 | 导入 Modrinth 整合包：按索引批量下载 mod/资源并解包 overrides |
 | 运行时 JDK 管理 | 不同 MC 版本要求不同 Java（1.20.4→17、1.21.8→21、26.x→25） | 自动探测所需主版本，缺则提醒并可按平台一键安装（Adoptium + 清华镜像），实例自动选用 |

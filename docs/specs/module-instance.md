@@ -10,6 +10,8 @@
 - 停止：向 stdin 写 `stop\n`，宽限 60s（max-tick-time 默认 60s）后 `destroyForcibly()`。
 - 控制台：stdin 直写 + 日志行回调（GUI/CLI/Web 订阅）；同时追加落盘 `console.log`。
 - 删除：必须先 STOPPED；可选 `--purge` 连同世界数据删除（默认保留 world 归档提示）。
+- 修改：`updateInstance(name, memoryMb, port, jvmArgs, authlibUrl)` 与 `rename(old,new)`（均要求已停止）；端口变更同步写回 `server.properties` 的 server-port/query.port；设置 authlib 自动关闭 `online-mode`。
+- 三方鉴权：配置 authlib-injector 后，启动以 `-javaagent:authlib-injector.jar=<url>` 注入（jar 缓存在 `~/.ceobe/cache/jars/`）。
 
 ## 输入 / 输出
 - 输入：InstanceSpec{name, serverType, gameVersion, loaderVersion?, memoryMb, jvmArgs, port, javaHome?}

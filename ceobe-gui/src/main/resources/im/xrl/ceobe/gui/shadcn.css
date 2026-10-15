@@ -27,6 +27,7 @@
     -ceobe-ring: #a1a1aa;
     -ceobe-primary: #18181b;
     -ceobe-primary-fg: #fafafa;
+    -ceobe-primary-hover: #27272a;
     -ceobe-sidebar-bg: #fafafa;
     -ceobe-bar-bg: #fafafa;
     -ceobe-console-bg: #fafafa;
@@ -53,6 +54,7 @@
     -ceobe-ring: #d4d4d8;
     -ceobe-primary: #fafafa;
     -ceobe-primary-fg: #18181b;
+    -ceobe-primary-hover: #e4e4e7;
     -ceobe-sidebar-bg: #0b0b0d;
     -ceobe-bar-bg: #0b0b0d;
     -ceobe-console-bg: #08080a;
@@ -215,7 +217,9 @@
 }
 
 .ceobe-primary:hover {
-    -fx-opacity: 0.9;
+    /* 用明确的悬停色而非透明度，避免文字发灰看不清 */
+    -fx-background-color: -ceobe-primary-hover;
+    -fx-text-fill: -ceobe-primary-fg;
 }
 
 .ceobe-primary:disabled {
@@ -223,8 +227,13 @@
 }
 
 .ceobe-icon-button {
-    -fx-background-color: -ceobe-card;
+    -fx-background-color: -ceobe-muted;
+    -fx-border-color: -ceobe-border;
     -fx-padding: 5 12 5 12;
+}
+
+.ceobe-icon-button:hover {
+    -fx-background-color: -ceobe-hover;
 }
 
 /* ---------- 输入控件 ---------- */

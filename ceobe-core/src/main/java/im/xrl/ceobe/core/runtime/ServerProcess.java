@@ -73,7 +73,14 @@ public final class ServerProcess {
         if (isAlive()) throw new CeobeException("实例已在运行");
         checkPortFree(meta.port);
 
-        List<String> cmd = buildCommand();
+        Path authlib = null;
+        if (meta.authlibInjectorUrl != null && !meta.authlibInjectorUrl.isBlank()) {
+            appendLog("[ceobe] 准备 authlib-injector（三方鉴权）…");
+            authlib = AuthlibInjector.ensure((stage, d, t) -> {
+            });
+            appendLog("[ceobe] 已启用 authlib-injector: " + meta.authlibInjectorUrl);
+        }
+        List<String> cmd = buildCommand(authlib);
         // 落盘启动命令行：便于事后审计内存/GC/额外 JVM 参数
         appendLog("$ " + String.join(" ", cmd));
 
@@ -92,7 +99,7 @@ public final class ServerProcess {
         Thread.ofVirtual().name("ceobe-watch-" + meta.name).start(this::watchdog);
     }
 
-    private List<String> buildCommand() {
+    private List<String> buildCommand(Path authlib) {
         String java = meta.javaHome != null && !meta.javaHome.isBlank()
                 ? Path.of(meta.javaHome, "bin", "java" + exe()).toString()
                 : Path.of(System.getProperty("java.home"), "bin", "java" + exe()).toString();
@@ -109,6 +116,9 @@ public final class ServerProcess {
             for (String a : meta.jvmArgs.trim().split("\\s+")) {
                 if (!a.isBlank()) cmd.add(a);
             }
+        }
+        if (authlib != null) {
+            cmd.add("-javaagent:" + authlib.toAbsolutePath() + "=" + meta.authlibInjectorUrl);
         }
         if (meta.launchArgsFile != null && !meta.launchArgsFile.isBlank()) {
             // NeoForge 等：@参数文件启动（内含 -classpath / 主类 / --fml.* 参数）
