@@ -50,6 +50,11 @@ public final class Output {
         System.err.println("错误: " + fmt.formatted(args));
     }
 
+    /** 非致命提醒（json 模式下静默）。 */
+    public static void warn(String fmt, Object... args) {
+        if (!json) System.err.println("警告: " + fmt.formatted(args));
+    }
+
     public static Map<String, Object> map(Object... kv) {
         Map<String, Object> m = new java.util.LinkedHashMap<>();
         for (int i = 0; i + 1 < kv.length; i += 2) {

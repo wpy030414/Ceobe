@@ -26,7 +26,8 @@ import picocli.CommandLine.ScopeType;
                 TunnelCommands.Root.class,
                 MiscCommands.Versions.class,
                 MiscCommands.Doctor.class,
-                MiscCommands.Web.class
+                MiscCommands.Web.class,
+                JdkCommands.Root.class
         })
 public final class CeobeCli implements Runnable {
 

@@ -68,6 +68,17 @@ public final class MojangProvider implements ServerJarProvider {
         return null;
     }
 
+    /** 该版本的版本 JSON（piston-meta），含 downloads 与 javaVersion。 */
+    public static JsonNode versionJson(String gameVersion) {
+        JsonNode root = Json.parse(Http.get(MANIFEST));
+        for (JsonNode v : root.path("versions")) {
+            if (gameVersion.equals(v.path("id").asText())) {
+                return Json.parse(Http.get(v.path("url").asText()));
+            }
+        }
+        throw CeobeException.of("Mojang 无此版本: %s", gameVersion);
+    }
+
     /** 带 sha 去重的 jar 缓存：同名同 sha 命中则直接复用。 */
     static Path cachedJar(String key, String url, String sha1, String sha256, ProgressListener progress) {
         Path cached = CeobeHome.jarCache().resolve(key);

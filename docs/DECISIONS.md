@@ -113,3 +113,14 @@
 - 为什么不选其他：继续暂缓会缺主流模组生态；自造 main 维护成本高。
 - 后果：启动命令不再统一为 `-jar`（`InstanceManager.start` 的存在性检查按 `launchArgsFile` 分支）；`instance.json` 增加 `launchArgsFile` 字段（旧实例为 null，兼容）。
 - 何时重新审视：NeoForge 更改启动方式，或引入统一 modloader 抽象时。
+
+## ADR-011：运行时 JDK 由 ceobe 托管（探测 + 一键安装 + 自动选用）
+- 日期：2026-10-15
+- 状态：已采纳
+- 背景：不同 MC 版本要求不同 Java（实测 1.20.4→17、1.21.8→21、26.x→25）；用户机器只装一个 JDK 时，开老版本服可能不兼容。用户要求「需要 JDK 时提醒，并能按平台一键装好，也可自己装」。
+- 考虑过的方案：① 只用宿主 JVM，不兼容即报错；② 要求用户自备并手动 `--java-home`；③ ceobe 探测 + 一键安装 + 自动选用。
+- 决策：方案 ③ —— 由 piston-meta 的 `javaVersion` 探测所需主版本；自管 JDK 落在 `~/.ceobe/jdk/`（Adoptium Temurin，清华镜像优先）；create 时 auto-select（显式 > 自管命中 > 宿主）；CLI/GUI 提示；`ceobe jdk install <n>` 一键装、`jdk use <实例> <n>` 改指。
+- 为什么选这个：把「环境准备」收敛进产品，契合 PRD「10 分钟开出第一个服」；只落主目录、不动系统 PATH/注册表，可整体删除，回退零成本。
+- 为什么不选其他：方案① 把兼容负担丢给用户；方案② 体验割裂。
+- 后果：引入对 Adoptium API/镜像与归档解压的依赖；`instance.json` 的 `javaHome` 可能是自管路径（非用户原始输入）。
+- 何时重新审视：Adoptium 变更 API，或需支持更多架构/发行版时。

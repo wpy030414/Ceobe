@@ -14,7 +14,7 @@
 
 ## 如何安装和运行？
 
-- 前置要求：JDK 25（MC 26.3 官方要求 Java 运行时 majorVersion 25）、Maven 3.9+、`cloudflared` 在 PATH（Web 控制台穿透）、系统 `ssh` 客户端（Pinggy 玩家通道）。
+- 前置要求：JDK 25（运行 ceobe 本体）、Maven 3.9+、`cloudflared` 在 PATH（Web 控制台穿透）、系统 `ssh` 客户端（Pinggy 玩家通道）。各实例所需的 Java 由 ceobe 按游戏版本自动探测——缺失时提醒，并可 `ceobe jdk install <主版本>` 按平台一键安装（Adoptium + 清华镜像），创建时自动选用。
 - 安装步骤：
 
   ```bash
@@ -48,6 +48,8 @@ ceobe/                聚合 POM（groupId im.xrl，统一版本 0.1.0-SNAPSHOT�
 J="java -jar ceobe-cli/target/ceobe.jar"
 
 $J doctor                                   # 环境自检（JDK / cloudflared / ssh / 目录）
+$J jdk list                                 # 运行期 Java 与 ceobe 自管 JDK
+$J jdk install 17                           # 某版本需要时一键装（按平台自动选包，清华镜像）
 $J create smp --type paper --version 26.3 --mem 4G --port 25565   # 创建并下载服务端（端口需排他；--port auto 自动选空）
 $J start -d smp                             # 后台启动（独立监督进程，可跨终端管理）
 $J ps                                       # 运行中实例；ps -a 含已停止

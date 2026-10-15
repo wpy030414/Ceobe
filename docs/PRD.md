@@ -21,9 +21,11 @@
 | 功能 | 解决什么 | 为什么需要 |
 |------|----------|------------|
 | 多实例管理（创建/启停/删除/克隆） | 一台机器多服并存 | 每个实例独立目录、端口、内存，互不污染 |
-| 版本与加载器选配 | vanilla/paper/fabric/purpur × 26.3/1.21.x… | 用户不想自己去五个网站下 jar |
+| 版本与加载器选配 | vanilla/paper/fabric/neoforge/purpur × 26.3/1.21.x… | 用户不想自己去五个网站下 jar |
 | 配置可视化（server.properties 表单） | 人数/游戏模式/视距/难度/端口等键改不动 | 类型化控件替代文本编辑，写回保序保注释 |
 | Mod 选配（Modrinth 搜索/安装/卸载） | 手动下 jar 丢 mods/ 且分不清客户端服端 | 按 game version + loader 过滤，按 env 标记只装服务端侧 |
+| 整合包一键装（`.mrpack`） | 手动凑整合包（几十个 mod + 配置覆盖）费时易错 | 导入 Modrinth 整合包：按索引批量下载 mod/资源并解包 overrides |
+| 运行时 JDK 管理 | 不同 MC 版本要求不同 Java（1.20.4→17、1.21.8→21、26.x→25） | 自动探测所需主版本，缺则提醒并可按平台一键安装（Adoptium + 清华镜像），实例自动选用 |
 | 穿透集成 | 家宽无公网 IP，朋友连不进来 | CF Quick Tunnel 穿 Web 控制台 + Pinggy 承载玩家裸 TCP（自动续期） |
 | 控制台（日志流 + 命令下发） | 开服后看不到日志、敲不了 say/op | 实时 tail + stdin 直通服务端 |
 | 无头 CLI（docker 风格） | 服务器/远程场景无 GUI | `create/start/stop/ps/logs/exec/rm` 语法对齐 docker 心智 |
@@ -35,5 +37,5 @@
 
 ## 范围与非目标
 
-- 范围内：上表全部；Windows 10/11 优先（Linux 兼容尽力）；Java 版服务端 1.20.5+（Java 21+ 运行时）至 26.x。
+- 范围内：上表全部；Windows 10/11 优先（Linux/macOS 兼容尽力）；Java 版服务端 1.20.2+ 至 26.x（运行时 Java 由 ceobe 按版本自动探测/一键安装，不再强制宿主环境版本）。
 - 范围外：Bedrock/基岩服、CurseForge mod 源（API key 门槛）、容器化与集群、玩家权限管理编辑器、自动备份（后续版本）。

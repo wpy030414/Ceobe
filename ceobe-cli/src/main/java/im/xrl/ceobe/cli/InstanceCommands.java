@@ -1,5 +1,6 @@
 package im.xrl.ceobe.cli;
 
+import im.xrl.ceobe.core.jdk.JavaResolver;
 import im.xrl.ceobe.core.model.InstanceSpec;
 import im.xrl.ceobe.core.model.InstanceState;
 import im.xrl.ceobe.core.model.ServerType;
@@ -140,6 +141,9 @@ public final class InstanceCommands {
                         meta.name, meta.serverType.name(), meta.gameVersion, meta.port, meta.memoryMb);
                 Output.info("启动: ceobe start %s", meta.name);
             }
+            var javaCheck = JavaResolver.resolve(meta.gameVersion, javaHome);
+            if (!javaCheck.ok()) Output.warn(javaCheck.message());
+            else if (javaCheck.message() != null) Output.info(javaCheck.message());
             return 0;
         }
     }
@@ -155,6 +159,8 @@ public final class InstanceCommands {
         public Integer call() throws Exception {
             InstanceManager manager = new InstanceManager();
             InstanceStatus status = manager.require(name);
+            var javaCheck = JavaResolver.resolve(status.meta().gameVersion, status.meta().javaHome);
+            if (!javaCheck.ok()) Output.warn(javaCheck.message());
             if (status.state().isLive()) {
                 throw new CeobeException("实例 %s 已在运行（%s）".formatted(name, status.state().zhLabel()));
             }

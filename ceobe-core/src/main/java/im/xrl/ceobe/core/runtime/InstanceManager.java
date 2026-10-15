@@ -3,6 +3,7 @@ package im.xrl.ceobe.core.runtime;
 import im.xrl.ceobe.core.config.ServerPropertiesFile;
 import im.xrl.ceobe.core.event.InstanceEvent;
 import im.xrl.ceobe.core.event.InstanceListener;
+import im.xrl.ceobe.core.jdk.JavaResolver;
 import im.xrl.ceobe.core.model.InstanceMeta;
 import im.xrl.ceobe.core.model.InstanceState;
 import im.xrl.ceobe.core.model.InstanceSpec;
@@ -121,6 +122,15 @@ public final class InstanceManager {
         return new InstanceStatus(meta, state, -1, false, meta.lastPinggyAddress, meta.lastCloudflareUrl);
     }
 
+    /** 更新实例使用的 javaHome（null = 继承当前 JVM）。 */
+    public void setJavaHome(String name, String javaHome) {
+        require(name);
+        Path dir = CeobeHome.instanceDir(name);
+        InstanceMeta meta = readMeta(dir);
+        meta.javaHome = javaHome;
+        saveMeta(dir, meta);
+    }
+
     // —— 创建/删除 ——
 
     public InstanceMeta create(InstanceSpec spec, ProgressListener progress) {
@@ -152,7 +162,9 @@ public final class InstanceManager {
         meta.memoryMb = spec.memoryMb();
         meta.jvmArgs = spec.jvmArgs() == null ? "" : spec.jvmArgs();
         meta.port = spec.port();
-        meta.javaHome = spec.javaHome();
+        // 解析应使用的 Java：显式指定 > 自管 JDK 命中 > 继承当前 JVM
+        var java = JavaResolver.resolve(installed.gameVersion(), spec.javaHome());
+        meta.javaHome = java.javaHome() == null ? null : java.javaHome().toString();
         meta.launchJar = installed.launchJar();
         meta.launchArgsFile = installed.launchArgsFile();
         saveMeta(dir, meta);
