@@ -23,6 +23,7 @@ import picocli.CommandLine.ScopeType;
                 InstanceCommands.Exec.class,
                 ConfigCommands.Root.class,
                 ModCommands.Root.class,
+                ModpackCommands.Root.class,
                 TunnelCommands.Root.class,
                 MiscCommands.Versions.class,
                 MiscCommands.Doctor.class,

@@ -114,15 +114,70 @@ public final class ModrinthClient {
         }
     }
 
-    private static JsonNode pickPreferred(JsonNode versions) {
-        // 优先 release，其次 beta/alpha；同类型取最后（通常最新）
-        JsonNode fallback = versions.get(0);
-        for (JsonNode v : versions) {
-            if ("release".equals(v.path("version_type").asText())) {
-                fallback = v;
-            }
+    // —— 整合包 ——
+
+    /** 整合包搜索结果。 */
+    public record PackHit(String projectId, String slug, String title, String description,
+                          String author, long downloads, List<String> categories) {
+    }
+
+    /** 整合包某版本（含 .mrpack 文件）。 */
+    public record PackVersion(String projectId, String slug, String name, String versionNumber,
+                              List<String> gameVersions, List<String> loaders,
+                              String url, String sha1, long size) {
+    }
+
+    public List<PackHit> searchPacks(String query, String gameVersion, String loader, int limit) {
+        StringBuilder facets = new StringBuilder("[[\"project_type:modpack\"]");
+        if (gameVersion != null && !gameVersion.isBlank()) {
+            facets.append(",[\"versions:").append(gameVersion).append("\"]");
         }
-        return fallback;
+        if (loader != null && !loader.isBlank()) {
+            facets.append(",[\"categories:").append(loader).append("\"]");
+        }
+        facets.append("]");
+        String url = BASE + "/search?limit=" + limit + "&query=" + enc(query == null ? "" : query)
+                + "&facets=" + enc(facets.toString());
+        JsonNode root = Json.parse(Http.get(url));
+        List<PackHit> hits = new ArrayList<>();
+        for (JsonNode h : root.path("hits")) {
+            hits.add(new PackHit(h.path("project_id").asText(), h.path("slug").asText(),
+                    h.path("title").asText(), h.path("description").asText(),
+                    h.path("author").asText(), h.path("downloads").asLong(),
+                    toStrings(h.path("display_categories"))));
+        }
+        return hits;
+    }
+
+    /** 解析整合包版本（可选按 MC 版本 / 加载器过滤）。 */
+    public PackVersion resolvePack(String projectIdOrSlug, String gameVersion, String loader) {
+        List<String> q = new ArrayList<>();
+        if (loader != null && !loader.isBlank()) q.add("loaders=" + enc("[\"" + loader + "\"]"));
+        if (gameVersion != null && !gameVersion.isBlank()) {
+            q.add("game_versions=" + enc("[\"" + gameVersion + "\"]"));
+        }
+        String url = BASE + "/project/" + enc(projectIdOrSlug) + "/version"
+                + (q.isEmpty() ? "" : "?" + String.join("&", q));
+        JsonNode versions = Json.parse(Http.get(url));
+        if (!versions.isArray() || versions.isEmpty()) {
+            throw CeobeException.of("未找到整合包 %s 的适配版本", projectIdOrSlug);
+        }
+        JsonNode v = pickPreferred(versions);
+        JsonNode file = primaryFile(v);
+        if (file == null) throw new CeobeException("该整合包版本无可下载文件");
+        return new PackVersion(v.path("project_id").asText(projectIdOrSlug), projectIdOrSlug,
+                v.path("name").asText(projectIdOrSlug), v.path("version_number").asText(),
+                toStrings(v.path("game_versions")), toStrings(v.path("loaders")),
+                file.path("url").asText(), file.path("hashes").path("sha1").asText(null),
+                file.path("size").asLong(-1));
+    }
+
+    private static JsonNode pickPreferred(JsonNode versions) {
+        // Modrinth 版本接口按发布时间降序返回 → 首个 release 即最新正式版
+        for (JsonNode v : versions) {
+            if ("release".equals(v.path("version_type").asText())) return v;
+        }
+        return versions.get(0);
     }
 
     private static JsonNode primaryFile(JsonNode version) {

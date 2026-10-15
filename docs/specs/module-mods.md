@@ -24,10 +24,17 @@
 - fabric/neoforge/purpur 有 mods/；vanilla/paper 无 loader → UI 直接禁用 mod 页并说明原因。
 - 同名文件重复安装 → 提示替换。
 
+## 整合包（Modrinth `.mrpack`）
+- `MrpackInstaller.readIndex(zip)`：解析 `modrinth.index.json` 的 `name` / `versionId` / `dependencies`（`minecraft` 与 `fabric-loader`/`neoforge`/`forge`/`quilt-loader`）。
+- `MrpackInstaller.install(instanceDir, zip, progress)`：按 `files[]` 下载（跳过 `env.server = unsupported`；`path` 归一化防穿越；sha1 校验）；先解 `server-overrides/` 再解 `overrides/`（前者优先）。
+- CLI：`ceobe modpack search | info <标识> | install <实例> <标识> | new <名称> <标识>`；`new` 依 `dependencies` 自动创建匹配实例（fabric / neoforge）后安装（一键）。
+- 文件经 `Http` 下载 → 自动走 Modrinth CDN 镜像（见 ADR-012）；加载器 forge/quilt 的整合包暂不支持并明确报错。
+
 ## 验收标准
 - [ ] 搜索 "fabric api" @26.3+fabric → 安装成功且文件在 mods/。
 - [ ] env.server=unsupported 的 mod 被拦截。
 - [ ] 卸载后 instance.json 与 mods/ 一致。
+- [ ] `modpack new <名> <标识>` 依索引建实例并把 `mods/` 与 overrides 落地；`modpack install` 对不匹配实例报错。
 
 ## 完成定义
 - GUI mod 页三步可用：搜→装→启服不崩。
