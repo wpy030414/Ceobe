@@ -13,13 +13,13 @@ import java.io.InputStream;
  */
 public final class Theme {
 
-    private static final String CSS = "/dev/ceobe/gui/shadcn.css";
+    private static final String CSS = "/im/xrl/ceobe/gui/shadcn.css";
 
     public static void apply(Scene scene) {
         Application.setUserAgentStylesheet(new PrimerDark().getUserAgentStylesheet());
         loadFont("Inter-Regular.ttf");
         loadFont("Inter-Medium.ttf");
-        loadFont("InterVariable.ttf");
+        loadFont("Inter-SemiBold.ttf");
         var url = Theme.class.getResource(CSS);
         if (url != null) {
             scene.getStylesheets().add(url.toExternalForm());
@@ -42,7 +42,7 @@ public final class Theme {
     }
 
     private static void loadFont(String resource) {
-        try (InputStream in = Theme.class.getResourceAsStream("/dev/ceobe/gui/fonts/" + resource)) {
+        try (InputStream in = Theme.class.getResourceAsStream("/im/xrl/ceobe/gui/fonts/" + resource)) {
             if (in != null) Font.loadFont(in, 13);
         } catch (Exception ignored) {
             // 字体缺失不致命

@@ -43,6 +43,10 @@ public final class MainView {
     private ModPane mods;
     private TunnelPane tunnelPane;
     private String selected;
+    /** 上次列表签名：用于判断是否需要重建列表。 */
+    private String currentSig = "\u0000";
+    /** 已应用到页签的运行态：null 表示尚未应用。 */
+    private Boolean liveApplied;
 
     public MainView(InstanceManager manager, TunnelManager tunnels, WebConsole webConsole) {
         this.manager = manager;
@@ -71,13 +75,12 @@ public final class MainView {
         create.setOnAction(e -> new CreateDialog(root.getScene().getWindow(), manager, this::refresh).show());
 
         VBox header = new VBox(2, title, subtitle);
-        header.setPadding(new Insets(18, 16, 12, 16));
         VBox side = new VBox(10, header, create, list);
         side.getStyleClass().add("ceobe-sidebar");
-        side.setPrefWidth(280);
+        side.setPrefWidth(264);
+        side.setMinWidth(220);
+        side.setPadding(new Insets(12));
         VBox.setVgrow(list, Priority.ALWAYS);
-        VBox box = new VBox(0, side);
-        box.setPrefWidth(280);
 
         // 内容区
         emptyHint.getStyleClass().add("ceobe-empty");
@@ -92,14 +95,17 @@ public final class MainView {
         status.setPadding(new Insets(6, 14, 6, 14));
         status.getStyleClass().add("ceobe-statusbar");
 
-        root.setLeft(box);
+        root.setLeft(side);
         root.setCenter(content);
         root.setBottom(status);
         this.contentArea = content;
 
         list.setCellFactory(v -> new InstanceCell());
         list.getSelectionModel().selectedItemProperty().addListener((obs, old, now) -> {
-            if (now != null) select(now);
+            if (now == null) return;
+            // 同一实例的重复选中（如列表刷新引起的对象替换）不重建页签
+            if (now.meta().name.equals(selected)) return;
+            select(now);
         });
     }
 
@@ -111,40 +117,68 @@ public final class MainView {
                 if (l.instance().equals(selected) && console != null) console.append(l.line());
             } else if (event instanceof InstanceEvent.StateChanged s) {
                 if (s.instance().equals(selected)) onStateChanged(s.state());
-                list.refresh();
+                refresh();
             } else if (event instanceof InstanceEvent.TunnelChanged t) {
                 if (t.instance().equals(selected) && tunnelPane != null) tunnelPane.onAddressChanged(t);
             }
         }));
     }
 
-    /** 外部进程改变状态时也能刷新（每 3 秒）。 */
+    /** 外部进程改变状态时也能刷新（每 1.5 秒轮询）。 */
     private void startPoller() {
         javafx.animation.Timeline timeline = new javafx.animation.Timeline(
-                new javafx.animation.KeyFrame(javafx.util.Duration.seconds(1.5), e -> {
-                    InstanceStatus sel = list.getSelectionModel().getSelectedItem();
-                    refresh();
-                    if (sel != null && selected != null && selected.equals(sel.meta().name)) {
-                        manager.find(selected).ifPresent(s -> {
-                            if (console != null) console.setLive(s.state().isLive());
-                        });
-                        if (console != null) console.pollExternalLog();
-                    }
-                }));
+                new javafx.animation.KeyFrame(javafx.util.Duration.seconds(1.5), e -> refresh()));
         timeline.setCycleCount(javafx.animation.Animation.INDEFINITE);
         timeline.play();
     }
 
+    /**
+     * 拉取实例列表并就地更新。
+     * <p>列表内容不变时绝不重建列表——否则每轮轮询都会替换选中项对象、触发选中变化，
+     * 进而重建页签并把用户强制弹回「控制台」（此前的抽搐/回弹 bug）。
+     */
     public void refresh() {
         Fx.background(manager::list, statuses -> {
-            String current = selected;
-            list.getItems().setAll(statuses);
-            statusBar.setText(statusText(statuses));
-            if (current != null) {
-                statuses.stream().filter(s -> s.meta().name.equals(current)).findFirst()
-                        .ifPresent(s -> list.getSelectionModel().select(s));
+            if (!sameAsCurrent(statuses)) {
+                String keep = selected;
+                list.getItems().setAll(statuses);
+                if (keep != null) {
+                    statuses.stream().filter(s -> s.meta().name.equals(keep)).findFirst()
+                            .ifPresent(s -> list.getSelectionModel().select(s));
+                }
             }
+            statusBar.setText(statusText(statuses));
+            statuses.stream().filter(s -> s.meta().name.equals(selected)).findFirst()
+                    .ifPresent(this::syncLive);
+            if (console != null) console.pollExternalLog();
         }, t -> statusBar.setText("读取实例列表失败: " + t.getMessage()));
+    }
+
+    /** 与当前列表逐项比对（名称/状态/pid/地址），完全一致即视为无变化。 */
+    private boolean sameAsCurrent(List<InstanceStatus> statuses) {
+        String sig = signature(statuses);
+        if (sig.equals(currentSig)) return true;
+        currentSig = sig;
+        return false;
+    }
+
+    private static String signature(List<InstanceStatus> statuses) {
+        StringBuilder sb = new StringBuilder();
+        for (InstanceStatus s : statuses) {
+            sb.append(s.meta().name).append('|').append(s.state()).append('|').append(s.pid())
+                    .append('|').append(s.pinggyAddress()).append('|').append(s.cloudflareUrl())
+                    .append('\n');
+        }
+        return sb.toString();
+    }
+
+    /** 仅在实际变化时同步运行态，避免每轮轮询无谓重设样式造成闪烁。 */
+    private void syncLive(InstanceStatus status) {
+        boolean live = status.state().isLive();
+        if (liveApplied != null && liveApplied == live) return;
+        liveApplied = live;
+        if (console != null) console.setLive(live);
+        if (tunnelPane != null) tunnelPane.setLive(live);
     }
 
     private String statusText(List<InstanceStatus> statuses) {
@@ -156,9 +190,11 @@ public final class MainView {
 
     private void select(InstanceStatus status) {
         selected = status.meta().name;
+        liveApplied = null;
         console = new ConsolePane(manager, status);
         console.setOnDeleted(() -> {
             selected = null;
+            liveApplied = null;
             contentArea.setCenter(emptyHint);
             refresh();
         });
@@ -173,6 +209,7 @@ public final class MainView {
                 tab("穿透", tunnelPane.node()));
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         contentArea.setCenter(tabs);
+        syncLive(status);
         statusBar.setText(statusText(list.getItems()));
     }
 
