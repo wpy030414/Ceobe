@@ -1,9 +1,7 @@
 package im.xrl.ceobe.gui.ui;
 
-import im.xrl.ceobe.core.jdk.JavaEnv;
-import im.xrl.ceobe.core.jdk.JavaRequirement;
+import im.xrl.ceobe.core.jdk.JavaResolver;
 import im.xrl.ceobe.core.jdk.JdkInstaller;
-import im.xrl.ceobe.core.jdk.JdkStore;
 import im.xrl.ceobe.core.model.InstanceSpec;
 import im.xrl.ceobe.core.model.ServerType;
 import im.xrl.ceobe.core.provider.ProviderRegistry;
@@ -163,10 +161,8 @@ public final class CreateDialog {
             return;
         }
         Fx.background(() -> {
-            int req = JavaRequirement.requiredMajor(v);
-            int runtime = JavaEnv.runtimeMajor();
-            boolean satisfied = runtime == req || JdkStore.findMajor(req).isPresent();
-            return new int[]{req, runtime, satisfied ? 1 : 0};
+            var res = JavaResolver.resolve(v, null);
+            return new int[]{res.required(), res.actual(), res.ok() ? 1 : 0};
         }, r -> {
             if (r[2] == 1) {
                 jdkHint.getStyleClass().setAll("ceobe-muted");
@@ -174,7 +170,8 @@ public final class CreateDialog {
                 setInstallVisible(false, 0);
             } else {
                 jdkHint.getStyleClass().setAll("ceobe-warn");
-                jdkHint.setText("需要 Java %d（本机 Java %d），可一键安装".formatted(r[0], r[1]));
+                jdkHint.setText("需要 Java %d（当前可用 Java %s），可一键安装".formatted(
+                        r[0], r[1] < 0 ? "未知" : String.valueOf(r[1])));
                 setInstallVisible(true, r[0]);
             }
         }, err -> jdkHint.setText(""));

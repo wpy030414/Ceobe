@@ -1,5 +1,6 @@
 package im.xrl.ceobe.cli;
 
+import im.xrl.ceobe.core.jdk.JavaEnv;
 import im.xrl.ceobe.core.jdk.JavaResolver;
 import im.xrl.ceobe.core.model.InstanceSpec;
 import im.xrl.ceobe.core.model.InstanceState;
@@ -202,8 +203,9 @@ public final class InstanceCommands {
         }
 
         static void spawnSupervisor(Path instanceDir, String name) throws IOException {
-            String java = Path.of(System.getProperty("java.home"), "bin", "java"
-                    + (System.getProperty("os.name", "").toLowerCase().contains("win") ? ".exe" : ""))
+            String java = JavaEnv.javaLauncher()
+                    .orElseThrow(() -> new CeobeException(
+                            "找不到可用的 Java 运行时（未设置 JAVA_HOME 且当前镜像未内置 bin/java）"))
                     .toString();
             String classpath = selfClasspath();
             String home = System.getProperty("ceobe.home");

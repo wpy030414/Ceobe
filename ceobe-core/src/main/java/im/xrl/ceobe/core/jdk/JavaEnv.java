@@ -19,6 +19,39 @@ public final class JavaEnv {
         return parseMajor(System.getProperty("java.version", ""));
     }
 
+    /** 当前 JVM 的 {@code java.home}。 */
+    public static Path runtimeHome() {
+        String home = System.getProperty("java.home", "");
+        return home.isBlank() ? null : Path.of(home);
+    }
+
+    /**
+     * 该 javaHome 是否自带可执行的 java 启动器（{@code bin/java[.exe]}）。
+     * <p>jpackage 打包的 runtime 镜像会剥离该启动器（GUI 由原生 launcher 直连 jvm.dll），
+     * 因此 {@code java.home} 未必能用来 fork 子进程。
+     */
+    public static boolean hasLauncher(Path javaHome) {
+        return javaHome != null && Files.isRegularFile(javaHome.resolve("bin").resolve(JdkStore.javaExe()));
+    }
+
+    /**
+     * 宿主可用的 JDK 目录：优先环境变量 {@code JAVA_HOME}，其次当前 JVM；两者都不带启动器时返回空。
+     */
+    public static Optional<Path> hostJavaHome() {
+        String env = System.getenv("JAVA_HOME");
+        if (env != null && !env.isBlank()) {
+            Path home = Path.of(env);
+            if (hasLauncher(home)) return Optional.of(home);
+        }
+        Path runtime = runtimeHome();
+        return hasLauncher(runtime) ? Optional.of(runtime) : Optional.empty();
+    }
+
+    /** 宿主可用的 java 可执行文件（{@link #hostJavaHome()} 下的 {@code bin/java}）。 */
+    public static Optional<Path> javaLauncher() {
+        return hostJavaHome().map(h -> h.resolve("bin").resolve(JdkStore.javaExe()));
+    }
+
     /** 指定 javaHome 的主版本；先读 release 文件，退化则跑 {@code java -version}。 */
     public static Optional<Integer> majorOf(Path javaHome) {
         if (javaHome == null) return Optional.empty();

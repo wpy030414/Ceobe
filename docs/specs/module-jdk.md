@@ -6,9 +6,11 @@
 ## 行为
 - `JavaRequirement.requiredMajor(mcVersion)`：取自 piston-meta 的 `javaVersion.majorVersion`（vanilla 派生版本通用），失败兜底 21，结果缓存。
 - `JavaEnv.runtimeMajor()` / `majorOf(javaHome)`：解析当前 JVM 或指定 JRE 主版本（`release` 文件优先，退化跑 `java -version`）。
+- `JavaEnv.hasLauncher(javaHome)` / `hostJavaHome()` / `javaLauncher()`：以「是否存在 `<home>/bin/java`」判定该运行时可否用于 fork 子进程——jpackage 打包的 GUI 运行时会剥离该启动器（GUI 由原生 launcher 直连 jvm.dll），故 `java.home` 不可无条件信任。
 - `JdkStore`：`~/.ceobe/jdk/<jdk-…>/` 下的自管 JDK；`list()` / `findMajor(major)`。
 - `JdkInstaller.install(major, progress)`：查 Adoptium assets API 取包名 → 优先清华镜像下载（失败回退 Adoptium 官方）→ 解压（zip 用 `java.util.zip`；tar.gz 用系统 `tar`）→ 返回 javaHome。
-- `JavaResolver.resolve(gameVersion, explicitJavaHome)`：显式指定 > 自管 JDK 命中（自动选用）> 继承当前 JVM；返回 required/actual/ok/message。
+- `JavaResolver.resolve(gameVersion, explicitJavaHome)`：显式指定 > 当前 JVM（**仅当确有 java 启动器**）> 自管 JDK 命中 > 宿主 `JAVA_HOME`；返回 required/actual/ok/message。
+- `ServerProcess.buildCommand` / CLI `spawnSupervisor`：一律经 `JavaEnv` 解析 java 启动器，定位不到即抛明确错误（不得回退到不可用的 `java.home`）。
 - 落点：`InstanceManager.create` 用 resolve 写入 `meta.javaHome`；CLI create/start 打印提醒；GUI 新建对话框显示提示并给「安装 Java N」按钮。
 
 ## 输入 / 输出
@@ -29,6 +31,8 @@
 - [ ] `jdk required 26.3 / 1.21.8 / 1.20.4` 分别得 25 / 21 / 17。
 - [ ] `jdk install 17` 在 Windows 装出可用 `bin/java.exe`。
 - [ ] 需要 Java 17 的实例（运行期 25）create 后 `javaHome` 指向自管 17，start 以该 JRE 启动并达 RUNNING。
+- [ ] `JavaEnv.hasLauncher` 对含 `bin/java` 的真 JDK 为真、对剥离启动器的目录为假（`JavaEnvTest`）。
+- [ ] 打包 GUI（jpackage runtime 无 `bin/java`）中启动实例不再静默失败：要么正确选用宿主 `JAVA_HOME` / 自管 JDK，要么给出明确报错。
 
 ## 完成定义
 - 「缺 JDK → 提醒 → 一键安装 → 自动选用」闭环可用；CLI 与 GUI 均可见。

@@ -2,6 +2,7 @@ package im.xrl.ceobe.core.runtime;
 
 import im.xrl.ceobe.core.event.InstanceEvent;
 import im.xrl.ceobe.core.event.InstanceListener;
+import im.xrl.ceobe.core.jdk.JavaEnv;
 import im.xrl.ceobe.core.model.InstanceMeta;
 import im.xrl.ceobe.core.model.InstanceState;
 import im.xrl.ceobe.core.util.CeobeException;
@@ -100,12 +101,8 @@ public final class ServerProcess {
     }
 
     private List<String> buildCommand(Path authlib) {
-        String java = meta.javaHome != null && !meta.javaHome.isBlank()
-                ? Path.of(meta.javaHome, "bin", "java" + exe()).toString()
-                : Path.of(System.getProperty("java.home"), "bin", "java" + exe()).toString();
-
         List<String> cmd = new ArrayList<>();
-        cmd.add(java);
+        cmd.add(javaLauncher());
         cmd.add("-Xms" + Math.max(256, meta.memoryMb / 2) + "M");
         cmd.add("-Xmx" + meta.memoryMb + "M");
         cmd.add("-XX:+UseG1GC");
@@ -129,6 +126,27 @@ public final class ServerProcess {
         }
         cmd.add("nogui");
         return cmd;
+    }
+
+    /**
+     * 定位用于拉起服务端的 java 启动器。
+     * <p>注意：不可盲目回退到 {@code java.home}——jpackage 打包的 GUI 其 runtime 镜像被剥离了
+     * {@code bin/java}（GUI 由原生 launcher 直连 jvm.dll），用它 fork 子进程会静默失败。
+     */
+    private String javaLauncher() {
+        if (meta.javaHome != null && !meta.javaHome.isBlank()) {
+            Path launcher = Path.of(meta.javaHome, "bin", "java" + exe());
+            if (!Files.isRegularFile(launcher)) {
+                throw new CeobeException(
+                        "实例指定的 Java 运行时缺少启动器: " + launcher + "；请在实例设置中重新指定 JRE");
+            }
+            return launcher.toString();
+        }
+        return JavaEnv.javaLauncher()
+                .orElseThrow(() -> new CeobeException(
+                        "找不到可用的 Java 运行时（当前镜像未内置 bin/java，且未设置 JAVA_HOME）；"
+                                + "请先安装 JDK，再在实例设置中指定 JRE"))
+                .toString();
     }
 
     private static String exe() {

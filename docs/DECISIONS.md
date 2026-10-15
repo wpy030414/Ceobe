@@ -187,3 +187,14 @@
 - 为什么不选其他：`${revision}` + flatten 的 CI-friendly 版本会增加构建期不确定性（当前 `mvn package` 已够用）；给 macOS 单独用完整版号会使三平台包版号不一致。
 - 后果：发版需手动 bump 根 pom 四处（`mvn versions:set -DnewVersion=<v> -DprocessAllModules`）；安装包内版号（`26.10.15`）与 Release 版号（`v26.10.15-14`）不同；同一小时内多次 push 会撞同一 tag，由「删除重建」收敛。
 - 何时重新审视：JDK 27 移除 macOS 版本限制后，可让包版号直接采用完整 CalVer；或需要签名/公证时。
+
+## ADR-018：服务端运行时不得回退到 GUI 打包镜像（jpackage 会剥离 bin/java）
+- 日期：2026-10-15
+- 状态：已采纳
+- 背景：从打包 GUI 启动实例"无法启动"，`console.log` 里只留下一行启动命令行、之后再无任何输出（连报错都没有）。定位：`ServerProcess.buildCommand` 在 `meta.javaHome` 为空（"继承当前 JVM"）时回退到 `System.getProperty("java.home")`；而 jpackage 生成的运行时镜像**剥离了 `bin/java(.exe)`**（GUI 由原生 `Ceobe.exe` 经 `jli.dll`/`server/jvm.dll` 启动，无需该启动器）。于是 `pb.start()` 抛 IOException，异常被 `Fx.background` 捕获后只写进 GUI 文本框、不落 `console.log` → 表现为"静默失败"。同时 `JavaResolver` 仅按主版本比较就把该镜像判为"已就绪"，无任何提示。
+- 考虑过的方案：① 把 `java` 启动器打回镜像；② 启动时按"是否含启动器"校验运行时并明确报错，同时解析真正可用的 JDK。
+- 决策：方案 ② —— `JavaEnv` 新增 `hasLauncher(Path)` / `hostJavaHome()` / `javaLauncher()`，以「是否存在 `<home>/bin/java`」判定运行时可否用于 fork 子进程；`JavaResolver.resolve` 仅在当前 JVM **确有启动器**时才允许"继承当前 JVM"，否则依次回落自管 JDK、宿主 `JAVA_HOME`，都不满足则给出可执行提示（`ceobe jdk install <n>` / `--java-home`）；`ServerProcess.buildCommand` 与 CLI `spawnSupervisor` 一律经 `JavaEnv` 解析启动器，定位不到即抛明确 `CeobeException`；GUI 新建对话框改用 `JavaResolver` 判定"已就绪"，避免误报。
+- 为什么选这个：把"打包运行时镜像不可当 JRE 用"这一约束收敛到一处判定；静默失败改为可诊断的报错；CLI（在真 JDK 下运行）行为不变。
+- 为什么不选其他：方案 ① 与 jpackage 打包语义对抗、增大镜像体积，且不解决"用户已在别处装 JDK"的诉求。
+- 后果：`java.home` 不再被无条件信任；打包 GUI 首次启动需宿主设有可用 `JAVA_HOME` 或存在自管 JDK，否则新建对话框会给出"可一键安装 Java N"的提示。
+- 何时重新审视：jpackage 改为在 app-image 中保留 java 启动器时。
