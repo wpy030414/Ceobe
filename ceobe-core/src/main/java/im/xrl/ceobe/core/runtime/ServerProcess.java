@@ -74,7 +74,8 @@ public final class ServerProcess {
         checkPortFree(meta.port);
 
         List<String> cmd = buildCommand();
-        publish(new InstanceEvent.LogLine(meta.name, "$ " + String.join(" ", cmd)));
+        // 落盘启动命令行：便于事后审计内存/GC/额外 JVM 参数
+        appendLog("$ " + String.join(" ", cmd));
 
         ProcessBuilder pb = new ProcessBuilder(cmd).directory(dir.toFile());
         pb.redirectErrorStream(true);
