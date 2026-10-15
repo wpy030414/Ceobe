@@ -25,24 +25,32 @@ import javafx.scene.layout.VBox;
 
 import java.util.List;
 
-/** 主界面：左侧实例列表 + 右侧功能页签 + 底部状态栏。 */
+/**
+ * 主界面：左侧全高侧栏（实例列表）+ 右列（顶部栏 / 内容页签 / 底部状态栏）。
+ * <p>侧栏占满 100vh；底部状态栏仅覆盖主内容区。
+ */
 public final class MainView {
 
     private final InstanceManager manager;
     private final TunnelManager tunnels;
     private final WebConsole webConsole;
 
-    private final BorderPane root = new BorderPane();
+    /** 场景根：横向两列。 */
+    private final HBox root = new HBox();
     private final ListView<InstanceStatus> list = new ListView<>();
     private final TabPane tabs = new TabPane();
     private final Label statusBar = new Label();
+    private final Label topTitle = new Label("未选择实例");
     private final Label emptyHint = new Label("← 先创建一个实例\n（左上「新建实例」）");
+
+    private BorderPane contentArea;
 
     private ConsolePane console;
     private ConfigPane config;
     private ModPane mods;
     private TunnelPane tunnelPane;
     private String selected;
+
     /** 上次列表签名：用于判断是否需要重建列表。 */
     private String currentSig = "\u0000";
     /** 已应用到页签的运行态：null 表示尚未应用。 */
@@ -64,41 +72,51 @@ public final class MainView {
     private void build() {
         root.getStyleClass().add("ceobe-root");
 
-        // 侧栏
-        Label title = new Label("ceobe");
+        // —— 侧栏（占满 100vh）——
+        Label title = new Label("Ceobe");
         title.getStyleClass().add("ceobe-title");
-        Label subtitle = new Label("Minecraft 服务器编排");
-        subtitle.getStyleClass().add("ceobe-muted");
         Button create = new Button("＋ 新建实例");
         create.getStyleClass().add("ceobe-primary");
         create.setMaxWidth(Double.MAX_VALUE);
         create.setOnAction(e -> new CreateDialog(root.getScene().getWindow(), manager, this::refresh).show());
 
-        VBox header = new VBox(2, title, subtitle);
+        VBox header = new VBox(title);
+        header.setPadding(new Insets(2, 2, 6, 2));
         VBox side = new VBox(10, header, create, list);
         side.getStyleClass().add("ceobe-sidebar");
-        side.setPrefWidth(264);
-        side.setMinWidth(220);
-        side.setPadding(new Insets(12));
+        side.setPrefWidth(252);
+        side.setMinWidth(200);
+        side.setPadding(new Insets(12, 12, 12, 12));
         VBox.setVgrow(list, Priority.ALWAYS);
 
-        // 内容区
+        // —— 右列：顶部栏 + 内容 + 底部状态栏 ——
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        Button settings = new Button("设置");
+        settings.getStyleClass().addAll("button", "ceobe-primary");
+        settings.setOnAction(e -> SettingsDialog.show(root.getScene().getWindow(), root.getScene()));
+        HBox topbar = new HBox(8, topTitle, spacer, settings);
+        topbar.getStyleClass().add("ceobe-topbar");
+        topbar.setAlignment(Pos.CENTER_LEFT);
+        topbar.setPadding(new Insets(8, 14, 8, 14));
+        topTitle.getStyleClass().add("ceobe-h2");
+
         emptyHint.getStyleClass().add("ceobe-empty");
         emptyHint.setAlignment(Pos.CENTER);
-        BorderPane content = new BorderPane();
-        content.setCenter(emptyHint);
-        content.getStyleClass().add("ceobe-content");
+        contentArea = new BorderPane();
+        contentArea.setCenter(emptyHint);
+        contentArea.getStyleClass().add("ceobe-content");
+        VBox.setVgrow(contentArea, Priority.ALWAYS);
 
-        // 状态栏
         statusBar.getStyleClass().add("ceobe-status");
         HBox status = new HBox(statusBar);
-        status.setPadding(new Insets(6, 14, 6, 14));
         status.getStyleClass().add("ceobe-statusbar");
+        status.setPadding(new Insets(6, 14, 6, 14));
 
-        root.setLeft(side);
-        root.setCenter(content);
-        root.setBottom(status);
-        this.contentArea = content;
+        VBox right = new VBox(0, topbar, contentArea, status);
+        HBox.setHgrow(right, Priority.ALWAYS);
+
+        root.getChildren().setAll(side, right);
 
         list.setCellFactory(v -> new InstanceCell());
         list.getSelectionModel().selectedItemProperty().addListener((obs, old, now) -> {
@@ -108,8 +126,6 @@ public final class MainView {
             select(now);
         });
     }
-
-    private BorderPane contentArea;
 
     private void wire() {
         manager.addListener(event -> Platform.runLater(() -> {
@@ -135,7 +151,7 @@ public final class MainView {
     /**
      * 拉取实例列表并就地更新。
      * <p>列表内容不变时绝不重建列表——否则每轮轮询都会替换选中项对象、触发选中变化，
-     * 进而重建页签并把用户强制弹回「控制台」（此前的抽搐/回弹 bug）。
+     * 进而重建页签并把用户强制弹回「控制台」。
      */
     public void refresh() {
         Fx.background(manager::list, statuses -> {
@@ -190,11 +206,14 @@ public final class MainView {
 
     private void select(InstanceStatus status) {
         selected = status.meta().name;
+        topTitle.setText(status.meta().name + "  ·  " + status.meta().serverType.name()
+                + " " + status.meta().gameVersion);
         liveApplied = null;
         console = new ConsolePane(manager, status);
         console.setOnDeleted(() -> {
             selected = null;
             liveApplied = null;
+            topTitle.setText("未选择实例");
             contentArea.setCenter(emptyHint);
             refresh();
         });

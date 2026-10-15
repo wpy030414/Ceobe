@@ -1,6 +1,7 @@
 package im.xrl.ceobe.gui;
 
 import im.xrl.ceobe.core.runtime.InstanceManager;
+import im.xrl.ceobe.core.store.AppSettings;
 import im.xrl.ceobe.core.tunnel.TunnelManager;
 import im.xrl.ceobe.core.webconsole.WebConsole;
 import im.xrl.ceobe.gui.ui.MainView;
@@ -31,9 +32,9 @@ public final class CeobeGui extends Application {
 
         MainView view = new MainView(manager, tunnels, webConsole);
         Scene scene = new Scene(view.root(), 1180, 760);
-        Theme.apply(scene);
+        Theme.apply(scene, AppSettings.load().theme);
 
-        stage.setTitle("ceobe — Minecraft 服务器编排");
+        stage.setTitle("Ceobe：Minecraft 私有服务器编排引擎");
         stage.setScene(scene);
         stage.setMinWidth(900);
         stage.setMinHeight(600);

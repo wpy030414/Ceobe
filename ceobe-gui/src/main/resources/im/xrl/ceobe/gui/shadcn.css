@@ -1,41 +1,69 @@
 /*
- * ceobe — shadcn/ui 风格主题（暗色 zinc 基座）
+ * ceobe — shadcn/ui 风格主题（明/暗双主题，token 驱动）
  *
- * 设计 token（对齐 shadcn dark）：
- *   background #09090b · card #0c0c0e · muted #18181b · muted-fg #a1a1aa
- *   border #27272a · input #27272a · primary #fafafa · primary-fg #18181b
- *   ring #d4d4d8 · radius 8px（控件）/12px（卡片）
+ * 用法：在场景根节点上挂 .theme-light 或 .theme-dark，并保留 .ceobe-root。
+ * token（对齐 shadcn zinc）：
+ *   bg / fg / card / muted / muted-fg / border / ring / primary / primary-fg
+ *   sidebar-bg / bar-bg / console-bg / console-fg
+ * 半径：控件 8px、卡片 12px。
  */
 
+/* ---------- 字体与基础 ---------- */
+
 .root {
+    /* 中文优先用「微软雅黑 UI」避免细点位字体的像素感；拉丁回退 Inter/Segoe */
+    -fx-font-family: "Microsoft YaHei UI", "Microsoft YaHei", "Segoe UI", "Inter", sans-serif;
+    -fx-font-size: 13px;
+    -fx-font-smoothing-type: gray;
+
+    /* 默认（浅色）token —— 定义在 .root 上，使 Dialog 等独立场景根也能取到 */
+    -ceobe-bg: #ffffff;
+    -ceobe-fg: #09090b;
+    -ceobe-card: #ffffff;
+    -ceobe-muted: #f4f4f5;
+    -ceobe-muted-fg: #71717a;
+    -ceobe-subtle-fg: #a1a1aa;
+    -ceobe-border: #d4d4d8;
+    -ceobe-ring: #a1a1aa;
+    -ceobe-primary: #18181b;
+    -ceobe-primary-fg: #fafafa;
+    -ceobe-sidebar-bg: #fafafa;
+    -ceobe-bar-bg: #fafafa;
+    -ceobe-console-bg: #fafafa;
+    -ceobe-console-fg: #18181b;
+    -ceobe-hover: #f4f4f5;
+
+    -color-bg-default: #ffffff;
+    -color-bg-subtle: #f4f4f5;
+    -color-fg-default: #09090b;
+    -color-fg-muted: #71717a;
+    -color-border-default: #d4d4d8;
+}
+
+/* ---------- 暗色覆盖 ---------- */
+
+.root.theme-dark {
     -ceobe-bg: #09090b;
+    -ceobe-fg: #fafafa;
     -ceobe-card: #0c0c0e;
     -ceobe-muted: #18181b;
     -ceobe-muted-fg: #a1a1aa;
-    -ceobe-fg: #fafafa;
+    -ceobe-subtle-fg: #71717a;
     -ceobe-border: #27272a;
     -ceobe-ring: #d4d4d8;
-    -ceobe-radius: 8;
-    -ceobe-radius-lg: 12;
-    -ceobe-green: #4ade80;
-    -ceobe-amber: #fbbf24;
-    -ceobe-red: #f87171;
+    -ceobe-primary: #fafafa;
+    -ceobe-primary-fg: #18181b;
+    -ceobe-sidebar-bg: #0b0b0d;
+    -ceobe-bar-bg: #0b0b0d;
+    -ceobe-console-bg: #08080a;
+    -ceobe-console-fg: #e4e4e7;
+    -ceobe-hover: #18181b;
 
-    /* 覆盖 AtlantaFX 色彩查找，统一到 zinc 色板 */
-    -color-bg-default: -ceobe-bg;
-    -color-bg-subtle: -ceobe-muted;
-    -color-bg-inset: #09090b;
-    -color-fg-default: -ceobe-fg;
-    -color-fg-muted: -ceobe-muted-fg;
-    -color-fg-subtle: #71717a;
-    -color-border-default: -ceobe-border;
-    -color-border-muted: #1f1f23;
-    -color-accent-emphasis: -ceobe-fg;
-    -color-accent-fg: -ceobe-card;
-    -fx-background-color: -ceobe-bg;
-    -fx-font-family: "Inter", "Segoe UI", "Microsoft YaHei UI", sans-serif;
-    -fx-font-size: 13px;
-    -fx-text-fill: -ceobe-fg;
+    -color-bg-default: #09090b;
+    -color-bg-subtle: #18181b;
+    -color-fg-default: #fafafa;
+    -color-fg-muted: #a1a1aa;
+    -color-border-default: #27272a;
 }
 
 /* ---------- 通用容器 ---------- */
@@ -45,7 +73,7 @@
 }
 
 .ceobe-sidebar {
-    -fx-background-color: #0b0b0d;
+    -fx-background-color: -ceobe-sidebar-bg;
     -fx-border-color: transparent -ceobe-border transparent transparent;
     -fx-border-width: 0 1 0 0;
 }
@@ -54,18 +82,26 @@
     -fx-background-color: -ceobe-bg;
 }
 
+.ceobe-topbar, .ceobe-statusbar {
+    -fx-background-color: -ceobe-bar-bg;
+}
+
+.ceobe-topbar {
+    -fx-border-color: transparent transparent -ceobe-border transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.ceobe-statusbar {
+    -fx-border-color: -ceobe-border transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+
 .ceobe-card {
     -fx-background-color: -ceobe-card;
     -fx-border-color: -ceobe-border;
     -fx-border-width: 1;
     -fx-border-radius: 12;
     -fx-background-radius: 12;
-}
-
-.ceobe-actionbar, .ceobe-statusbar {
-    -fx-background-color: #0b0b0d;
-    -fx-border-color: -ceobe-border transparent transparent transparent;
-    -fx-border-width: 1 0 0 0;
 }
 
 /* ---------- 排版 ---------- */
@@ -93,7 +129,7 @@
 
 .ceobe-mono-subtle {
     -fx-font-size: 11px;
-    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
 }
 
 .ceobe-label {
@@ -101,13 +137,17 @@
 }
 
 .ceobe-empty {
-    -fx-text-fill: #71717a;
+    -fx-text-fill: -ceobe-subtle-fg;
     -fx-font-size: 14px;
     -fx-text-alignment: center;
 }
 
 .ceobe-warn {
-    -fx-text-fill: -ceobe-amber;
+    -fx-text-fill: #b45309;
+}
+
+.root.theme-dark .ceobe-warn {
+    -fx-text-fill: #fbbf24;
 }
 
 .ceobe-step {
@@ -128,25 +168,19 @@
     -fx-font-size: 11px;
 }
 
-.state-RUNNING {
-    -fx-background-color: #052e16;
-    -fx-text-fill: -ceobe-green;
-}
+.state-RUNNING { -fx-background-color: #dcfce7; -fx-text-fill: #15803d; }
+.state-STARTING,
+.state-STOPPING { -fx-background-color: #fef3c7; -fx-text-fill: #b45309; }
+.state-CRASHED  { -fx-background-color: #fee2e2; -fx-text-fill: #b91c1c; }
+.state-STOPPED,
+.state-CREATED  { -fx-background-color: #f4f4f5; -fx-text-fill: #71717a; }
 
-.state-STARTING, .state-STOPPING {
-    -fx-background-color: #422006;
-    -fx-text-fill: -ceobe-amber;
-}
-
-.state-CRASHED {
-    -fx-background-color: #450a0a;
-    -fx-text-fill: -ceobe-red;
-}
-
-.state-STOPPED, .state-CREATED {
-    -fx-background-color: -ceobe-muted;
-    -fx-text-fill: -ceobe-muted-fg;
-}
+.root.theme-dark .state-RUNNING { -fx-background-color: #052e16; -fx-text-fill: #4ade80; }
+.root.theme-dark .state-STARTING,
+.root.theme-dark .state-STOPPING { -fx-background-color: #422006; -fx-text-fill: #fbbf24; }
+.root.theme-dark .state-CRASHED  { -fx-background-color: #450a0a; -fx-text-fill: #f87171; }
+.root.theme-dark .state-STOPPED,
+.root.theme-dark .state-CREATED  { -fx-background-color: #18181b; -fx-text-fill: #a1a1aa; }
 
 /* ---------- 按钮 ---------- */
 
@@ -162,7 +196,7 @@
 }
 
 .button:hover {
-    -fx-background-color: -ceobe-muted;
+    -fx-background-color: -ceobe-hover;
 }
 
 .button:focused {
@@ -174,19 +208,23 @@
 }
 
 .ceobe-primary {
-    -fx-background-color: -ceobe-fg;
-    -fx-text-fill: -ceobe-card;
+    -fx-background-color: -ceobe-primary;
+    -fx-text-fill: -ceobe-primary-fg;
     -fx-border-color: transparent;
     -fx-font-weight: bold;
 }
 
 .ceobe-primary:hover {
-    -fx-background-color: #e4e4e7;
+    -fx-opacity: 0.9;
 }
 
 .ceobe-primary:disabled {
-    -fx-background-color: #3f3f46;
-    -fx-text-fill: #a1a1aa;
+    -fx-opacity: 0.4;
+}
+
+.ceobe-icon-button {
+    -fx-background-color: -ceobe-card;
+    -fx-padding: 5 12 5 12;
 }
 
 /* ---------- 输入控件 ---------- */
@@ -194,7 +232,7 @@
 .text-field, .text-area, .combo-box, .spinner {
     -fx-background-color: -ceobe-bg;
     -fx-text-fill: -ceobe-fg;
-    -fx-prompt-text-fill: #71717a;
+    -fx-prompt-text-fill: -ceobe-subtle-fg;
     -fx-border-color: -ceobe-border;
     -fx-border-width: 1;
     -fx-border-radius: 6;
@@ -231,19 +269,23 @@
 }
 
 .check-box:selected .box {
-    -fx-background-color: -ceobe-fg;
-    -fx-border-color: -ceobe-fg;
+    -fx-background-color: -ceobe-primary;
+    -fx-border-color: -ceobe-primary;
 }
 
 .check-box:selected .mark {
-    -fx-background-color: -ceobe-card;
+    -fx-background-color: -ceobe-primary-fg;
+}
+
+.radio-button {
+    -fx-text-fill: -ceobe-fg;
 }
 
 /* ---------- 日志与控制台 ---------- */
 
 .ceobe-log {
-    -fx-control-inner-background: #08080a;
-    -fx-text-fill: #e4e4e7;
+    -fx-control-inner-background: -ceobe-console-bg;
+    -fx-text-fill: -ceobe-console-fg;
     -fx-border-color: -ceobe-border;
     -fx-border-width: 1;
     -fx-border-radius: 8;
@@ -252,19 +294,19 @@
 }
 
 .ceobe-log .content {
-    -fx-background-color: #08080a;
+    -fx-background-color: -ceobe-console-bg;
     -fx-background-radius: 8;
 }
 
 .ceobe-mono-addr {
-    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
-    -fx-background-color: #08080a;
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-background-color: -ceobe-muted;
     -fx-border-color: -ceobe-border;
     -fx-border-width: 1;
     -fx-border-radius: 6;
     -fx-background-radius: 6;
     -fx-padding: 6 10 6 10;
-    -fx-text-fill: #e4e4e7;
+    -fx-text-fill: -ceobe-fg;
 }
 
 /* ---------- 列表 ---------- */
@@ -281,11 +323,18 @@
     -fx-background-radius: 8;
 }
 
-.list-cell:hover {
-    -fx-background-color: -ceobe-muted;
+/* 空白单元（占位行）不得出现 hover/选中高亮 */
+.list-cell:empty {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-cursor: default;
 }
 
-.list-cell:selected {
+.list-cell:filled:hover {
+    -fx-background-color: -ceobe-hover;
+}
+
+.list-cell:filled:selected {
     -fx-background-color: -ceobe-muted;
     -fx-border-color: -ceobe-border;
     -fx-border-width: 1;
@@ -341,7 +390,7 @@
 }
 
 .ceobe-table .column-header-background {
-    -fx-background-color: #0e0e11;
+    -fx-background-color: -ceobe-muted;
 }
 
 .ceobe-table .column-header .label {
@@ -373,12 +422,12 @@
 }
 
 .scroll-bar .thumb {
-    -fx-background-color: #3f3f46;
+    -fx-background-color: -ceobe-border;
     -fx-background-radius: 999;
 }
 
 .scroll-bar .thumb:hover {
-    -fx-background-color: #52525b;
+    -fx-background-color: -ceobe-ring;
 }
 
 .scroll-bar .increment-button, .scroll-bar .decrement-button {
@@ -386,18 +435,14 @@
     -fx-padding: 0;
 }
 
-.ceobe-scroll {
-    -fx-background-color: transparent;
-}
-
-.ceobe-scroll > .viewport {
+.ceobe-scroll, .ceobe-scroll > .viewport {
     -fx-background-color: transparent;
 }
 
 /* ---------- 进度条 / 弹窗 ---------- */
 
 .progress-bar {
-    -fx-accent: -ceobe-fg;
+    -fx-accent: -ceobe-primary;
 }
 
 .progress-bar .track {
@@ -410,7 +455,7 @@
 }
 
 .dialog-pane .header-panel {
-    -fx-background-color: #0e0e11;
+    -fx-background-color: -ceobe-muted;
 }
 
 .dialog-pane .header-panel .label {

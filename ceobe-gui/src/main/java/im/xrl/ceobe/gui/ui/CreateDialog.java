@@ -60,6 +60,8 @@ public final class CreateDialog {
         dialog.initOwner(owner);
         dialog.setTitle("新建实例");
         dialog.setHeaderText("选择服务端与版本，然后创建");
+        // Dialog 自建场景，根节点是 DialogPane：补上主题类以取到 token
+        dialog.getDialogPane().getStyleClass().add("theme-" + Theme.mode());
 
         nameField.setPromptText("例如 survival / modded");
         typeBox.getItems().setAll(ServerType.values());
