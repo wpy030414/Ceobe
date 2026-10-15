@@ -74,6 +74,22 @@ $J rm smp --purge                           # 删除实例（含世界数据）
 - 因此：**CF 隧道用于远程查看服务器状态（Web 控制台），玩家连接走 Pinggy**。决策依据与实测记录见 `docs/DECISIONS.md` ADR-003。
 - 需要稳定地址时：改用 Cloudflare Named Tunnel（需 CF 账号，且玩家侧需 cloudflared 客户端）或在配置中接入 playit.gg（SPI 已预留扩展位）。
 
+## 下载与镜像（已实测加速）
+
+- **开发期**：Maven 依赖经 Aliyun 镜像。
+- **运行期**：所有下载优先国内镜像，失败自动回退官方源（`core/util/Mirrors`）。
+
+| 上游 | 镜像 |
+|------|------|
+| Mojang piston-meta / piston-data（服务端 jar、版本清单、版本 json） | BMCLAPI `bmclapi2.bangbang93.com`（同路径换主机） |
+| Fabric meta | BMCLAPI `/fabric-meta` |
+| Modrinth CDN（mod 与整合包文件） | `mod.mcimirror.top` |
+| Temurin JDK | 清华 `mirrors.tuna.tsinghua.edu.cn/Adoptium` |
+
+- 实测：vanilla 26.3（62MB）镜像 ON 约 16s、OFF 约 57s（≈3.5×），且 sha1 与官方一致。
+- 无镜像的源（PaperMC Fill、Purpur API、`maven.neoforged.net`、`api.modrinth.com`）仍直连。
+- 可用 `-Dceobe.mirror=off` 关闭镜像，或 `-Dceobe.mirror.bmclapi=` / `-Dceobe.mirror.modrinth=` 覆盖基址。
+
 ## 验收与测试
 
 ```bash

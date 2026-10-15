@@ -10,7 +10,7 @@
 - 各源契约（2026-10-15 实测）：
   - Mojang：manifest v2 → `versions[].url` → 版本 JSON `downloads.server.{url,sha1,size}`。
   - Paper：`fill.papermc.io/v3/projects/paper/versions/{v}/builds/latest` → `downloads["server:default"]{url,checksums.sha256}`；项目含 folia。
-  - Fabric：meta v2 取 loader 最新 + installer 1.1.2 → 子进程 `java -jar fabric-installer.jar server -dir <dir> -mcversion <v> -loader <l> -downloadMinecraft`。
+  - Fabric：meta v2 取 loader 最新 + installer 1.1.2 → **先经镜像预拉原版 `server.jar`**，再子进程 `java -jar fabric-installer.jar server -dir <dir> -mcversion <v> -loader <l>`（去掉 `-downloadMinecraft`，改由 ceobe 走镜像下载）。
   - Purpur：`api.purpurmc.org/v2/purpur` → `versions/{v}/builds` → `{v}/{b}/download`。
   - NeoForge：`maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml`（XML，正则取 `<version>`）→ 版本号 `<归一化MC>.<build>`（1.x 去前导 "1."：1.21.8→21.8；26.x 保留）→ 下载 `neoforge-<v>-installer.jar` → 子进程 `java -jar installer.jar --installServer <dir>`；**无单一启动 jar**，改用参数文件 `@libraries/net/neoforged/neoforge/<v>/<win|unix>_args.txt`。
 
@@ -20,6 +20,7 @@
 
 ## 约束
 - 全部请求带 User-Agent `ceobe/<version>`。
+- **所有下载优先国内镜像**（`util/Mirrors`）：Mojang → BMCLAPI（同路径换主机）、Fabric meta → BMCLAPI `/fabric-meta`、Modrinth CDN → `mod.mcimirror.top`；失败回退上游（ADR-012）。
 - 版本列表缓存 10 分钟（内存），jar 永久去重缓存于 `~/.ceobe/cache/jars/`（同 sha 复用，多实例共享）。
 - 失败必须区分：网络失败 / 校验失败 / 版本不存在，错误信息可操作。
 

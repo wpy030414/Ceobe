@@ -76,13 +76,16 @@ public final class FabricProvider implements ServerJarProvider {
         progress.update("下载 Fabric 安装器", 0, -1);
         Path installer = MojangProvider.cachedJar("fabric-installer.jar", installerUrl, null, null, progress);
 
-        progress.update("运行 Fabric 安装器（含下载原版服务端，可能较慢）", 0, -1);
+        // 预拉原版服务端（走镜像站），安装器随即生成本加载器——不再由安装器自行从 Mojang 下载
+        progress.update("准备原版服务端 " + gameVersion, 0, -1);
+        new MojangProvider().install(instanceDir, gameVersion, null, progress);
+
+        progress.update("运行 Fabric 安装器", 0, -1);
         List<String> cmd = new ArrayList<>(List.of(
                 javaBinary(), "-jar", installer.toString(), "server",
                 "-dir", instanceDir.toAbsolutePath().toString(),
                 "-mcversion", gameVersion,
-                "-loader", loader,
-                "-downloadMinecraft"));
+                "-loader", loader));
         runAndCapture(cmd, instanceDir);
 
         Path launch = instanceDir.resolve("fabric-server-launch.jar");

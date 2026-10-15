@@ -19,7 +19,7 @@ ceobe 是 Java 25 编写的 Minecraft 服务器编排系统（Maven 多模块：
   - 命名空间：groupId `im.xrl`，Java 包前缀 `im.xrl.ceobe`；资源路径同前缀（如 `/im/xrl/ceobe/gui/shadcn.css`）。
   - 测试分组：需真实下载/联网的用例打 `@Tag("network")`，`mvn test -Dtest.excludedGroups= -Dgroups=network` 才跑。
   - 测试方法名用中文标识符时不得含空格（Java 标识符规则）。
-  - 网络下载默认走中国镜像（Maven 仓库用 Aliyun）；外部 MC API 直连。
+  - **所有下载（开发期与运行期）一律优先国内镜像站**，否则太慢：Maven 依赖用 Aliyun；运行期经 `core/util/Mirrors` 改写 URL——Mojang piston-meta/piston-data → BMCLAPI（同路径换主机）、Fabric meta → BMCLAPI `/fabric-meta`、Modrinth CDN → `mod.mcimirror.top`、Temurin JDK → 清华镜像；镜像失败自动回退上游。新增第三方源前须先确认其镜像可用性。
   - `ceobe-core` 不得依赖 JavaFX / picocli；CLI 与 GUI 只通过 core 的公共 API 工作。
   - 所有对外 HTTP 请求必须带 User-Agent（Modrinth 要求，Fill v3 建议）。
   - git commit 遵循 Conventional Commits，subject ≤72 字符，body 分点。

@@ -17,12 +17,28 @@ import java.util.HexFormat;
 public final class Http {
     public static final String USER_AGENT = "ceobe/0.1 (https://github.com/wpy030414/ceobe)";
 
+    /** 单次下载的空闲超时：超过此时长无新字节即中断（用于镜像挂起时回退）。 */
+    private static final long IDLE_TIMEOUT_MS = 20_000;
+
     private static final HttpClient CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
 
+    /** 优先走镜像站，失败回退上游。 */
     public static String get(String url) {
+        String mirror = Mirrors.forUrl(url);
+        if (mirror != null) {
+            try {
+                return getDirect(mirror);
+            } catch (RuntimeException ignored) {
+                // 镜像不可用 → 回退上游
+            }
+        }
+        return getDirect(url);
+    }
+
+    private static String getDirect(String url) {
         try {
             HttpRequest req = HttpRequest.newBuilder(URI.create(url))
                     .timeout(Duration.ofSeconds(30))
@@ -41,7 +57,20 @@ public final class Http {
         }
     }
 
+    /** 优先走镜像站，失败回退上游。 */
     public static byte[] getBytes(String url) {
+        String mirror = Mirrors.forUrl(url);
+        if (mirror != null) {
+            try {
+                return getBytesDirect(mirror);
+            } catch (RuntimeException ignored) {
+                // 回退上游
+            }
+        }
+        return getBytesDirect(url);
+    }
+
+    private static byte[] getBytesDirect(String url) {
         try {
             HttpRequest req = HttpRequest.newBuilder(URI.create(url))
                     .timeout(Duration.ofMinutes(5))
@@ -66,8 +95,21 @@ public final class Http {
         void update(long done, long total);
     }
 
-    /** 下载到 target（.part 原子改名），可选 sha1/sha256 校验。 */
+    /** 下载到 target（.part 原子改名），可选 sha1/sha256 校验；优先镜像站，失败回退上游。 */
     public static void download(String url, Path target, String sha1, String sha256, Progress progress) {
+        String mirror = Mirrors.forUrl(url);
+        if (mirror != null) {
+            try {
+                downloadDirect(mirror, target, sha1, sha256, progress);
+                return;
+            } catch (RuntimeException ignored) {
+                // 镜像不可用 → 回退上游
+            }
+        }
+        downloadDirect(url, target, sha1, sha256, progress);
+    }
+
+    private static void downloadDirect(String url, Path target, String sha1, String sha256, Progress progress) {
         Path part = target.resolveSibling(target.getFileName() + ".part");
         try {
             HttpRequest req = HttpRequest.newBuilder(URI.create(url))
@@ -83,7 +125,29 @@ public final class Http {
             long total = resp.headers().firstValueAsLong("Content-Length").orElse(-1);
             MessageDigest d1 = sha1 != null ? MessageDigest.getInstance("SHA-1") : null;
             MessageDigest d256 = sha256 != null ? MessageDigest.getInstance("SHA-256") : null;
-            try (InputStream in = resp.body();
+
+            // 空闲看门狗：镜像把流挂住时主动中断（触发上层回退上游），避免干等到总超时
+            InputStream body = resp.body();
+            final long[] lastRead = {System.currentTimeMillis()};
+            final boolean[] finished = {false};
+            Thread.ofVirtual().name("ceobe-dl-watch").start(() -> {
+                while (!finished[0]) {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        return;
+                    }
+                    if (System.currentTimeMillis() - lastRead[0] > IDLE_TIMEOUT_MS) {
+                        try {
+                            body.close();
+                        } catch (IOException ignored) {
+                        }
+                        return;
+                    }
+                }
+            });
+
+            try (InputStream in = body;
                  var out = java.nio.file.Files.newOutputStream(part)) {
                 byte[] buf = new byte[64 * 1024];
                 long done = 0;
@@ -93,8 +157,11 @@ public final class Http {
                     if (d1 != null) d1.update(buf, 0, n);
                     if (d256 != null) d256.update(buf, 0, n);
                     done += n;
+                    lastRead[0] = System.currentTimeMillis();
                     if (progress != null) progress.update(done, total);
                 }
+            } finally {
+                finished[0] = true;
             }
             verify(part, "SHA-1", sha1, d1);
             verify(part, "SHA-256", sha256, d256);
