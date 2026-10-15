@@ -142,6 +142,7 @@ public final class ModrinthClient {
     private static String loaderOf(ServerType type) {
         return switch (type) {
             case FABRIC -> "fabric";
+            case NEOFORGE -> "neoforge";
             case PAPER, PURPUR -> "paper";
             case VANILLA -> "datapack";
         };

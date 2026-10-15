@@ -5,6 +5,7 @@ public enum ServerType {
     VANILLA("原版", true, false),
     PAPER("Paper（高性能插件服）", true, true),
     FABRIC("Fabric（模组服）", true, true),
+    NEOFORGE("NeoForge（模组服）", true, true),
     PURPUR("Purpur（Paper 魔改）", true, true);
 
     private final String zhLabel;

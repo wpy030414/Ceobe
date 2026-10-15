@@ -45,6 +45,7 @@
 - 决策：首发 vanilla（piston-meta）、paper（Fill v3）、fabric（meta v2 + installer）、purpur（官方 API）；NeoForge 因 `maven.neoforged.net` 本网络连接超时暂缓（SPI 保留位）；Forge/Quilt/BuildTools 不做。
 - 为什么选这个：四个源全部实测 200 OK；覆盖"轻量→高性能→模组→魔改"主流谱系。
 - 后果：fabric 安装为子进程跑 installer，需处理下载 Mojang server（`-downloadMinecraft`）耗时。
+- 修订（同日）：NeoForge 已接入——VPN 下 `maven.neoforged.net` 可达（HTTP 200），启动方式不同（参数文件），见 ADR-010。
 - 何时重新审视：NeoForge 源可达或找到镜像（BMCLAPI）时。
 
 ## ADR-005：状态存储 = `~/.ceobe/` 文件树 + 每实例文件锁
@@ -101,3 +102,14 @@
 - 后果：CLI `--port` 由 int 改为接受 `auto`；GUI 新建对话框自动填入空闲端口并显示排他提示。
 - 修订（同日）：GUI 主题资源路径 `/dev/ceobe/gui/*` 修正为 `/im/xrl/ceobe/gui/*`——此前 CSS 与字体从未加载（`getResource` 返回 null 静默跳过），界面实为 AtlantaFX 默认外观；同时修复主内容区每轮轮询重建页签导致的"抽搐 + 强制回弹到控制台"。
 - 何时重新审视：引入端口映射/反代层（如统一网关）时，可为每个实例再分配一个对外端口。
+
+## ADR-010：接入 NeoForge（参数文件启动 + 版本映射）
+- 日期：2026-10-15
+- 状态：已采纳
+- 背景：ADR-004 因 `maven.neoforged.net` 不可达而暂缓 NeoForge；现 VPN 下可达（metadata 与 installer 实测 200），且 NeoForge 是 1.20.2+ 的主流模组加载器。
+- 考虑过的方案：① 继续暂缓；② 接入但复用 `-jar` 启动；③ 接入并引入参数文件启动。
+- 决策：方案 ③ —— 新增 `ServerType.NEOFORGE` 与 `NeoForgeProvider`：下载 `neoforge-<v>-installer.jar` 跑 `--installServer`；产物无单一启动 jar，改用 `@libraries/net/neoforged/neoforge/<v>/<win|unix>_args.txt` 启动。为此 `InstanceMeta.launchArgsFile` 非空时 `ServerProcess` 以 `@file` 取代 `-jar`。版本映射：NeoForge 版本 = 归一化 MC 版本 + `.` + build（1.x 去前导 `1.`：1.21.8→21.8；26.x 保留）。
+- 为什么选这个：参数文件（官方 run.bat 的方式）内含 `-classpath`/主类/`--fml.*`，最稳；复用 `-jar` 需自造 main，与启动链耦合易碎。
+- 为什么不选其他：继续暂缓会缺主流模组生态；自造 main 维护成本高。
+- 后果：启动命令不再统一为 `-jar`（`InstanceManager.start` 的存在性检查按 `launchArgsFile` 分支）；`instance.json` 增加 `launchArgsFile` 字段（旧实例为 null，兼容）。
+- 何时重新审视：NeoForge 更改启动方式，或引入统一 modloader 抽象时。

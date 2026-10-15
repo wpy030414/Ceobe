@@ -110,8 +110,13 @@ public final class ServerProcess {
                 if (!a.isBlank()) cmd.add(a);
             }
         }
-        cmd.add("-jar");
-        cmd.add(meta.launchJar);
+        if (meta.launchArgsFile != null && !meta.launchArgsFile.isBlank()) {
+            // NeoForge 等：@参数文件启动（内含 -classpath / 主类 / --fml.* 参数）
+            cmd.add("@" + meta.launchArgsFile);
+        } else {
+            cmd.add("-jar");
+            cmd.add(meta.launchJar);
+        }
         cmd.add("nogui");
         return cmd;
     }

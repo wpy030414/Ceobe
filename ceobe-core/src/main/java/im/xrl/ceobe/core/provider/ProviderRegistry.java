@@ -14,6 +14,7 @@ public final class ProviderRegistry {
         register(new MojangProvider());
         register(new PaperProvider());
         register(new FabricProvider());
+        register(new NeoForgeProvider());
         register(new PurpurProvider());
     }
 

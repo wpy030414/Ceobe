@@ -154,6 +154,7 @@ public final class InstanceManager {
         meta.port = spec.port();
         meta.javaHome = spec.javaHome();
         meta.launchJar = installed.launchJar();
+        meta.launchArgsFile = installed.launchArgsFile();
         saveMeta(dir, meta);
         progress.update("创建完成", 1, 1);
         return meta;
@@ -210,8 +211,10 @@ public final class InstanceManager {
             return p;
         });
         if (process.isAlive()) throw CeobeException.of("实例 %s 已在运行", name);
-        if (!Files.isRegularFile(dir(name).resolve(s.meta().launchJar))) {
-            throw CeobeException.of("启动器 %s 不存在，实例可能未安装完整", s.meta().launchJar);
+        String launch = s.meta().launchArgsFile != null && !s.meta().launchArgsFile.isBlank()
+                ? s.meta().launchArgsFile : s.meta().launchJar;
+        if (!Files.isRegularFile(dir(name).resolve(launch))) {
+            throw CeobeException.of("启动器 %s 不存在，实例可能未安装完整", launch);
         }
         process.start();
     }

@@ -19,6 +19,8 @@ public final class InstanceMeta {
     public int port = 25565;
     public String javaHome;           // null = 继承当前 JVM 的 JAVA_HOME
     public String launchJar = "server.jar";
+    /** 非空时改用参数文件启动（NeoForge）：{@code java @<launchArgsFile> nogui}。 */
+    public String launchArgsFile;
     public Instant createdAt = Instant.now();
     public List<ModEntry> mods = new ArrayList<>();
     /** 最近一次各通道公网地址（便于重启后展示历史）。 */

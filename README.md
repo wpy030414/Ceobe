@@ -90,4 +90,4 @@ bash scripts/smoke-cli.sh                  # CLI 全链路冒烟（断言式，�
 - Java 25 / Maven 多模块（ceobe-core、ceobe-cli、ceobe-gui）
 - JavaFX 25 + AtlantaFX 3（shadcn/ui 风格化定制）、picocli 4.7（CLI）
 - Jackson 2.18 / SnakeYAML 2.7（配置与状态）
-- 外部 API：Mojang piston-meta、PaperMC Fill v3、Fabric meta v2、Purpur API、Modrinth API v2
+- 外部 API：Mojang piston-meta、PaperMC Fill v3、Fabric meta v2、NeoForge maven、Purpur API、Modrinth API v2

@@ -78,13 +78,13 @@ public final class InstanceCommands {
         String name;
 
         @Option(names = "--type", paramLabel = "TYPE", defaultValue = "paper",
-                description = "服务端类型: vanilla | paper | fabric | purpur（默认 paper）")
+                description = "服务端类型: vanilla | paper | fabric | neoforge | purpur（默认 paper）")
         String type;
 
         @Option(names = "--version", paramLabel = "VER", description = "游戏版本（默认最新正式版）")
         String version;
 
-        @Option(names = "--loader", paramLabel = "VER", description = "Fabric loader 版本（默认最新 stable）")
+        @Option(names = "--loader", paramLabel = "VER", description = "加载器版本（Fabric/NeoForge；默认最新 stable）")
         String loader;
 
         @Option(names = "--mem", paramLabel = "SIZE", defaultValue = "2G", description = "内存上限，如 4G / 4096M")
@@ -398,7 +398,7 @@ public final class InstanceCommands {
         try {
             return ServerType.valueOf(raw.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new CeobeException("未知服务端类型: %s（可选 vanilla/paper/fabric/purpur）".formatted(raw));
+            throw new CeobeException("未知服务端类型: %s（可选 vanilla/paper/fabric/neoforge/purpur）".formatted(raw));
         }
     }
 

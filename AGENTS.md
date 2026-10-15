@@ -4,7 +4,7 @@ ceobe 是 Java 25 编写的 Minecraft 服务器编排系统（Maven 多模块：
 
 ## 概述
 
-- 本项目是什么：本机 MC 服务器多实例管理器——下载服务端 jar（vanilla/paper/fabric/purpur）、可视化编辑 server.properties、Modrinth 装模、CF/Pinggy 穿透、进程生命周期管理；GUI 与 CLI 共享 core。
+- 本项目是什么：本机 MC 服务器多实例管理器——下载服务端 jar（vanilla/paper/fabric/neoforge/purpur）、可视化编辑 server.properties、Modrinth 装模、CF/Pinggy 穿透、进程生命周期管理；GUI 与 CLI 共享 core。
 
 ## 边界与范围
 
