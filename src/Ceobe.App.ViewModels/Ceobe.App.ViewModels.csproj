@@ -24,4 +24,10 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- 与 Core 一致的做法：内部辅助（体积格式化等）保持 internal，仅对测试开放，
+         不为可测性把实现细节提成 public API。 -->
+    <InternalsVisibleTo Include="Ceobe.App.ViewModels.Tests" />
+  </ItemGroup>
+
 </Project>
