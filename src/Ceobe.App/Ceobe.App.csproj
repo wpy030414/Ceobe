@@ -14,7 +14,17 @@
     <!-- 非打包分发：不生成 MSIX，直接跑 exe（免旁加载与证书） -->
     <WindowsPackageType>None</WindowsPackageType>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!--
+      两个 SelfContained 缺一不可，它们管的东西不同：
+      - SelfContained：带出 .NET 运行时（coreclr 等）
+      - WindowsAppSDKSelfContained：带出 WindowsAppSDK 的**原生**部分
+        （Microsoft.UI.Xaml.dll、.xbf 编译产物、resources.pri 等）。
+      只开 SelfContained 的话，发布产物缺 XAML 原生运行时——在装了 WindowsAppSDK
+      的开发机上能跑（从系统加载），但目标用户（双击开服的普通玩家）机器上没有，
+      会在 InitializeComponent 时崩。这是 WinUI 3 自包含发布的经典坑。
+    -->
     <SelfContained>true</SelfContained>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <PublishSingleFile>false</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <!-- WinUI 的 XAML 编译器对可空注解不敏感，逐个修收益低；先关掉避免噪音 -->

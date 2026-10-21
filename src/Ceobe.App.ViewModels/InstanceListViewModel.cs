@@ -120,7 +120,14 @@ public partial class InstanceListViewModel : ObservableObject
 /// </summary>
 public partial class InstanceRow : ObservableObject
 {
-    public required string Name { get; init; }
+    /// <summary>
+    /// 用构造器而非 <c>required</c>：WinUI 的 x:Bind 会为 <c>x:DataType</c> 生成类型元数据，
+    /// 其中需要能实例化该类型；<c>required</c> 成员会触发 CS9035（生成代码里的对象初始化器
+    /// 未设必填成员）。构造器注入同样保证 Name 非空，且不阻碍元数据生成。
+    /// </summary>
+    public InstanceRow(string name) => Name = name;
+
+    public string Name { get; }
 
     [ObservableProperty]
     private string _displayName = "";
@@ -139,9 +146,8 @@ public partial class InstanceRow : ObservableObject
 
     partial void OnStateChanged(InstanceState value) => OnPropertyChanged(nameof(IsLive));
 
-    public static InstanceRow From(InstanceStatus s) => new()
+    public static InstanceRow From(InstanceStatus s) => new(s.Meta.Name)
     {
-        Name = s.Meta.Name,
         DisplayName = s.Meta.Name,
         State = s.State,
         StateLabel = s.State.ZhLabel(),

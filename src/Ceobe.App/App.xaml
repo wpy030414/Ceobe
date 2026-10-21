@@ -2,12 +2,15 @@
 <Application
     x:Class="Ceobe.App.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="using:Ceobe.App.Converters">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
+            <!-- 全局转换器：XAML 里以 StaticResource 引用，故必须在此注册 -->
+            <converters:LiveToBrushConverter x:Key="LiveToBrush" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

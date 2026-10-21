@@ -410,13 +410,8 @@ public partial class ImportViewModel : ObservableObject
         return ext is ".jar" or ".mrpack" or ".zip";
     }
 
-    internal static string HumanSize(long bytes) => bytes switch
-    {
-        < 1024 => bytes + " B",
-        < 1024 * 1024 => (bytes / 1024d).ToString("0.#") + " KB",
-        < 1024L * 1024 * 1024 => (bytes / 1024d / 1024d).ToString("0.#") + " MB",
-        _ => (bytes / 1024d / 1024d / 1024d).ToString("0.##") + " GB",
-    };
+    /// <summary>体积格式化，委托给公共工具（导入页与设置页搬家预览共用同一实现）。</summary>
+    public static string HumanSize(long bytes) => TextFormat.HumanSize(bytes);
 
     /// <summary>把 Core 的进度回调接到界面文本（整合包要下载几十个 mod，必须有进度）。</summary>
     private sealed class VmProgress(ImportViewModel vm) : IProgressSink

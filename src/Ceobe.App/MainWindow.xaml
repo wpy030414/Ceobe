@@ -2,8 +2,104 @@
 <Window
     x:Class="Ceobe.App.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid>
-        <TextBlock Text="ceobe 骨架验证" HorizontalAlignment="Center" VerticalAlignment="Center" />
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:views="using:Ceobe.App.Views">
+
+    <!--
+      主壳：左侧全高侧栏（实例列表）+ 右列（顶部栏 / 内容页签 / 底部状态栏）。
+      布局对齐 Java 版 MainView，让从旧版过来的用户不必重新找东西。
+    -->
+    <Grid x:Name="RootGrid">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="248" MinWidth="200" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- ===== 左侧：实例列表 ===== -->
+        <Grid Grid.Column="0" Background="{ThemeResource LayerFillColorDefaultBrush}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0" Padding="16,16,16,8" Spacing="2">
+                <TextBlock Text="ceobe" FontSize="20" FontWeight="SemiBold" />
+                <TextBlock Text="Minecraft 服务器编排" FontSize="12"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
+
+            <!-- 列表工具条：新建 + 刷新 + 只看运行中 -->
+            <Grid Grid.Row="1" Padding="12,4,12,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ToggleSwitch Grid.Column="0" IsOn="{x:Bind VmList.OnlyRunning, Mode=TwoWay}"
+                              OnContent="只看运行中" OffContent="全部实例"
+                              FontSize="12" MinWidth="0" />
+                <Button Grid.Column="1" Click="OnRefresh" ToolTipService.ToolTip="刷新列表"
+                        Padding="8" Background="Transparent" BorderThickness="0">
+                    <SymbolIcon Symbol="Refresh" />
+                </Button>
+            </Grid>
+
+            <!-- 实例列表抽成 UserControl：WinUI 的 Window 不是 FrameworkElement，
+                 带 Converter 的 x:Bind 在 Window 上会编译失败（生成码调 SetConverterLookupRoot），
+                 放进 UserControl 才可解析。此 UserControl 走构造器注入 VM，故不能在 XAML 里
+                 直接实例化（那要求无参构造），由 code-behind 构造后塞进这个占位宿主。 -->
+            <ContentControl Grid.Row="2" x:Name="ListHost" HorizontalContentAlignment="Stretch"
+                            VerticalContentAlignment="Stretch" />
+
+            <!-- 底部：设置入口 + 新建实例 -->
+            <StackPanel Grid.Row="3" Padding="12,8,12,12" Spacing="8">
+                <Button HorizontalAlignment="Stretch" Click="OnCreateInstance">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <SymbolIcon Symbol="Add" />
+                        <TextBlock Text="新建实例" />
+                    </StackPanel>
+                </Button>
+                <Button HorizontalAlignment="Stretch" Background="Transparent" Click="OnOpenSettings">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <SymbolIcon Symbol="Setting" />
+                        <TextBlock Text="设置（数据目录等）" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- 侧栏与内容区之间的分隔线（WinUI 3 无内置 GridSplitter，
+             那属于 CommunityToolkit 包；侧栏已设 MinWidth，不做拖拽调整） -->
+        <Border Grid.Column="0" Width="1" HorizontalAlignment="Right"
+                Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+        <!-- ===== 右列：顶部栏 / 页签 / 状态栏 ===== -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- 顶部栏：选中实例的标题 -->
+            <Grid Grid.Row="0" Padding="20,14,20,10"
+                  BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                <TextBlock x:Name="TopTitle" Text="未选择实例" FontSize="16" FontWeight="SemiBold"
+                           VerticalAlignment="Center" />
+            </Grid>
+
+            <!-- 内容页签：占位，实际页面由代码按选中实例装配 -->
+            <ContentControl x:Name="ContentHost" Grid.Row="1" Padding="0" />
+
+            <!-- 底部状态栏 -->
+            <Border Grid.Row="2" Padding="20,8"
+                    Background="{ThemeResource LayerFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
+                <TextBlock x:Name="StatusBar" Text="{x:Bind VmList.StatusText, Mode=OneWay}"
+                           FontSize="12"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </Border>
+        </Grid>
     </Grid>
 </Window>
