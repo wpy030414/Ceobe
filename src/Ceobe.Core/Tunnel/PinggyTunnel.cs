@@ -9,7 +9,7 @@ namespace Ceobe.Core.Tunnel;
 /// <c>ssh -4 -p 443 -R0:127.0.0.1:&lt;port&gt; -o StrictHostKeyChecking=accept-new
 /// -o UserKnownHostsFile=&lt;instanceDir&gt;/pinggy_known_hosts -o ServerAliveInterval=30
 /// -o ServerAliveCountMax=3 -o ExitOnForwardFailure=yes -T tcp@a.pinggy.io</c></para>
-/// <para>地址解析：stdout 中的 <c>tcp://&lt;host&gt;:&lt;port&gt;</c>；就绪超时 45 秒。</para>
+/// <para>地址解析：stdout 中的 <c>tcp://&lt;host&gt;:&lt;port&gt;</c>；就绪超时 90 秒（免费通道实测需 45～60 秒）。</para>
 /// <para>会话 55 分钟（免费通道 60 分钟留 5 分钟余量）→ <see cref="TunnelManager"/> 到期前自动续期。</para>
 /// </summary>
 public sealed class PinggyTunnel : ITunnelProvider
@@ -18,8 +18,16 @@ public sealed class PinggyTunnel : ITunnelProvider
     internal static readonly System.Text.RegularExpressions.Regex TcpUrl =
         new(@"tcp://([a-z0-9.\-]+):(\d+)", System.Text.RegularExpressions.RegexOptions.Compiled);
 
-    /// <summary>就绪超时（45 秒，与 Java 一致）。</summary>
-    internal static readonly TimeSpan ReadyTimeout = TimeSpan.FromSeconds(45);
+    /// <summary>
+    /// 就绪超时：90 秒。
+    ///
+    /// 为什么不是 Java 版的 45 秒：实测 2026-10-21，Pinggy 免费通道从连上到吐出
+    /// <c>tcp://…</c> 地址需要 **45～60 秒**（ssh 会先打印 "Allocated port 8 …" 与
+    /// 「You are not authenticated」横幅，地址随后才出现）。45 秒正好卡在边界上，
+    /// 于是通道其实建成了却被判超时并杀掉——用户看到的是「怎么都连不上」，
+    /// 而日志里只有一句超时。宁可多等 45 秒，也不要误杀一条已经建好的通道。
+    /// </summary>
+    internal static readonly TimeSpan ReadyTimeout = TimeSpan.FromSeconds(90);
 
     /// <summary>免费通道 60 分钟，留 5 分钟余量 → 会话 55 分钟。</summary>
     internal static readonly TimeSpan Session = TimeSpan.FromMinutes(55);
@@ -83,7 +91,12 @@ public sealed class PinggyTunnel : ITunnelProvider
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            RedirectStandardInput = false,
+            // 必须重定向 stdin **并保持打开**（我们从不写，也不关闭它）。
+            // 若让子进程继承父进程的 stdin：GUI/无头场景下那是空设备，ssh 一连上就读到 EOF，
+            // 会立刻结束会话——表现为「Allocated port 8」之后什么都没有、地址永远等不到，
+            // 而手工在终端里敲同样的命令却能拿到地址（终端 stdin 是打开的）。
+            // 实测 2026-10-21：这是 `tunnel up` 在 GUI/CLI 后台都失败的真正原因。
+            RedirectStandardInput = true,
             CreateNoWindow = true,
         };
         for (var i = 1; i < args.Count; i++) psi.ArgumentList.Add(args[i]);
