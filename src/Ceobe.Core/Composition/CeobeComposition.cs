@@ -60,7 +60,8 @@ public static class CeobeComposition
         {
             var required = JavaRequirement.CachedMajorOrFallback(gameVersion);
             var cacheWarm = JavaRequirement.IsCached(gameVersion);
-            var r = JavaResolver.Resolve(gameVersion, required, javaHome);
+            // cacheWarm 必须传下去：冷缓存时 required 只是兜底猜测，不能当硬性要求来判断
+            var r = JavaResolver.Resolve(gameVersion, required, javaHome, default, cacheWarm);
             if (!r.Ok || string.IsNullOrEmpty(r.JavaHome))
             {
                 var hint = cacheWarm

@@ -48,8 +48,15 @@ public static class JavaResolver
     /// 同步解析（required 已知，例如 InstanceMeta 已持久化时，避免再发网络请求）。
     /// 探测（扫目录、跑 java -version）允许同步——迁移约束 6。
     /// </summary>
+    /// <param name="requirementKnown">
+    /// <paramref name="required"/> 是否是真的查询结果。为 false 时它是
+    /// <see cref="JavaRequirement.FallbackMajor"/> 兜底值，**不得当作硬性要求**：
+    /// 否则会把可用的 JDK 25 误判成「不满足 26.3 需要 21」而拒绝启动——
+    /// 冷缓存（实例由 CLI/手工创建、或刚启动还没预热）时实测必现。
+    /// </param>
     public static Resolution Resolve(
-        string gameVersion, int required, string? explicitJavaHome, CancellationToken ct = default)
+        string gameVersion, int required, string? explicitJavaHome, CancellationToken ct = default,
+        bool requirementKnown = true)
     {
         // ① 显式指定：仍要过 ADR-018 守卫 + 主版本匹配，失败给出可执行下一步
         if (!string.IsNullOrWhiteSpace(explicitJavaHome))
@@ -83,14 +90,25 @@ public static class JavaResolver
             {
                 return new Resolution(required, required, host, true, null);
             }
+            // ③' 要求未知（冷缓存兜底值）：放行足够新的宿主 JDK，让服务端自己去判定。
+            // 拒绝一个能跑的 JDK 比冒一次「可能不匹配」的风险糟得多——后者服务端会明确报错。
+            if (!requirementKnown && hostMajor >= MinimumUsable)
+            {
+                return new Resolution(required, hostMajor, host, true,
+                    $"未能核实 {gameVersion} 的官方 Java 要求，已按 JAVA_HOME 的 Java {hostMajor} 启动；"
+                    + $"若服务端报版本不符，请执行 `ceobe jdk install {required}` 后重试。");
+            }
             // ④ 全不满足：找不到「任何」可用 JDK——失败可见化的重点文案
-            return NotFound(required, hostMajor, gameVersion);
+            return NotFound(required, hostMajor, gameVersion, requirementKnown);
         }
-        return NotFound(required, -1, gameVersion);
+        return NotFound(required, -1, gameVersion, requirementKnown);
     }
 
+    /// <summary>冷缓存放行所需的最低主版本：低于它是真的跑不动现代服务端（1.18+ 就要 17）。</summary>
+    public const int MinimumUsable = 17;
+
     /// <summary>「找不到任何可用 JDK」的统一文案：列出现状 + 两条可执行下一步。</summary>
-    private static Resolution NotFound(int required, int actual, string gameVersion)
+    private static Resolution NotFound(int required, int actual, string gameVersion, bool requirementKnown = true)
     {
         string actualText = actual < 0 ? "无（未发现带 java 启动器的运行时）" : actual.ToString();
         string hostNote = actual < 0

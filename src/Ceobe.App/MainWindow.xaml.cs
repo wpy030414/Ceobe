@@ -63,6 +63,20 @@ public sealed partial class MainWindow : Window
         // 实例状态变化（启动/停止/崩溃）时刷新侧栏徽标
         _manager.OnEvent += _ => DispatcherQueue.TryEnqueue(VmList.Refresh);
 
+        // 后台预热各实例的 Java 要求。
+        // 冷缓存时 RequiredMajor 只能返回兜底值，而启动路径是同步的、不能联网，
+        // 于是「26.3 需要 Java 21」这种误判会让可用的 JDK 25 被拒绝启动（实测踩过）。
+        // 预热只影响匹配精度与提示文案，失败不致命——启动路径本身已有冷缓存放行。
+        var warmNames = VmList.Rows.Select(r => r.Name).ToList();
+        _ = Task.Run(async () =>
+        {
+            foreach (var n in warmNames)
+            {
+                try { await Core.Jdk.JavaRequirement.RequiredMajorAsync(_manager.Meta(n).GameVersion); }
+                catch (Exception) { /* 预热失败：留给启动路径的兜底处理 */ }
+            }
+        });
+
         OnSelectionChanged(null);
 
         // 启动即选中第一个实例。对一个「管服」工具来说，空白面板不提供任何信息；

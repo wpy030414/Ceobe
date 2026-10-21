@@ -51,7 +51,6 @@ public static class Supervisor
         // 隧道依赖 IInstanceHost=manager 故内部后建；控制通道再把两者一起接上
         // （避免 runtime ↔ tunnel 循环依赖，见 InstanceManager.OpenControl）。
         var (tunnels, web) = CeobeComposition.StartAppServices(manager);
-        await using var control = manager.OpenControl(name, tunnels);
         await using var _web = web;
 
         if (foreground)
@@ -77,6 +76,11 @@ public static class Supervisor
             tunnels.Close();
             return 1;
         }
+
+        // ⚠ 控制通道必须在 Start 之后开：OpenControl 取的是「本进程托管的进程句柄」，
+        // 启动前它还是 null，会直接抛「实例 X 未在本进程运行」——`ceobe start -d` 曾因此
+        // 一启动就死，supervisor.log 里只有这一行错误。
+        await using var control = manager.OpenControl(name, tunnels);
 
         if (foreground)
         {
