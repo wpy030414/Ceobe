@@ -172,9 +172,9 @@
 
 ## ADR-016：GUI 默认浅色 + 跨平台打包（CI 产出 exe/dmg/AppImage）
 
-> **状态：部分失效（2026-10-21，见 ADR-019）。**
-> 「默认浅色」仍然有效（`settings.json` 的 `theme` 默认 `light`）；
-> 「跨平台打包」作废——产品已收缩为 Windows 专属，CI 只产出 Windows 自包含产物。
+> **状态：部分失效（2026-10-22，见 ADR-020）。**
+> 「默认浅色」已被 ADR-020 取代：默认跟随系统，设置提供 浅色 / 深色 / 跟随系统 三态。
+> 「跨平台打包」作废——产品已收缩为 Windows 专属，CI 只产出 Windows 自包含产物（ADR-019）。
 - 日期：2026-10-15
 - 状态：已采纳
 - 背景：项目所有者要求默认白色主题（深色手动切换）、侧栏占满 100vh、设置项收敛到弹窗；并要求「main 推送即取消同名旧任务，构建 exe/dmg/AppImage」。
@@ -237,3 +237,21 @@
 - 为什么不选其他：② WPF 工程风险最低（纯自包含单文件 exe、无 Windows App SDK 引导、UI 自动化成熟），但观感上比 WinUI 3 旧一挡，与「界面杂乱」的整改诉求方向不符；③ Avalonia 的跨平台能力正是本次明确放弃的目标，等于为不会用掉的能力付抽象成本；④ 跨语言边界要把日志流、状态机、文件锁全部重造一遍，是自找的复杂度；⑤ 中途无可用版本，且七条硬契约一次性搬迁的回归面无法验证。
 - 后果：**失去「宿主 JVM 即运行时」这条免费退路**——Java 版 `InstanceMeta.javaHome=null` 可直接继承当前 JVM，C# 版进程不是 Java，`JavaResolver` + `JdkInstaller`（Adoptium + 清华镜像）从锦上添花升级为生死线，下载失败即一个玩家都开不了服，必须优先做失败可见化与手动指定 JDK 兜底。UI 回归手段倒退：`-Dceobe.snapshot` 那类「启动即导出 Scene 快照」在 WinUI 3 无等价廉价方案，需另建（方案见 docs/MIGRATION.md 的「UI 回归（闸门 C）」小节）。CI 从三平台矩阵收敛为单 Windows job，但需引入 .NET SDK 与（若走 MSIX）证书/PACKAGE 环节。本机当前未安装 dotnet SDK，阶段一开工前需先装。
 - 何时重新审视：若 WinUI 3 非打包（unpackaged）分发在实际用户手上反复出问题（Windows App SDK 引导失败、FilePicker 初始化、自包含体积），应立刻降级到 WPF(.NET 10) 复用全部 XAML 语义之外的 core 成果——core/cli 与 UI 框架无关，止损成本仅为一个 UI 层。
+
+## ADR-020：WinUI 3 Fluent 2 外壳重构（NavigationView + SelectorBar + Mica）
+- 日期：2026-10-22
+- 状态：已采纳
+- 背景：2026-10-22 实机评审（截图见评审记录）发现，当前 GUI 虽然使用 WinUI 3 控件，但整体仍是「把 JavaFX 布局搬进 WinUI」：根 Grid 无背景导致深色主题白字白底；`ContentControl` 默认 Top 与 `TabView` 默认 `VerticalAlignment=Top` 让页面 `*` 行塌成 0 高度（控制台日志区与白名单列表整块不可见）；`VmList.Refresh()` 每次 `Rows.Clear()` 会清掉选中实例，而主窗口对每条日志事件都触发它；C# 对话框写死 ARGB，UIA 中图标+文字按钮名称为空。项目所有者要求「全面优化，不计成本达到 WinUI 3 最佳实践」。
+- 考虑过的方案：① 保留自定义侧栏 + TabView，只做 Fluent 美化；② 官方 `NavigationView`（实例）+ `SelectorBar`（分区）；③ 自绘侧栏 + 顶部 NavigationView。
+- 决策：
+  1. 主壳选 **方案 ②**：内置 `TitleBar` + `NavigationView`（实例导航，`PaneFooter` 放新建/设置）+ `SelectorBar`（七个分区）；删除自定义 `InstanceListView` 与 `TabView`。页面宿主用显式 Stretch 的 Grid + 可见性切换，杜绝 `*` 行塌陷。
+  2. 主题改 **三态**：`light | dark | system`，默认 `system`；`ContentDialog` 显式设置 `RequestedTheme`（PopupRoot 不继承根主题）。Mica 仅在「跟随系统」且 `MicaController.IsSupported()` 时启用，显式主题与 Win10 使用纯色回退层，避免 Mica tint 与应用主题不一致。
+  3. 建立设计令牌：4px 网格、官方字阶、`CardBackground*` 卡片、`ControlCornerRadius`/`OverlayCornerRadius`、`Consolas` 等宽字体；零硬编码颜色。
+  4. 新增官方 `CommunityToolkit.WinUI.Controls.SettingsControls 8.2.251219`（仅 App 工程），用 `SettingsCard` / `SettingsExpander` 承载设置与服务器配置。
+  5. 新建实例由「三步向导」改为**单页表单**（6 个字段一页完成，补内联校验与进度），同步更新 `docs/specs/module-gui.md`。
+  6. 游戏配置的字段输入改为**按类型选择 DataTemplate**：旧的四控件叠放 + Visibility 会让隐藏控件在初始化时回写坏值（实测把 `motd` 写成 `0` 并制造假校验错误）；补上 VM 已建模但 XAML 从未渲染的资源包/数据包面板。
+  7. ViewModel：`InstanceListViewModel.Refresh()` 改差量更新并保留选中；新增 `SelectedRow` 供 NavigationView 单向绑定；Core 状态/日志事件统一经 `UiThread.Post` marshal；主窗口不再对每条日志做全量刷新。
+- 为什么选这个：`NavigationView` 自带键盘导航、无障碍语义、选中指示与 PaneFooter 结构；`SelectorBar` 是 WinUI 3 官方的页内分区选择器；内置 `TitleBar` 自动处理 caption buttons 与主题。三者组合是 Windows 11 应用的官方结构，而不是控件拼贴。差量刷新与显式主题作用域直接消灭了三条 P0 缺陷。
+- 为什么不选其他：① 需要为 `TabView` 的默认 Top 与企业级 `ContentControl` 对齐写一堆 workaround，仍保留「非官方页签」观感；③ 左侧仍是自绘列表，失去 NavigationView 的键盘/无障碍/未来紧凑模式能力，且顶部 NavigationView 在 7 项时会把溢出项收进 More，反而不如 SelectorBar 直观。
+- 后果：`InstanceTabs` 从 TabView 改为 SelectorBar，页面刷新仍按 `IReloadable`；`SettingsCard` 增加一个新的 UI 依赖（已用 artifact 检查守护）；深色/浅色/系统三态需要同时验证 Mica 与纯色回退；`TabView` 相关的旧经验（默认 Top、Collect/SelectionChanged）不再适用，已写入 AGENTS 已知易错点。CI 增加闸门 C grep、测试数量下限与发布产物完整性检查；UIA smoke 仅在本地交互式会话运行。
+- 何时重新审视：需要 NavigationView 紧凑模式（需为每个实例项提供 `Icon`）或引入跨平台 UI 框架时。

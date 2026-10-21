@@ -42,22 +42,48 @@ jobs:
       - name: Restore
         run: dotnet restore ceobe.slnx
 
+      # 闸门 C 的 CI 守卫：ViewModels 必须保持 net10.0 且零 WinUI 依赖。
+      # 只查 using 与工程引用，避免把解释性注释里的 "Microsoft.UI" 当成违规。
+      - name: Gate C - ViewModels must not reference WinUI
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem src/Ceobe.App.ViewModels -Recurse -Filter *.cs
+          $hits = $files | Select-String -Pattern '^\s*using\s+(Microsoft|Windows)\.UI'
+          if ($hits) {
+            $hits | ForEach-Object { Write-Error "$($_.Path):$($_.LineNumber): $($_.Line)" }
+            exit 1
+          }
+          $vmProj = Get-Content src/Ceobe.App.ViewModels/Ceobe.App.ViewModels.csproj -Raw
+          if ($vmProj -match 'WindowsAppSDK|Microsoft\.UI\.Xaml') {
+            throw "ViewModels project must not reference WindowsAppSDK / WinUI"
+          }
+
       - name: Build
         run: dotnet build ceobe.slnx -c Release --no-restore
 
-      # 必须单独构建 GUI：Ceobe.App 只声明 x64 平台，而解默认 Any CPU，
-      # `dotnet build ceobe.slnx` 会静默跳过它（构建显示成功但 GUI 没编）。
+      # 护栏：即使解构建已映射 x64，仍显式构建 GUI，确保 XAML 编译器在 Release 下完整跑过。
       - name: Build GUI shell
         run: dotnet build src/Ceobe.App/Ceobe.App.csproj -c Release --no-restore
 
       # 网络用例（Trait Category=network）由 test 工程默认排除：
       # 它们要真实下载服务端 jar / JDK，几分钟起步且受网络环境影响。
       # 需要时手动跑：dotnet test --filter "Category=network"
+      # 同时守住测试数量下限：静默少跑一批用例比失败更危险。
       - name: Test
-        run: dotnet test ceobe.slnx -c Release --no-build
+        shell: pwsh
+        run: |
+          dotnet test ceobe.slnx -c Release --no-build --logger "trx;LogFileName=test.trx"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $count = 0
+          foreach ($trx in (Get-ChildItem -Recurse -Filter test.trx)) {
+            [xml]$doc = Get-Content $trx.FullName
+            $count += @($doc.TestRun.Results.UnitTestResult).Count
+          }
+          Write-Output "Tests executed: $count (baseline 481)"
+          if ($count -lt 481) { throw "Test count shrank: $count < 481" }
 
       # GUI 必须同时带 SelfContained + WindowsAppSDKSelfContained，
-      # 否则产物缺 WinUI 原生运行时（Microsoft.ui.xaml.dll / resources.pri），
+      # 否则产物缺 WinUI 原生运行时（Microsoft.ui.xaml.dll / Ceobe.pri），
       # 在没装 Windows App SDK 的机器上开窗即崩。详见 Ceobe.App.csproj。
       - name: Publish GUI
         run: >
@@ -70,6 +96,28 @@ jobs:
           dotnet publish src/Ceobe.Cli/Ceobe.Cli.csproj
           -c Release -r win-x64 --self-contained true
           -o dist/cli
+
+      # 自包含发布最容易静默退化成「开发机能跑、用户机开窗崩」：
+      # 缺 WindowsAppSDK 原生部分或 SettingsControls 依赖时，发布本身仍会成功。
+      # 注意：本 SDK 版本把页面 XAML 资源合并进 Ceobe.pri，发布目录不再有独立 .xbf；
+      # 旧文档里的 resources.pri 也对应 Ceobe.pri。
+      - name: Verify GUI artifact payload
+        shell: pwsh
+        run: |
+          $required = @(
+            'dist/app/Ceobe.exe',
+            'dist/app/Microsoft.ui.xaml.dll',
+            'dist/app/Ceobe.pri',
+            'dist/app/Ceobe.App.ViewModels.dll',
+            'dist/app/CommunityToolkit.WinUI.Controls.SettingsControls.dll',
+            'dist/app/Assets/ceobe.ico'
+          )
+          foreach ($path in $required) {
+            if (-not (Test-Path $path)) { throw "Missing GUI artifact: $path" }
+          }
+          if (-not (Get-ChildItem dist/app -Filter 'Microsoft.WindowsAppRuntime*.pri')) {
+            throw "Missing WindowsAppRuntime PRI payload"
+          }
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v6

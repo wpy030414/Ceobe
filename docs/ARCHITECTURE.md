@@ -8,8 +8,10 @@
 
 ```
 ┌──────────── Ceobe.App（WinUI 3 + Windows App SDK，非打包自包含）────────────┐
-│  Views/      实例列表 / 页签容器 / 控制台 / 配置 / Mod / 整合包 / 玩家 / 穿透   │
-│  Converters/ 纯 View 层转换器（bool→Visibility、三态→画刷…）                  │
+│  MainWindow / Views/   内置 TitleBar + NavigationView + 实例工作区 + 七个分区  │
+│  Styles/               间距 / 字阶 / 卡片 / 表格行等 Fluent 2 设计令牌           │
+│  Controls/             状态点 / 三态图标 / 空状态 / 实例项 / 配置字段行          │
+│  Converters/           纯 View 层转换器（bool→Visibility 等）                   │
 └───────────────────────┬─────────────────────────────────────────────────────┘
                         │ x:Bind（View 只做绑定与手势转发）
 ┌───────────────────────▼── Ceobe.App.ViewModels（net10.0，零 WinUI 引用）─────┐
@@ -44,7 +46,7 @@
 |------|----------|------|
 | `src/Ceobe.Core` | `net10.0` | 全部业务：实例 CRUD、进程生命周期、jar 获取、配置读写、Mod、玩家名单、穿透、内嵌控制台 |
 | `src/Ceobe.App.ViewModels` | `net10.0` | 全部界面状态与交互逻辑，**不引用任何 WinUI 类型**（闸门 C 的前提） |
-| `src/Ceobe.App` | `net10.0-windows10.0.19041.0` | WinUI 3 桌面壳：XAML 视图 + 转换器 + 接线 |
+| `src/Ceobe.App` | `net10.0-windows10.0.19041.0` | WinUI 3 桌面壳：内置 TitleBar + NavigationView + SelectorBar、`Styles/` 设计令牌、`Controls/` 复用控件、XAML 对话框、转换器与接线 |
 | `src/Ceobe.Cli` | `net10.0` | 无头入口；docker 风格子命令；退出码契约 0/1/2 |
 | `tests/Ceobe.Core.Tests` | `net10.0` | 域核心测试（含闸门 A 等价搬迁、闸门 B 真值 fixture） |
 | `tests/Ceobe.App.ViewModels.Tests` | `net10.0` | ViewModel 层测试（闸门 C 的重心） |
@@ -88,8 +90,9 @@ Core 内部用**依赖倒置**切断 `Runtime ↔ Providers/Jdk/Tunnel` 的编�
 ## 重要技术边界
 
 - **.NET 10**（SDK 10.0.402）。`Directory.Build.props` 的 `<Version>` 是 CalVer 唯一权威；`<Version>` 必须是点分四段（`26.10.21.01`），因为 NuGet 按 SemVer2 拒绝数字前导零的 prerelease 标识。
-- **WinUI 3 + Windows App SDK 2.5.1**，非打包（`WindowsPackageType=None`）自包含分发。发布必须同时开 `SelfContained` 与 `WindowsAppSDKSelfContained`：前者带 .NET 运行时，后者带 WinUI 原生部分（`Microsoft.ui.xaml.dll`、`resources.pri`）。
-- **MVVM**：`CommunityToolkit.Mvvm` 源生成器。ViewModel 不引用 WinUI 类型，可在无窗口环境单测——这是 JavaFX `-Dceobe.snapshot` 快照回归的替代方案（闸门 C）。
+- **WinUI 3 + Windows App SDK 2.5.1**，非打包（`WindowsPackageType=None`）自包含分发。发布必须同时开 `SelfContained` 与 `WindowsAppSDKSelfContained`：前者带 .NET 运行时，后者带 WinUI 原生部分（`Microsoft.ui.xaml.dll`、`Ceobe.pri`；本 SDK 版本把页面 XAML 合并进 `Ceobe.pri`，发布目录无独立 `.xbf`）。
+- **GUI 结构（ADR-020）**：主壳是内置 `TitleBar`（`ExtendsContentIntoTitleBar`）+ `NavigationView`（实例，`PaneFooter` 放新建/设置）+ `SelectorBar`（七个分区）；Mica 仅在跟随系统且 `MicaController.IsSupported()` 时启用，否则用纯色 `PageBackground`。`Styles/Spacing|Typography|Controls.xaml` 是间距/字阶/卡片/表格行的唯一来源；UI 依赖只允许出现在 `Ceobe.App`（`CommunityToolkit.WinUI.Controls.SettingsControls 8.2.251219`）。
+- **MVVM**：`CommunityToolkit.Mvvm` 源生成器。ViewModel 不引用 WinUI 类型，可在无窗口环境单测——这是 JavaFX `-Dceobe.snapshot` 快照回归的替代方案（闸门 C）。Core 事件经 `ViewModels/UiThread.Post` marshal 回 UI 线程；实例列表刷新是差量更新，必须保留选中。
 - **JSON**：`System.Text.Json`，camelCase 策略。与 Java 版 Jackson 只保证**字段级**兼容（Jackson 写 `"k" : v`、STJ 写 `"k": v`，不追求字节相同）。
 - **HTTP**：`System.Net.Http.HttpClient` 单例；所有请求带 User-Agent（Modrinth 硬要求）。
 - **下载镜像**：`Mirrors` 改写 URL（Mojang→BMCLAPI、Fabric meta→BMCLAPI、Modrinth CDN→mcimirror、Temurin→清华），失败自动回退上游。

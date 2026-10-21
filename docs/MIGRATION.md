@@ -10,7 +10,7 @@
 | 阶段一 Core + CLI | 完成 | Core 261 个测试全绿；CLI 顶层命令 + 隐藏 `supervise`，退出码 0/1/2 实测 exe |
 | 闸门 A（Java 测试等价搬迁） | 完成 | Java 侧 10 个测试类逐条对照 |
 | 闸门 B（双跑对读） | 完成 | `tools/wiregen` 用真实 Jackson 生成 fixture，Java/C# 双向对读；并修掉 Java 侧 `isDark()` 只读属性导致主题丢失的 bug |
-| 阶段二 GUI | 完成 | 七个页签齐全；ViewModel 209 个测试全绿；UI Automation 实测七页逐个切换不崩溃 |
+| 阶段二 GUI | 完成 | 七个分区齐全；ViewModel 220 个测试、全量 481 个测试全绿；2026-10-22 完成 Fluent 2 外壳重构（ADR-020） |
 | 闸门 C（UI 回归） | 按约定口径达成 | 重心在 ViewModel 单测 + UIA 断言；像素基线按本文档既定方案放弃 |
 | 阶段三 文档 / CI | 完成 | ARCHITECTURE / PRD / specs 改写为 C# 事实；ADR-001/002/008/016/017/018 标注取代；CI 收敛为 `windows-latest` |
 | 阶段三 Java 移除 | 完成 | `ceobe-core/` `ceobe-cli/` `ceobe-gui/` `pom.xml` 已从工作树删除；历史与 tag `pre-csharp-migration` 保留 |
@@ -126,7 +126,9 @@ ceobe.sln
 Java 版靠 `-Dceobe.snapshot=<png> [-Dceobe.snapshot.tab=配置]` 启动即导出 Scene 快照，无需窗口焦点；WinUI 3 **无等价廉价手段**，这是本次重构明确接受的倒退，替代方案分两层：
 
 1. **逻辑层不靠截图**：把 `PropsPaneBase`/各 Pane 的可观测行为下沉到 ViewModel，用普通单测断言（分组结果、requiresRestart 标记、字段→控件类型分派、导入嗅探结果）。ViewModel 不引用 WinUI 类型，可在无窗口环境跑。
-2. **像素层只在关键页做**：`WinAppDriver`/` FlaUI` 驱动 UIA 树，断言控件存在与文本，配合 `Windows.UI.ViewManagement`/`GraphicsCaptureAPI` 抓窗口位图存 baseline；仅在 CI 的 Windows job 里跑，且需要交互式会话（CI 上的 WinUI 3 无头渲染不可靠，遇阻则退化为「人工首版验收 + 之后只信 UIA 断言」）。
+2. **像素层只在关键页做**：`WinAppDriver`/`FlaUI` 驱动 UIA 树，断言控件存在与文本，配合 `Windows.UI.ViewManagement`/`GraphicsCaptureAPI` 抓窗口位图存 baseline；仅在 CI 的 Windows job 里跑，且需要交互式会话（CI 上的 WinUI 3 无头渲染不可靠，遇阻则退化为「人工首版验收 + 之后只信 UIA 断言」）。
+
+**2026-10-22 落地**：新增 `tools/ui-smoke/Invoke-UiSmoke.ps1`（本地交互式运行，不进 GitHub-hosted CI）：独立 `CEOBE_HOME`、UIA 断言实例导航/七个分区/日志区高度/按钮可访问名/两个对话框，浅色与深色两次启动截图并检查中心亮度（深色 < 0.35、浅色 > 0.65）。CI 负责闸门 C grep、测试数量下限（481）与发布产物完整性（`Microsoft.ui.xaml.dll`、`Ceobe.pri`、SettingsControls 与图标）。
 
 结论：像素级回归不追求覆盖率，验收重心放在 ViewModel 层；这一条与 ADR-019「后果」中记录的倒退风险一致。
 

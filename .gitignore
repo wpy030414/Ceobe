@@ -16,3 +16,6 @@ dependency-reduced-pom.xml
 bin/
 obj/
 *.user
+
+# 发布产物（CI 也输出到 dist/）
+dist/

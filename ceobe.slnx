@@ -1,11 +1,8 @@
 <Solution>
   <!--
-    注意：Ceobe.App 只声明了 x64 平台，而本解默认是 Any CPU。
-    `dotnet build ceobe.slnx` 会**静默跳过 App**（只编 Core/CLI/ViewModels/tests），
-    构建显示成功但 GUI 产物没更新——实测因此跑过两轮旧二进制，端到端结论全错。
-    故：GUI 必须显式构建 `src/Ceobe.App/Ceobe.App.csproj`；
-    CI 与 README 都按这个来（见 AGENTS.md「已知易错点」）。
-    不要给解加 x64 平台：那会把 App 输出到 bin/x64/Release/...，与 bin/Release/... 并存，更容易拿错产物。
+    Ceobe.App 只声明 x64，故此处显式映射到 x64；解构建会把 App 输出到 bin/x64/Release/...，
+    而显式 `dotnet build src/Ceobe.App/Ceobe.App.csproj` 输出到 bin/Release/...。
+    两条路径并存时最容易拿错旧二进制——端到端验证/发布请用 `dotnet publish ... -o dist/app`。
   -->
   <Folder Name="/src/">
     <Project Path="src/Ceobe.App.ViewModels/Ceobe.App.ViewModels.csproj" />

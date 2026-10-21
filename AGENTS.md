@@ -52,25 +52,46 @@ dotnet publish src/Ceobe.Cli/Ceobe.Cli.csproj -c Release -r win-x64 --self-conta
 
 ### 已知易错点（踩过）
 
-- `Ceobe.App` 发布必须同时开 `SelfContained` **和** `WindowsAppSDKSelfContained`：前者带 .NET 运行时，后者带 WinUI 原生部分（`Microsoft.ui.xaml.dll`、`resources.pri`）。只开前者在开发机上能跑，在用户机上开窗即崩。
+- `Ceobe.App` 发布必须同时开 `SelfContained` **和** `WindowsAppSDKSelfContained`：前者带 .NET 运行时，后者带 WinUI 原生部分（`Microsoft.ui.xaml.dll`、`Ceobe.pri`）。只开前者在开发机上能跑，在用户机上开窗即崩。
 - 非打包 WinUI 的 `FileOpenPicker` 需要 HWND，`UserControl` 拿不到 → 导入一律走**拖放 + 手填路径**。
 - `Window` 不是 `FrameworkElement`：转换器 / 主题 / 某些 x:Bind 需要把内容放进 `UserControl`，主题切换要设 `Window.Content` 的 `RequestedTheme`。
 - `System.CommandLine` 必须设 `EnableDefaultExceptionHandler = false`，否则退出码契约失效。
 - XAML 的 `x:Bind` 在 `DataTemplate` 里默认 `OneTime`：会变的属性必须显式 `Mode=OneWay`。
 - **构建/发布前先关掉正在运行的 `Ceobe.exe`**：它锁住输出目录里的 DLL，MSBuild 要么报 `MSB3027`，
   要么在某些增量路径下跳过复制却仍显示成功——于是你跑的还是旧二进制，端到端会得出错误结论（实测踩过）。
-- **`dotnet build ceobe.slnx` 不会编 GUI**：`Ceobe.App` 只声明 x64，而解默认 Any CPU，该工程被静默跳过。
-  编译 GUI 必须显式 `dotnet build src/Ceobe.App/Ceobe.App.csproj`；CI 已单列这一步。
-  也不要给解加 x64 平台——那会把产物落到 `bin/x64/Release/...`，与 `bin/Release/...` 并存，更容易拿错。
+- **GUI 产物有两条路径，别拿错**：`ceobe.slnx` 已把 `Ceobe.App` 映射到 x64，解构建会输出到
+  `bin/x64/Release/...`；显式 `dotnet build src/Ceobe.App/Ceobe.App.csproj` 输出到 `bin/Release/...`。
+  端到端验证/发布前先确认你运行的是哪一个（发布请用 `dotnet publish ... -o dist/app`，不要手动拼 bin 路径）。
+  CI 仍单列 GUI 构建步骤作为护栏。
+- **深色主题必须有一层纯色回退**：根元素只设 `Transparent` 而没有任何背景层时，深色下文字变白、窗口底仍白，
+  整页不可读。`MainWindow.xaml` 的 `PageBackground` 是纯色回退层；Mica 仅在「跟随系统」且
+  `MicaController.IsSupported()` 时启用并隐藏该层，显式浅色/深色与 Win10 一律用纯色。
+- **`ContentControl` / `TabView` 默认不竖向拉伸**：`ContentControl` 默认 Left/Top，`TabView` 的默认样式
+  写死 `VerticalAlignment=Top`；直接承载带 `*` 行的页面会让日志/列表塌成 0 高度。页面宿主必须是
+  显式 `HorizontalContentAlignment=Stretch`、`VerticalContentAlignment=Stretch` 的 Grid，分页靠 Visibility。
+- **`NavigationView.MenuItemTemplate` 会作用到 `FooterMenuItems`**：静态 footer 项会被实例行模板错误渲染成空白。
+  底部动作改用 `PaneFooter` + 普通 Button。
+- **`ContentDialog` 在 PopupRoot 里**，不继承 `Window.Content` 的 `RequestedTheme`；打开前必须显式设置
+  （`ThemeApplier.ApplyToDialog`），否则深色应用会弹出浅色对话框。
+- **`Button` 的 Content 是 StackPanel 时 UIA Name 为空**：图标+文字按钮不会聚合子 TextBlock 的名称，
+  必须显式 `AutomationProperties.Name`；图标按钮同理。CI 的 UIA smoke 会抓这类回归。
+- **`TitleBar.IsBackButtonVisible` 是 bool，`NavigationView.IsBackButtonVisible` 是枚举**：别套错。
+- **WinUI `FontFamily` 不支持 `"Cascadia Mono,Consolas"` 这种逗号回退**：未装 Cascadia 的机器会静默退回 UI 字体。
+  等宽文本统一用 `{StaticResource CeobeMonoFont}`（Consolas）。
+- **同一单元格叠放多个输入控件会回写坏值**：隐藏控件仍参与 x:Bind 初始化——实测把 `motd` 改成 `0` 并制造假校验错误。
+  字段输入必须用 `DataTemplateSelector` 只实例化匹配类型的那一个控件（见 `PropFieldRow`）。
+- **测试端口 25565 会被本机运行中的实例占用**：跑 `dotnet test` 前先停掉使用该端口的服务器。
+- 本地 UI 冒烟：`tools/ui-smoke/Invoke-UiSmoke.ps1`（需交互式桌面与已关闭的 Ceobe.exe；GitHub-hosted CI 跑不了）。
 
 ## 目录速查
 
 - `src/Ceobe.Core/` — 域核心：模型、存储、配置、providers、运行时、JDK、Mods、玩家名单、隧道、内嵌 Web 控制台
 - `src/Ceobe.App.ViewModels/` — 全部界面状态与逻辑（零 WinUI 引用）
-- `src/Ceobe.App/` — WinUI 3 壳：XAML 视图、转换器、接线
+- `src/Ceobe.App/` — WinUI 3 壳：`Views/` 页面与工作区、`Styles/` 设计令牌、`Controls/` 复用控件、XAML 对话框、转换器与接线
 - `src/Ceobe.Cli/` — System.CommandLine 无头入口
 - `tests/` — `Ceobe.Core.Tests`（域核心 + 闸门 A/B）、`Ceobe.App.ViewModels.Tests`（闸门 C）
 - `tools/wiregen/` — 闸门 B 的真值 fixture 生成器（真实 Jackson + 真实 Java 模型类）；Java 源码已移除，重跑前需从 tag `pre-csharp-migration` 取出对应模型
+- `tools/ui-smoke/` — 本地交互式 UIA 冒烟（不跑 CI）：导航/分区/日志高度/可访问名/对话框/浅色深色亮度
 - `docs/PRD.md` — 产品需求；`docs/ARCHITECTURE.md` — 结构与外部契约；`docs/DECISIONS.md` — ADR；`docs/specs/` — 模块规格；`docs/MIGRATION.md` — 迁移施工图与进度
 - 已退役的 Java 实现不在工作树中：需要对照时从 tag `pre-csharp-migration` 取
-- `.github/workflows/windows.yml` — CI：Windows 编译 + 测试；推 `v*` 标签时打包发布 Release
+- `.github/workflows/windows.yml` — CI：Windows 编译 + 测试 + 闸门 C 检查 + 发布产物完整性；推 `v*` 标签时打包发布 Release

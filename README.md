@@ -28,6 +28,19 @@
 
 - 运行：`dist/app/Ceobe.exe`（GUI）或 `dist/cli/ceobe.exe <命令>`（无头 CLI）。
 
+## GUI（WinUI 3 / Fluent 2）
+
+- 主壳：内置 `TitleBar` + `NavigationView`（实例导航，底部新建/设置）+ `SelectorBar`（控制台/服务器配置/游戏配置/Mod/整合包/玩家/穿透）。
+- 主题：浅色 / 深色 / 跟随系统（默认跟随系统）；跟随系统时在 Windows 11 上启用 Mica，其余情况使用纯色回退。
+- 视觉：4px 间距网格、官方字阶、统一卡片/表格行样式、零硬编码颜色；所有图标按钮都有可访问名称。
+- 本地 UI 冒烟（需交互式桌面、先关闭已运行的 Ceobe.exe）：
+
+  ```powershell
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -STA -File tools\ui-smoke\Invoke-UiSmoke.ps1
+  ```
+
+  脚本使用独立的临时 `CEOBE_HOME`，断言实例导航、七个分区、日志区高度、按钮可访问名、两个对话框，并对浅色/深色做亮度检查。
+
 ## 仓库结构
 
 ```
