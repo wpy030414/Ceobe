@@ -1,0 +1,11 @@
+{
+  "name" : "old",
+  "serverType" : "PAPER",
+  "gameVersion" : "1.21.4",
+  "memoryMb" : 2048,
+  "jvmArgs" : "",
+  "port" : 25565,
+  "launchJar" : "server.jar",
+  "createdAt" : "2026-10-21T08:02:20.269265100Z",
+  "mods" : [ ]
+}

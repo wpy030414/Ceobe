@@ -12,6 +12,16 @@ public sealed record InstanceStatus(Model.InstanceMeta Meta, Model.InstanceState
 {
     public string Name => Meta.Name;
     public int Port => Meta.Port;
+
+    /// <summary>最近一次的玩家通道地址；无则回落到本机地址（对齐 Java 版 InstanceStatus.addressLine）。</summary>
+    public string? PinggyAddress => Meta.LastPinggyAddress;
+    public string? CloudflareUrl => Meta.LastCloudflareUrl;
+
+    /// <summary>给玩家看的地址行：有公网通道用通道地址，否则本机回环。</summary>
+    public string AddressLine =>
+        string.IsNullOrWhiteSpace(Meta.LastPinggyAddress)
+            ? "本机 127.0.0.1:" + Meta.Port
+            : Meta.LastPinggyAddress!;
 }
 
 /// <summary>
@@ -45,6 +55,20 @@ public interface IJavaLocator
     /// （见 JavaRequirement / ADR-006），Runtime 不应复制这张表，否则两处会漂移。
     /// </summary>
     string ResolveLauncher(string? javaHome, string gameVersion);
+
+    /// <summary>
+    /// 在异步路径上预热「MC 版本 → 所需 Java 主版本」缓存。
+    ///
+    /// 为什么必须有这个方法：<see cref="ResolveLauncher"/> 是同步的（由
+    /// <c>ServerProcess.Start</c> 在启动路径调用，无法 await），而 required 主版本
+    /// 来自 piston-meta 的网络查询。Java 版靠「同步方法内部同步 HTTP」实现，C# 不能那样做，
+    /// 故约定由异步的 <c>InstanceManager.CreateAsync</c> 先预热、同步路径只读缓存。
+    ///
+    /// 默认实现为空：测试用的假 locator 借此保持离线（否则每个创建流程都会打一次网络，
+    /// 无网环境下要等到 30 秒超时），实现方负责接真实的缓存预热。
+    /// </summary>
+    Task WarmRequirementCacheAsync(string gameVersion, CancellationToken ct = default) =>
+        Task.CompletedTask;
 }
 
 /// <summary>

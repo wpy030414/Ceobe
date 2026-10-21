@@ -16,5 +16,10 @@
   <ItemGroup>
     <!-- SDK 项目默认不复制 None 项；缺这条 xunit 读不到配置，collection 级并行仍会串扰全局静态 -->
     <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+    <!--
+      闸门 B 真值 fixture：由 tools/wiregen/Gen.java 用**真实 Jackson + 真实 Java 模型类**生成，
+      不是手打样本。Java 侧模型字段变更时需重跑生成器（见 Gen.java 的 javac/java 命令）。
+    -->
+    <None Update="fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

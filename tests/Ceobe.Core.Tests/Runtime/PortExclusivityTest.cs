@@ -47,7 +47,7 @@ public class PortExclusivityTest : IDisposable
     }
 
     private static InstanceManager NewManager() =>
-        new(new TestFakes.StubJavaLocator(), installJar: null, tunnels: null);
+        new(new TestFakes.StubJavaLocator(), installJar: null);
 
     [Fact(DisplayName = "端口冲突被拒绝而自身端口不算冲突")]
     public void 端口冲突被拒绝而自身端口不算冲突()

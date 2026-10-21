@@ -24,6 +24,24 @@ public static class JavaRequirement
 
     private static readonly ConcurrentDictionary<string, int> Cache = new(StringComparer.Ordinal);
 
+    /// <summary>该版本的 required 是否已在缓存中（即是否为真查询结果而非兜底值）。</summary>
+    public static bool IsCached(string mcVersion) => Cache.ContainsKey(mcVersion);
+
+    /// <summary>
+    /// 同步读缓存；未命中返回兜底值 <see cref="Fallback"/>，**不联网**。
+    ///
+    /// 为什么需要它：Java 版的 <c>requiredMajor</c> 是同步方法（内部同步 HTTP），
+    /// 而 <c>ServerProcess.Start</c> → <c>IJavaLocator.ResolveLauncher</c> 是同步启动路径，
+    /// 无法 await。故约定：异步路径（<c>InstanceManager.CreateAsync</c>）负责预热缓存，
+    /// 同步路径只读缓存。缓存冷时用兜底值，调用方须按「不确定」处理而非硬判版本不符
+    /// （否则会把正确的 JDK 25 误判为不匹配 26.x）。
+    /// </summary>
+    public static int CachedMajorOrFallback(string mcVersion) =>
+        Cache.TryGetValue(mcVersion, out var v) ? v : Fallback;
+
+    /// <summary>兜底主版本（供调用方判断「不确定」时给出提示文案）。</summary>
+    public static int FallbackMajor => Fallback;
+
     /// <summary>
     /// 该 MC 版本所需的 Java 主版本。非 Mojang 版本（快照/拼写错误）或网络失败时返回兜底 21，
     /// 不抛异常（对齐 Java 版「不阻塞流程」语义）；用户取消经 CancellationToken 上抛。

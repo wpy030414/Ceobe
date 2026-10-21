@@ -1,0 +1,14 @@
+{
+  "name" : "nf",
+  "serverType" : "NEOFORGE",
+  "gameVersion" : "1.21.4",
+  "loaderVersion" : "21.4.1",
+  "memoryMb" : 2048,
+  "jvmArgs" : "",
+  "port" : 25565,
+  "launchJar" : "libraries/net/neoforged/neoforge/21.4.1/win_args.txt",
+  "launchArgsFile" : "libraries/net/neoforged/neoforge/21.4.1/win_args.txt",
+  "authlibInjectorUrl" : "https://auth.example.test/yggdrasil",
+  "createdAt" : "2026-10-21T08:02:20.272342500Z",
+  "mods" : [ ]
+}

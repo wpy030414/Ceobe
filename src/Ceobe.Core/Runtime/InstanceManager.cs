@@ -28,14 +28,11 @@ public sealed partial class InstanceManager : IInstanceHost
     private readonly object _hostedLock = new();
     private readonly IJavaLocator _java;
     private readonly JarInstaller? _installJar;
-    private readonly IInstanceTunnels? _tunnels;
 
-    public InstanceManager(IJavaLocator java, JarInstaller? installJar = null,
-                           IInstanceTunnels? tunnels = null)
+    public InstanceManager(IJavaLocator java, JarInstaller? installJar = null)
     {
         _java = java;
         _installJar = installJar;
-        _tunnels = tunnels;
     }
 
     /// <summary>事件总线：GUI/CLI/Web 订阅同一套（对齐 Java 版 listeners）。</summary>
@@ -280,7 +277,21 @@ public sealed partial class InstanceManager : IInstanceHost
             // NeoForge 走参数文件启动（ADR-010），丢了这条会错误地用 -jar server.jar 拉起
             LaunchArgsFile = installed.LaunchArgsFile,
         };
-        // 解析应使用的 Java：显式指定 > 自管 JDK > 宿主 JAVA_HOME（C# 版无「继承当前 JVM」退路）
+        // 解析应使用的 Java：显式指定 > 自管 JDK > 宿主 JAVA_HOME（C# 版无「继承当前 JVM」退路）。
+        // 先经 locator 预热 required 主版本缓存：同步的启动路径（ServerProcess.Start → ResolveLauncher）
+        // 只能读缓存、不能 await。预热失败不阻断创建——ResolveLauncher 会按「不确定」给出提示。
+        try
+        {
+            await _java.WarmRequirementCacheAsync(spec.GameVersion, ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception e) when (e is CeobeException or IOException)
+        {
+            sink.Update("提示: 未能确认该版本所需 Java（" + e.Message + "），启动时将按兜底版本解析", 0, -1);
+        }
         try
         {
             var launcher = _java.ResolveLauncher(spec.JavaHome, spec.GameVersion);
@@ -461,11 +472,15 @@ public sealed partial class InstanceManager : IInstanceHost
         }
     }
 
-    /// <summary>为本进程托管的实例开启控制通道（监督进程用）。</summary>
-    public ControlServer OpenControl(string name)
+    /// <summary>
+    /// 为本进程托管的实例开启控制通道（监督进程用）。
+    /// 隧道管理器由调用方传入而非从 manager 取——对齐 Java 版 <c>ControlServer(process, dir, name, tunnels)</c>，
+    /// 避免 runtime ↔ tunnel 形成循环依赖（tunnel 依赖 IInstanceHost=manager，manager 不该反向依赖 tunnel）。
+    /// </summary>
+    public ControlServer OpenControl(string name, IInstanceTunnels? tunnels)
     {
         var p = ProcessOf(name) ?? throw CeobeException.Of("实例 {0} 未在本进程运行", name);
-        return new ControlServer(p, Dir(name), name, _tunnels);
+        return new ControlServer(p, Dir(name), name, tunnels);
     }
 
     // —— IInstanceHost ——

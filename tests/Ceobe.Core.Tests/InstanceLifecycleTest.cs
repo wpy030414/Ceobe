@@ -36,7 +36,7 @@ public class InstanceLifecycleTest : IDisposable
     }
 
     private static InstanceManager NewManager() =>
-        new(new TestFakes.StubJavaLocator(), TestFakes.OfflineJarInstaller(), null);
+        new(new TestFakes.StubJavaLocator(), TestFakes.OfflineJarInstaller());
 
     private static InstanceSpec Spec(string name = "e2e", int port = 25565, int mem = 2048,
         ServerType type = ServerType.VANILLA) =>
@@ -212,7 +212,7 @@ public class InstanceLifecycleTest : IDisposable
     public async Task 版本以provider为准()
     {
         var manager = new InstanceManager(new TestFakes.StubJavaLocator(),
-            TestFakes.VersionCorrectingInstaller("26.3.1"), null);
+            TestFakes.VersionCorrectingInstaller("26.3.1"));
         await manager.CreateAsync(Spec("ver"));
 
         // 请求的是 26.3，provider 说实际装的是 26.3.1 → meta 必须记后者，
@@ -224,7 +224,7 @@ public class InstanceLifecycleTest : IDisposable
     public async Task 参数文件形态()
     {
         var manager = new InstanceManager(new TestFakes.StubJavaLocator(),
-            TestFakes.ArgsFileInstaller("libraries/neoforge/win_args.txt"), null);
+            TestFakes.ArgsFileInstaller("libraries/neoforge/win_args.txt"));
         var meta = await manager.CreateAsync(Spec("nf", type: ServerType.NEOFORGE));
 
         Assert.Equal("libraries/neoforge/win_args.txt", meta.LaunchArgsFile);
@@ -237,7 +237,7 @@ public class InstanceLifecycleTest : IDisposable
     public async Task 启动走参数文件()
     {
         var manager = new InstanceManager(new TestFakes.StubJavaLocator(),
-            TestFakes.ArgsFileInstaller("win_args.txt"), null);
+            TestFakes.ArgsFileInstaller("win_args.txt"));
         await manager.CreateAsync(Spec("nf2", type: ServerType.NEOFORGE));
 
         // 删掉参数文件 → 报错应点名它，而不是点名 server.jar
