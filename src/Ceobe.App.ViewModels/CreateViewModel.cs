@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Ceobe.Core.Config;
@@ -21,14 +23,14 @@ public partial class CreateViewModel : ObservableObject
 {
     private readonly InstanceManager _manager;
 
-    /// <summary>可选服务端类型（含中文名，界面直接展示）。</summary>
+    /// <summary>可选服务端类型。顺序即界面的下拉顺序（主人指定：原版/Paper/Purpur/Fabric/NeoForge）。</summary>
     public IReadOnlyList<TypeOption> Types { get; } =
     [
-        new(ServerType.PAPER, "Paper（高性能插件服，推荐）"),
-        new(ServerType.VANILLA, "原版 Vanilla"),
-        new(ServerType.FABRIC, "Fabric（模组服）"),
-        new(ServerType.NEOFORGE, "NeoForge（模组服）"),
-        new(ServerType.PURPUR, "Purpur（Paper 魔改）"),
+        new(ServerType.VANILLA, "原版"),
+        new(ServerType.PAPER, "Paper"),
+        new(ServerType.PURPUR, "Purpur"),
+        new(ServerType.FABRIC, "Fabric"),
+        new(ServerType.NEOFORGE, "NeoForge"),
     ];
 
     [ObservableProperty]
@@ -41,6 +43,27 @@ public partial class CreateViewModel : ObservableObject
     /// <summary>游戏版本；空 = 最新正式版。</summary>
     [ObservableProperty]
     private string _gameVersion = "";
+
+    /// <summary>版本下拉的可选项（版本号 + 发布日期）。</summary>
+    public ObservableCollection<GameVersionOption> GameVersions { get; } = [];
+
+    /// <summary>版本下拉的当前选中项。</summary>
+    [ObservableProperty]
+    private GameVersionOption? _selectedGameVersion;
+
+    /// <summary>正在从镜像加载版本清单。</summary>
+    [ObservableProperty]
+    private bool _versionsLoading;
+
+    /// <summary>版本清单加载失败的原因；null = 正常。</summary>
+    [ObservableProperty]
+    private string? _versionsError;
+
+    private int _versionLoadGeneration;
+
+    private static readonly ConcurrentDictionary<ServerType, (DateTimeOffset At, IReadOnlyList<string> Ids)>
+        ProviderVersionCache = new();
+    private static readonly TimeSpan ProviderVersionCacheTtl = TimeSpan.FromMinutes(10);
 
     /// <summary>加载器版本（Fabric/NeoForge）；空 = 最新 stable。</summary>
     [ObservableProperty]
@@ -110,6 +133,106 @@ public partial class CreateViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(NeedsLoaderVersion));
         OnPropertyChanged(nameof(SelectedTypeOption));
+    }
+
+    /// <summary>创建按钮是否可点：不在加载/创建中，且已经选出一个游戏版本。</summary>
+    public bool CanSubmit => !IsBusy && !VersionsLoading && !string.IsNullOrWhiteSpace(GameVersion);
+
+    public bool HasVersionsError => VersionsError is { Length: > 0 };
+
+    partial void OnGameVersionChanged(string value) => OnPropertyChanged(nameof(CanSubmit));
+
+    partial void OnSelectedGameVersionChanged(GameVersionOption? value)
+    {
+        GameVersion = value?.Id ?? "";
+        OnPropertyChanged(nameof(CanSubmit));
+    }
+
+    partial void OnIsBusyChanged(bool value) => OnPropertyChanged(nameof(CanSubmit));
+
+    partial void OnVersionsLoadingChanged(bool value) => OnPropertyChanged(nameof(CanSubmit));
+
+    partial void OnVersionsErrorChanged(string? value) => OnPropertyChanged(nameof(HasVersionsError));
+
+    /// <summary>
+    /// 从镜像加载「版本号 + 发布日期」并默认选中最新正式版。
+    /// 只展示该服务端类型实际支持的版本：Paper/Purpur/Fabric/NeoForge 的 provider 列表与
+    /// Mojang 正式版清单取交集，日期来自 Mojang 的 releaseTime。
+    /// </summary>
+    public async Task LoadVersionsAsync(CancellationToken ct = default)
+    {
+        var generation = ++_versionLoadGeneration;
+        VersionsLoading = true;
+        VersionsError = null;
+
+        try
+        {
+            // manifest 与 provider 版本列表互不依赖：并行取，省掉一半等待。
+            var catalogTask = MojangProvider.ListReleasesAsync(ct);
+            var idsTask = SelectedType == ServerType.VANILLA
+                ? null
+                : GetProviderVersionsAsync(SelectedType, ct);
+
+            var catalog = await catalogTask.ConfigureAwait(true);
+            var byId = catalog.ToDictionary(v => v.Id, StringComparer.Ordinal);
+
+            IReadOnlyList<string> ids = idsTask is null
+                ? catalog.Select(v => v.Id).ToList()
+                : await idsTask.ConfigureAwait(true);
+
+            // 更慢的请求可能后返回；旧结果直接丢弃，避免把类型切回去时被覆盖。
+            if (generation != _versionLoadGeneration) return;
+
+            var options = new List<GameVersionOption>();
+            foreach (var id in ids)
+            {
+                if (byId.TryGetValue(id, out var info))
+                {
+                    options.Add(new GameVersionOption(id, info.ReleaseTime));
+                }
+            }
+
+            GameVersions.Clear();
+            foreach (var option in options) GameVersions.Add(option);
+
+            SelectedGameVersion = GameVersions.FirstOrDefault();
+            if (GameVersions.Count == 0)
+            {
+                VersionsError = $"没有可用的 {SelectedType} 正式版";
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception e)
+        {
+            if (generation == _versionLoadGeneration)
+            {
+                GameVersions.Clear();
+                SelectedGameVersion = null;
+                VersionsError = "版本列表加载失败: " + e.Message;
+            }
+        }
+        finally
+        {
+            if (generation == _versionLoadGeneration) VersionsLoading = false;
+        }
+    }
+
+    /// <summary>provider 的版本 ID 列表（Paper/Purpur/Fabric/NeoForge），10 分钟内复用。</summary>
+    private static async Task<IReadOnlyList<string>> GetProviderVersionsAsync(
+        ServerType type, CancellationToken ct)
+    {
+        if (ProviderVersionCache.TryGetValue(type, out var cached)
+            && DateTimeOffset.UtcNow - cached.At < ProviderVersionCacheTtl)
+        {
+            return cached.Ids;
+        }
+
+        var ids = await ProviderRegistry.Of(type).ListVersionsAsync(ct).ConfigureAwait(false);
+        ProviderVersionCache[type] = (DateTimeOffset.UtcNow, ids);
+        return ids;
     }
 
     /// <summary>
@@ -260,3 +383,10 @@ public partial class CreateViewModel : ObservableObject
 
 /// <summary>服务端类型选项（界面下拉用）。</summary>
 public sealed record TypeOption(ServerType Type, string Label);
+
+/// <summary>游戏版本下拉项：标题为版本号，副标题为发布日期（Mojang manifest 的 releaseTime）。</summary>
+public sealed record GameVersionOption(string Id, DateTimeOffset? ReleaseTime)
+{
+    public string ReleasedLabel =>
+        ReleaseTime?.UtcDateTime.ToString("yyyy-MM-dd") ?? "发布日期未知";
+}

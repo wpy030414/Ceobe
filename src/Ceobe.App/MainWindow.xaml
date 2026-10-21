@@ -24,7 +24,7 @@
             </Grid.RowDefinitions>
 
             <TitleBar x:Name="AppTitleBar" Grid.Row="0"
-                      Title="ceobe" Subtitle="Minecraft 服务器编排"
+                      Title="Ceobe"
                       IsBackButtonVisible="False"
                       IsPaneToggleButtonVisible="False"
                       Background="Transparent">
@@ -37,7 +37,7 @@
                             PaneDisplayMode="Left"
                             IsPaneOpen="True"
                             IsPaneToggleButtonVisible="False"
-                            OpenPaneLength="288"
+                            OpenPaneLength="300"
                             CompactPaneLength="48"
                             IsSettingsVisible="False"
                             IsBackButtonVisible="Collapsed"
@@ -49,16 +49,20 @@
                             AutomationProperties.Name="实例导航">
 
                 <NavigationView.PaneHeader>
-                    <Grid Padding="0,4,0,8" ColumnSpacing="8">
+                    <Grid Padding="16,12,16,8" ColumnSpacing="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <TextBlock Grid.Column="0" Text="实例"
-                                   Style="{StaticResource CeobeCaptionSecondaryStyle}"
-                                   VerticalAlignment="Center" />
+                        <!-- 顶部模式 tab bar：客户端暂未实现，先禁用 -->
+                        <SelectorBar Grid.Column="0" x:Name="SidebarModeBar"
+                                     AutomationProperties.Name="工作模式">
+                            <SelectorBarItem Text="服务端" Tag="server" />
+                            <SelectorBarItem Text="客户端" Tag="client" IsEnabled="False"
+                                             ToolTipService.ToolTip="即将推出" />
+                        </SelectorBar>
 
                         <ToggleButton Grid.Column="1"
                                       IsChecked="{x:Bind VmList.OnlyRunning, Mode=TwoWay}"
@@ -78,9 +82,18 @@
                     </Grid>
                 </NavigationView.PaneHeader>
 
+                <NavigationView.MenuItemContainerStyle>
+                    <Style TargetType="NavigationViewItem">
+                        <Setter Property="Margin" Value="8,3,8,3" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="CornerRadius" Value="{ThemeResource ControlCornerRadius}" />
+                    </Style>
+                </NavigationView.MenuItemContainerStyle>
+
                 <NavigationView.MenuItemTemplate>
                     <DataTemplate x:DataType="vm:InstanceRow">
-                        <controls:InstanceListItem Row="{x:Bind}" />
+                        <controls:InstanceListItem Row="{x:Bind}" HorizontalAlignment="Stretch" />
                     </DataTemplate>
                 </NavigationView.MenuItemTemplate>
 
@@ -90,7 +103,7 @@
                   被 InstanceRow 模板错误渲染成空白。PaneFooter 是自定义 UIElement，不参与模板。
                 -->
                 <NavigationView.PaneFooter>
-                    <StackPanel Padding="8,8,8,12" Spacing="4">
+                    <StackPanel Padding="16,8,16,12" Spacing="4">
                         <Button Click="OnCreateInstanceClick"
                                 Style="{StaticResource CeobePaneActionButtonStyle}"
                                 AutomationProperties.Name="新建实例"

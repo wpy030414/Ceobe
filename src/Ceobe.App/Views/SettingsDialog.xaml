@@ -8,6 +8,8 @@
     PrimaryButtonText="保存"
     CloseButtonText="取消"
     DefaultButton="Primary"
+    CornerRadius="{StaticResource OverlayCornerRadius}"
+    IsPrimaryButtonEnabled="{x:Bind Vm.CanSaveAll, Mode=OneWay}"
     PrimaryButtonClick="OnPrimaryButtonClick">
 
     <ScrollViewer MaxHeight="620" VerticalScrollBarVisibility="Auto">
@@ -33,66 +35,66 @@
                               AutomationProperties.Name="新建实例默认开启白名单" />
             </controls:SettingsCard>
 
-            <controls:SettingsExpander Header="数据目录"
-                                       Description="{x:Bind Vm.CurrentHome, Mode=OneWay}"
-                                       IsExpanded="False">
-                <StackPanel Spacing="12" Padding="0,4,0,0">
-                    <TextBox Header="当前数据目录"
-                             Text="{x:Bind Vm.CurrentHome, Mode=OneWay}"
-                             IsReadOnly="True"
-                             AutomationProperties.Name="当前数据目录" />
+            <!--
+              数据目录：不再用抽屉，也不再要求用户手填路径。
+              路径用文件管理器选择；点「保存」后如果目录变了，自动预演并搬家。
+            -->
+            <controls:SettingsCard Header="数据目录"
+                                   Description="Ceobe 所托管的实例存放位置。"
+                                   ContentAlignment="Vertical">
+                <StackPanel Spacing="8">
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0"
+                                 Text="{x:Bind Vm.ProposedHome, Mode=OneWay}"
+                                 IsReadOnly="True"
+                                 PlaceholderText="选择实例存放目录"
+                                 AutomationProperties.Name="数据目录路径" />
+                        <Button Grid.Column="1" Content="浏览…" Click="OnBrowseFolder"
+                                AutomationProperties.Name="浏览数据目录" />
+                    </Grid>
 
                     <InfoBar IsOpen="{x:Bind HasOneDriveWarning, Mode=OneWay}"
                              Severity="Warning" IsClosable="False"
                              Title="{x:Bind Vm.OneDriveWarning, Mode=OneWay}" />
 
-                    <TextBox Header="新数据目录"
-                             PlaceholderText="如 D:\ceobe"
-                             Text="{x:Bind Vm.ProposedHome, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             AutomationProperties.Name="新数据目录" />
-
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Content="预演搬家（只读）" Click="OnPlanMove"
-                                IsEnabled="{x:Bind NotMoving, Mode=OneWay}" />
-                        <Button Content="执行搬家" Click="OnExecuteMove"
-                                IsEnabled="{x:Bind NotMoving, Mode=OneWay}" />
-                        <Button Content="放弃搬家" Click="OnCancelMove"
-                                IsEnabled="{x:Bind NotMoving, Mode=OneWay}" />
-                        <ProgressRing Width="20" Height="20"
+                    <StackPanel Orientation="Horizontal" Spacing="8"
+                                Visibility="{x:Bind Vm.IsMoving, Mode=OneWay, Converter={StaticResource BoolToVis}}">
+                        <ProgressRing Width="16" Height="16"
                                       IsActive="{x:Bind Vm.IsMoving, Mode=OneWay}" />
+                        <TextBlock Text="正在搬家…"
+                                   Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                                   VerticalAlignment="Center" />
                     </StackPanel>
-
-                    <TextBlock Text="{x:Bind PlanSummary, Mode=OneWay}"
-                               Style="{StaticResource CeobeCaptionSecondaryStyle}"
-                               TextWrapping="Wrap" />
-
-                    <ItemsControl ItemsSource="{x:Bind Vm.Plan.Blockers, Mode=OneWay}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="x:String">
-                                <TextBlock Text="{x:Bind}" TextWrapping="Wrap" FontSize="12"
-                                           Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <ItemsControl ItemsSource="{x:Bind Vm.Plan.Warnings, Mode=OneWay}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="x:String">
-                                <TextBlock Text="{x:Bind}" TextWrapping="Wrap" FontSize="12"
-                                           Foreground="{ThemeResource SystemFillColorCautionBrush}" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
                 </StackPanel>
-            </controls:SettingsExpander>
+            </controls:SettingsCard>
 
-            <controls:SettingsExpander Header="关于" IsExpanded="False">
-                <StackPanel Spacing="4" Padding="0,4,0,0">
-                    <TextBlock Text="{x:Bind AppDisplayVersion}" FontWeight="SemiBold" />
-                    <TextBlock Text="WinUI 3 · Windows App SDK 2.5.1 · .NET 10 · x64 · 非打包自包含"
-                               Style="{StaticResource CeobeCaptionSecondaryStyle}"
-                               TextWrapping="Wrap" />
-                </StackPanel>
+            <!-- 关于：保持主人已确认的 SettingsExpander 版本，不再改动 -->
+            <controls:SettingsExpander x:Name="AboutExpander" Header="关于"
+                                       Description="一个 Minecraft 私有服务端编排引擎和客户端启动器。"
+                                       IsExpanded="False">
+                <controls:SettingsExpander.Items>
+                    <controls:SettingsCard Header="作者：杏仁鹿" />
+                    <controls:SettingsCard Header="版本：">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="{x:Bind AppDisplayVersion}" FontWeight="SemiBold"
+                                       VerticalAlignment="Center" />
+                            <HyperlinkButton NavigateUri="https://github.com/wpy030414/ceobe"
+                                             ToolTipService.ToolTip="在 GitHub 打开项目"
+                                             AutomationProperties.Name="在 GitHub 打开项目"
+                                             Padding="4">
+                                <!-- Viewbox 把 24×24 的 GitHub mark 完整缩到 16×16；PathIcon 会裁掉 3/4 -->
+                                <Viewbox Width="16" Height="16" Stretch="Uniform">
+                                    <Path Fill="{ThemeResource TextFillColorPrimaryBrush}"
+                                          Data="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
+                                </Viewbox>
+                            </HyperlinkButton>
+                        </StackPanel>
+                    </controls:SettingsCard>
+                </controls:SettingsExpander.Items>
             </controls:SettingsExpander>
 
             <InfoBar IsOpen="{x:Bind Vm.HasError, Mode=OneWay}"

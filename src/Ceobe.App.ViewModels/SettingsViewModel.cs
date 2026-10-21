@@ -85,14 +85,12 @@ public partial class SettingsViewModel : ObservableObject
         var settings = AppSettings.Load();
         Theme = AppSettings.NormalizeTheme(settings.Theme);
         DefaultWhitelistEnabled = settings.DefaultWhitelistEnabled;
-        ProposedHome = settings.HomePath;
+        // 新设计只有一个路径输入：初始就是当前生效目录，选中其它目录并保存才搬家。
+        ProposedHome = CurrentHome;
         HasError = false;
         StatusText = "";
         Plan = null;
-        OneDriveWarning = AppSettings.IsPathUnderOneDrive(CurrentHome)
-            ? "当前数据目录在 OneDrive 同步范围内：Minecraft 世界文件写入极频繁，"
-              + "实时同步会把云盘占满并拖慢开服，建议改到非同步目录（如 D:\\ceobe）。"
-            : null;
+        OneDriveWarning = BuildOneDriveWarning(CurrentHome);
     }
 
     /// <summary>保存主题与默认白名单等轻量设置（不涉及搬家）。</summary>
@@ -112,6 +110,51 @@ public partial class SettingsViewModel : ObservableObject
         HasError = false;
         StatusText = "设置已保存";
     }
+
+    /// <summary>
+    /// 保存全部设置；如果数据目录被改动，自动预演并执行搬家。
+    /// 返回 false = 有阻塞/失败，调用方应保持对话框打开并展示 <see cref="StatusText"/>。
+    /// </summary>
+    public async Task<bool> SaveAllAsync(CancellationToken ct = default)
+    {
+        SaveSettingsCommand.Execute(null);
+        if (HasError) return false;
+
+        var target = ProposedHome?.Trim();
+        if (string.IsNullOrWhiteSpace(target)) return true;
+        if (IsSameAsCurrent(target)) return true;
+
+        await PlanMoveAsync(ct);
+        if (Plan is null || Plan.Blockers.Count > 0 || HasError) return false;
+
+        await ExecuteMoveAsync(ct);
+        return !HasError;
+    }
+
+    /// <summary>保存按钮是否可点（搬家期间禁用）。</summary>
+    public bool CanSaveAll => !IsMoving;
+
+    partial void OnIsMovingChanged(bool value) => OnPropertyChanged(nameof(CanSaveAll));
+
+    partial void OnProposedHomeChanged(string? value) => OneDriveWarning = BuildOneDriveWarning(value);
+
+    private bool IsSameAsCurrent(string path)
+    {
+        try
+        {
+            return string.Equals(Path.GetFullPath(path), Path.GetFullPath(CurrentHome), PathComparison);
+        }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return false;
+        }
+    }
+
+    private static string? BuildOneDriveWarning(string? path) =>
+        AppSettings.IsPathUnderOneDrive(path ?? "")
+            ? "所选数据目录在 OneDrive 同步范围内：Minecraft 世界文件写入极频繁，"
+              + "实时同步会把云盘占满并拖慢开服，建议改到非同步目录（如 D:\\ceobe）。"
+            : null;
 
     /// <summary>
     /// 搬家预��（只读，不碰任何文件）。

@@ -96,11 +96,25 @@ public partial class ConsoleViewModel : ObservableObject
     public bool CanSend => IsLive && !IsBusy;
     public bool CanDelete => !IsLive && !IsBusy && !Deleted;
 
+    /// <summary>单个启停按钮的文案——按钮本身承载状态，不再并排两个按钮。</summary>
+    public string StartStopLabel => State switch
+    {
+        InstanceState.STARTING => "启动中…",
+        InstanceState.RUNNING => "停止",
+        InstanceState.STOPPING => "停止中…",
+        _ => "启动",
+    };
+
+    /// <summary>单个启停按钮是否可点（过渡态、忙碌、已删除时禁用）。</summary>
+    public bool CanToggle => !IsBusy && !Deleted
+        && State is not (InstanceState.STARTING or InstanceState.STOPPING);
+
     partial void OnStateChanged(InstanceState value)
     {
         OnPropertyChanged(nameof(IsLive));
         OnPropertyChanged(nameof(StateLabel));
         OnPropertyChanged(nameof(StateKey));
+        OnPropertyChanged(nameof(StartStopLabel));
         RaiseButtonStates();
     }
 
@@ -114,6 +128,7 @@ public partial class ConsoleViewModel : ObservableObject
         OnPropertyChanged(nameof(CanStop));
         OnPropertyChanged(nameof(CanSend));
         OnPropertyChanged(nameof(CanDelete));
+        OnPropertyChanged(nameof(CanToggle));
     }
 
     /// <summary>加载历史日志并记录文件偏移（外部托管时后续按此增量跟随）。</summary>

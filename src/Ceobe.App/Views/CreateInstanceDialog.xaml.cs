@@ -17,6 +17,8 @@ public sealed partial class CreateInstanceDialog : ContentDialog
 
     public CreateViewModel Vm { get; }
 
+    private bool _opened;
+
     public CreateInstanceDialog(InstanceManager manager)
     {
         Vm = new CreateViewModel(manager, AppSettings.Load().DefaultWhitelistEnabled);
@@ -24,8 +26,23 @@ public sealed partial class CreateInstanceDialog : ContentDialog
         Bindings.Update();
     }
 
-    private void OnOpened(ContentDialog sender, ContentDialogOpenedEventArgs args) =>
+    private async void OnOpened(ContentDialog sender, ContentDialogOpenedEventArgs args)
+    {
+        _opened = true;
         NameBox.Focus(FocusState.Programmatic);
+        await Vm.LoadVersionsAsync();
+    }
+
+    private async void OnTypeChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // 初始化阶段 SelectedItem 也会变化；只在对话框真正打开后加载版本。
+        if (!_opened) return;
+        if (TypeBox.SelectedItem is TypeOption option) Vm.SelectedTypeOption = option;
+        await Vm.LoadVersionsAsync();
+    }
+
+    private async void OnReloadVersions(object sender, RoutedEventArgs e) =>
+        await Vm.LoadVersionsAsync();
 
     private async void OnPrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
     {

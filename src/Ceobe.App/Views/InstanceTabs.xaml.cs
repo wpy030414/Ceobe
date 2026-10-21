@@ -109,15 +109,18 @@ public sealed partial class InstanceTabs : UserControl
         if (pages[index] is GameConfigPage gameConfig) gameConfig.ResetScroll();
     }
 
-    private async void OnStart(object sender, RoutedEventArgs e)
+    private async void OnStartStop(object sender, RoutedEventArgs e)
     {
+        if (_console.IsLive)
+        {
+            await _console.StopCommand.ExecuteAsync(null);
+            return;
+        }
+
         await _console.StartCommand.ExecuteAsync(null);
         // 启动成功后本进程接管日志事件流，文件轮询必须停掉。
         ConsoleTab.StopPolling();
     }
-
-    private async void OnStop(object sender, RoutedEventArgs e) =>
-        await _console.StopCommand.ExecuteAsync(null);
 
     /// <summary>
     /// 删除确认：三选对话框（仅移除 / 连数据删除 / 取消）。

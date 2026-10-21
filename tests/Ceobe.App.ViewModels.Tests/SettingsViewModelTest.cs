@@ -341,6 +341,32 @@ public class SettingsViewModelTest : IDisposable
         }
     }
 
+    [Fact(DisplayName = "保存时自动搬家（无需预演/执行按钮）")]
+    public async Task 保存自动搬家()
+    {
+        SeedInstance("second", 25566, live: false);
+        var target = NewTarget();
+        try
+        {
+            var vm = NewVm();
+            vm.Theme = "dark";
+            vm.ProposedHome = target;
+
+            var ok = await vm.SaveAllAsync();
+
+            Assert.True(ok, vm.StatusText);
+            Assert.Equal(target, vm.CurrentHome);
+            Assert.Equal("dark", AppSettings.Load().Theme);
+            Assert.Equal("world-data-srv",
+                File.ReadAllText(Path.Combine(target, "instances", "srv", "world", "level.dat")));
+            Assert.False(vm.IsMoving);
+        }
+        finally
+        {
+            ZipUtil.DeleteRecursively(target);
+        }
+    }
+
     [Fact(DisplayName = "搬家后 settings.json 双写：旧目录锚点 + 新目录一致")]
     public async Task settings双写()
     {

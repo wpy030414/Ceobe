@@ -81,6 +81,9 @@ dotnet publish src/Ceobe.Cli/Ceobe.Cli.csproj -c Release -r win-x64 --self-conta
 - **同一单元格叠放多个输入控件会回写坏值**：隐藏控件仍参与 x:Bind 初始化——实测把 `motd` 改成 `0` 并制造假校验错误。
   字段输入必须用 `DataTemplateSelector` 只实例化匹配类型的那一个控件（见 `PropFieldRow`）。
 - **测试端口 25565 会被本机运行中的实例占用**：跑 `dotnet test` 前先停掉使用该端口的服务器。
+- **BMCLAPI 的 Mojang version_manifest 端点实测 10s+ 或空响应**：版本清单只给镜像 2 秒预算，
+  超时/空体立刻回退直连（本机直连约 0.7s），并在进程内缓存 30 分钟；应用启动时后台预热。
+- **不要用 UIA 脚本对正在运行的实例做 FindAll / 打开 ContentDialog**：WinUI 3 的 UIA provider 在模态弹窗或布局期间可能死锁，实测会把 Ceobe 卡到无响应。UIA 冒烟只在独立 `CEOBE_HOME` 的临时实例上跑，且不要对用户正在看的实例执行。
 - 本地 UI 冒烟：`tools/ui-smoke/Invoke-UiSmoke.ps1`（需交互式桌面与已关闭的 Ceobe.exe；GitHub-hosted CI 跑不了）。
 
 ## 目录速查

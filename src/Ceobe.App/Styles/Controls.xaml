@@ -48,6 +48,29 @@
         <Setter Property="CornerRadius" Value="{ThemeResource ControlCornerRadius}" />
     </Style>
 
+    <!-- 对话框按钮：8px 圆角（与 OverlayCornerRadius 一致），所有 ContentDialog 共用。 -->
+    <Style x:Key="CeobeDialogButtonStyle" TargetType="Button"
+           BasedOn="{StaticResource DefaultButtonStyle}">
+        <Setter Property="CornerRadius" Value="{ThemeResource OverlayCornerRadius}" />
+    </Style>
+
+    <Style x:Key="CeobeDialogAccentButtonStyle" TargetType="Button"
+           BasedOn="{StaticResource AccentButtonStyle}">
+        <Setter Property="CornerRadius" Value="{ThemeResource OverlayCornerRadius}" />
+    </Style>
+
+    <!--
+      对话框圆角：Windows 11 的 OverlayCornerRadius(8)。
+      显式给全局 ContentDialog 设一次，覆盖默认模板在某些主题/宿主下的 0 圆角表现；
+      代码创建的三选确认框（删除/卸载）也走这条。
+    -->
+    <Style TargetType="ContentDialog" BasedOn="{StaticResource DefaultContentDialogStyle}">
+        <Setter Property="CornerRadius" Value="{ThemeResource OverlayCornerRadius}" />
+        <Setter Property="PrimaryButtonStyle" Value="{StaticResource CeobeDialogAccentButtonStyle}" />
+        <Setter Property="SecondaryButtonStyle" Value="{StaticResource CeobeDialogButtonStyle}" />
+        <Setter Property="CloseButtonStyle" Value="{StaticResource CeobeDialogButtonStyle}" />
+    </Style>
+
     <!-- 危险动作（封禁/删除）——只允许出现在菜单或二次确认里。 -->
     <Style x:Key="CeobeDangerButtonStyle" TargetType="Button"
            BasedOn="{StaticResource DefaultButtonStyle}">

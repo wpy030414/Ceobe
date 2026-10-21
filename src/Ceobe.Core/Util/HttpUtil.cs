@@ -34,16 +34,23 @@ public static class HttpUtil
         return client;
     }
 
-    /// <summary>优先走镜像站，失败回退上游。</summary>
-    public static async Task<string> GetStringAsync(string url, CancellationToken ct = default)
+    /// <summary>优先走镜像站，失败回退上游。mirrorTimeout 可给镜像一个更短的预算（元数据接口用）。</summary>
+    public static async Task<string> GetStringAsync(
+        string url, CancellationToken ct = default, TimeSpan? mirrorTimeout = null)
     {
         var mirror = Mirrors.ForUrl(url);
         if (mirror is not null)
         {
-            try { return await GetDirectStringAsync(mirror, ct).ConfigureAwait(false); }
-            catch (CeobeException) { /* 镜像不可用 → 回退上游 */ }
+            try
+            {
+                var text = await GetDirectStringAsync(mirror, ct, mirrorTimeout ?? TimeSpan.FromSeconds(30))
+                    .ConfigureAwait(false);
+                // 镜像返回 200 但空体（BMCLAPI 的 manifest 曾实测如此）也算失败，回退上游。
+                if (!string.IsNullOrWhiteSpace(text)) return text;
+            }
+            catch (CeobeException) { /* 镜像不可用/超时 → 回退上游 */ }
         }
-        return await GetDirectStringAsync(url, ct).ConfigureAwait(false);
+        return await GetDirectStringAsync(url, ct, TimeSpan.FromSeconds(30)).ConfigureAwait(false);
     }
 
     /// <summary>优先走镜像站，失败回退上游。</summary>
@@ -81,10 +88,10 @@ public static class HttpUtil
         await DownloadDirectAsync(url, target, sha1, sha256, progress, ct).ConfigureAwait(false);
     }
 
-    private static async Task<string> GetDirectStringAsync(string url, CancellationToken ct)
+    private static async Task<string> GetDirectStringAsync(string url, CancellationToken ct, TimeSpan? timeout = null)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        cts.CancelAfter(TimeSpan.FromSeconds(30));
+        cts.CancelAfter(timeout ?? TimeSpan.FromSeconds(30));
         try
         {
             using var resp = await Client.GetAsync(url, HttpCompletionOption.ResponseContentRead, cts.Token)

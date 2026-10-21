@@ -86,6 +86,37 @@ public class ConsoleViewModelTest : IDisposable
         vm.Detach();
     }
 
+    [Fact(DisplayName = "单个启停按钮的文案与可用性跟随状态")]
+    public void 启停按钮()
+    {
+        var (vm, mgr) = NewVm();
+        try
+        {
+            Assert.Equal("启动", vm.StartStopLabel);
+            Assert.True(vm.CanToggle);
+
+            mgr.PublishForTest(new StateChanged(_instance, InstanceState.STARTING, 0));
+            Assert.Equal("启动中…", vm.StartStopLabel);
+            Assert.False(vm.CanToggle);
+
+            mgr.PublishForTest(new StateChanged(_instance, InstanceState.RUNNING, 0));
+            Assert.Equal("停止", vm.StartStopLabel);
+            Assert.True(vm.CanToggle);
+
+            mgr.PublishForTest(new StateChanged(_instance, InstanceState.STOPPING, 0));
+            Assert.Equal("停止中…", vm.StartStopLabel);
+            Assert.False(vm.CanToggle);
+
+            mgr.PublishForTest(new StateChanged(_instance, InstanceState.STOPPED, 0));
+            Assert.Equal("启动", vm.StartStopLabel);
+            Assert.True(vm.CanToggle);
+        }
+        finally
+        {
+            vm.Detach();
+        }
+    }
+
     [Fact(DisplayName = "加载历史日志（外部托管走文件）")]
     public void 加载历史()
     {

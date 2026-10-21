@@ -46,10 +46,15 @@ public sealed partial class MainWindow : Window
     /// <summary>侧栏实例列表 VM（XAML 以 x:Bind 绑定导航项与状态栏）。</summary>
     public InstanceListViewModel VmList { get; }
 
+    /// <summary>当前主窗口（文件夹选择器等需要 WindowId 的 API 从这里取）。</summary>
+    public static MainWindow? Instance { get; private set; }
+
     public MainWindow()
     {
         InitializeComponent();
-        Title = "ceobe · Minecraft 服务器编排";
+        Instance = this;
+        Title = "Ceobe";
+        SidebarModeBar.SelectedItem = SidebarModeBar.Items[0];
 
         _manager = CeobeComposition.NewManager();
 
@@ -84,6 +89,14 @@ public sealed partial class MainWindow : Window
         // 后台预热各实例的 Java 要求（冷缓存时 RequiredMajor 只能返回兜底值，
         // 而启动路径是同步的、不能联网，于是「26.3 需要 Java 21」这种误判会让
         // 可用的 JDK 25 被拒绝启动——实测踩过）。
+        // 同时预热 Mojang 版本清单：BMCLAPI 首次可能要 4s 才回退直连，提前取好，
+        // 新建对话框打开时就能直接命中 30 分钟内存缓存。
+        _ = Task.Run(async () =>
+        {
+            try { await Core.Providers.MojangProvider.ListReleasesAsync(); }
+            catch (Exception) { /* 预热失败：对话框会显示错误并允许重试 */ }
+        });
+
         var warmNames = VmList.Rows.Select(r => r.Name).ToList();
         _ = Task.Run(async () =>
         {
@@ -104,7 +117,11 @@ public sealed partial class MainWindow : Window
             VmList.SelectedName = VmList.Rows[0].Name;
         }
 
-        Closed += (_, _) => VmList.Detach();
+        Closed += (_, _) =>
+        {
+            VmList.Detach();
+            Instance = null;
+        };
     }
 
     // —— 窗口外观 ——

@@ -11,7 +11,7 @@
     与 ADR-017 中「macOS jpackage 只接受 1–3 段数字」同属打包器强加的形态约束。
   -->
   <PropertyGroup>
-    <Version>26.10.21.01</Version>
+    <Version>26.10.22</Version>
     <Authors>xrl</Authors>
     <Product>ceobe</Product>
     <TargetFramework>net10.0</TargetFramework>

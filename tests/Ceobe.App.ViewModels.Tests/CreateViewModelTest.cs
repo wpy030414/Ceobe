@@ -69,6 +69,23 @@ public class CreateViewModelTest : IDisposable
         Assert.True(vm.NeedsLoaderVersion);
     }
 
+    [Fact(DisplayName = "服务端类型顺序与显示名符合界面约定")]
+    public void 类型标签()
+    {
+        var vm = new CreateViewModel(Mgr());
+        Assert.Equal(
+            ["原版", "Paper", "Purpur", "Fabric", "NeoForge"],
+            vm.Types.Select(t => t.Label).ToArray());
+    }
+
+    [Fact(DisplayName = "版本项副标题是发布日期")]
+    public void 版本日期()
+    {
+        var option = new GameVersionOption("26.3", DateTimeOffset.Parse("2026-09-15T00:00:00Z"));
+        Assert.Equal("2026-09-15", option.ReleasedLabel);
+        Assert.Equal("发布日期未知", new GameVersionOption("x", null).ReleasedLabel);
+    }
+
     [Fact(DisplayName = "非法实例名在联网前被拦下")]
     public async Task 名称校验()
     {

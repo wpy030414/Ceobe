@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Ceobe.Core.Model;
 using Ceobe.Core.Util;
@@ -12,19 +13,70 @@ public sealed class MojangProvider : IServerJarProvider
 {
     internal const string Manifest = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
 
+    private static readonly SemaphoreSlim ReleaseGate = new(1, 1);
+    private static readonly TimeSpan ReleaseCacheTtl = TimeSpan.FromMinutes(30);
+    private static IReadOnlyList<GameVersionInfo>? _releaseCache;
+    private static DateTimeOffset _releaseCacheAt;
+
     public ServerType Type => ServerType.VANILLA;
 
-    public async Task<IReadOnlyList<string>> ListVersionsAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<string>> ListVersionsAsync(CancellationToken ct = default) =>
+        (await ListReleasesAsync(ct).ConfigureAwait(false)).Select(v => v.Id).ToList();
+
+    /// <summary>
+    /// 正式版清单（含发布日期）。GUI 的版本下拉用它把「版本号 + 发布日期」一次取全；
+    /// 仍然只收 type=release，快照不进入默认创建路径。
+    ///
+    /// 性能：清单 30 分钟内进程内缓存；BMCLAPI 的 manifest 端点实测可能 10s+ 或空响应，
+    /// 因此只给镜像 2 秒预算，超时/空响应立刻回退直连（本机直连约 0.7s）。
+    /// </summary>
+    public static async Task<IReadOnlyList<GameVersionInfo>> ListReleasesAsync(CancellationToken ct = default)
     {
-        using var doc = JsonUtil.Parse(await HttpUtil.GetStringAsync(Manifest, ct).ConfigureAwait(false));
-        var outList = new List<string>();
-        foreach (var v in doc.RootElement.Prop("versions").Items())
+        if (TryGetCachedReleases(out var cached)) return cached;
+
+        await ReleaseGate.WaitAsync(ct).ConfigureAwait(false);
+        try
         {
-            if (v.Prop("type").AsText() != "release") continue;
-            outList.Add(v.Prop("id").AsText() ?? "");
+            if (TryGetCachedReleases(out cached)) return cached;
+
+            var json = await HttpUtil.GetStringAsync(Manifest, ct, TimeSpan.FromSeconds(2))
+                .ConfigureAwait(false);
+            using var doc = JsonUtil.Parse(json);
+            var list = new List<GameVersionInfo>();
+            foreach (var v in doc.RootElement.Prop("versions").Items())
+            {
+                if (v.Prop("type").AsText() != "release") continue;
+                var id = v.Prop("id").AsText() ?? "";
+                if (id.Length == 0) continue;
+                DateTimeOffset? released = DateTimeOffset.TryParse(
+                    v.Prop("releaseTime").AsText(), CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal, out var dt)
+                    ? dt
+                    : null;
+                list.Add(new GameVersionInfo(id, released));
+            }
+            list.Sort((a, b) => VersionUtil.Descending.Compare(a.Id, b.Id));
+
+            _releaseCache = list;
+            _releaseCacheAt = DateTimeOffset.UtcNow;
+            return list;
         }
-        outList.Sort(VersionUtil.Descending);
-        return outList;
+        finally
+        {
+            ReleaseGate.Release();
+        }
+    }
+
+    private static bool TryGetCachedReleases(out IReadOnlyList<GameVersionInfo> releases)
+    {
+        var cached = _releaseCache;
+        if (cached is not null && DateTimeOffset.UtcNow - _releaseCacheAt < ReleaseCacheTtl)
+        {
+            releases = cached;
+            return true;
+        }
+        releases = [];
+        return false;
     }
 
     public async Task<InstalledServer> InstallAsync(

@@ -79,8 +79,8 @@ jobs:
             [xml]$doc = Get-Content $trx.FullName
             $count += @($doc.TestRun.Results.UnitTestResult).Count
           }
-          Write-Output "Tests executed: $count (baseline 481)"
-          if ($count -lt 481) { throw "Test count shrank: $count < 481" }
+          Write-Output "Tests executed: $count (baseline 485)"
+          if ($count -lt 485) { throw "Test count shrank: $count < 485" }
 
       # GUI 必须同时带 SelfContained + WindowsAppSDKSelfContained，
       # 否则产物缺 WinUI 原生运行时（Microsoft.ui.xaml.dll / Ceobe.pri），
