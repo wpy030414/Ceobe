@@ -11,3 +11,8 @@ dependency-reduced-pom.xml
 .ceobe-home/
 .e2e-home/
 .smoke-home/
+
+# .NET
+bin/
+obj/
+*.user

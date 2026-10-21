@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- 域核心：零 UI 依赖（等价 Java 的 ceobe-core）。CLI 与 GUI 只通过本项目的公共 API 工作。 -->
+  <PropertyGroup>
+    <RootNamespace>Ceobe.Core</RootNamespace>
+  </PropertyGroup>
+
+</Project>
