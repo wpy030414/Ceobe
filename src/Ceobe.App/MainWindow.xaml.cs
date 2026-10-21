@@ -1,5 +1,12 @@
+using Microsoft.UI.Composition.SystemBackdrops;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
+using Windows.Graphics;
+using Windows.System;
+using Ceobe.App.Controls;
 using Ceobe.App.ViewModels;
 using Ceobe.App.Views;
 using Ceobe.Core.Composition;
@@ -10,8 +17,10 @@ using Ceobe.Core.Util;
 namespace Ceobe.App;
 
 /// <summary>
-/// 主窗口 code-behind。只做「接线」——把 XAML 控件接到 ViewModel，把用户手势转成 VM 命令；
+/// 主窗口 code-behind：只做「接线」——把 XAML 控件接到 ViewModel，把用户手势转成 VM 命令。
 /// 一行业务逻辑都不放这里（业务全在 ViewModels，可被单测覆盖，这是闸门 C 的前提）。
+///
+/// 2026-10-22 Fluent 2 重构：内置 TitleBar + Mica + NavigationView。
 /// </summary>
 public sealed partial class MainWindow : Window
 {
@@ -26,47 +35,55 @@ public sealed partial class MainWindow : Window
     /// <summary>
     /// 内嵌 Web 控制台的持有者。这里只用来「保活」——不持有引用的话，
     /// 监听对象被回收后端口会静默关闭，用户会看到 Web 控制台时好时坏。
-    /// 类型不写死是因为 WebConsole 的命名空间与类同名，写全名很难读。
     /// </summary>
     private readonly object? _webConsole;
 
-    /// <summary>侧栏实例列表 VM（XAML 以 x:Bind 绑定工具条与状态栏）。</summary>
-    public InstanceListViewModel VmList { get; }
+    private bool _windowSized;
+    private bool _micaSupported;
+    private bool _dialogOpen;
+    private InstanceTabs? _workspace;
 
-    /// <summary>实例列表 UserControl（构造器注入 VM，故由代码而非 XAML 实例化）。</summary>
-    private readonly Views.InstanceListView _listView;
+    /// <summary>侧栏实例列表 VM（XAML 以 x:Bind 绑定导航项与状态栏）。</summary>
+    public InstanceListViewModel VmList { get; }
 
     public MainWindow()
     {
         InitializeComponent();
-        Title = "Ceobe：Minecraft 私有服务器编排引擎";
+        Title = "ceobe · Minecraft 服务器编排";
 
         _manager = CeobeComposition.NewManager();
 
         // GUI 进程本身就要起应用级服务：内嵌 Web 控制台 + 隧道管理器。
-        // 少了这一步，穿透页只能靠控制通道操作外部托管的实例，GUI 自己启的服反而开不了通道。
         var services = CeobeComposition.StartAppServices(_manager);
         _tunnels = services.Tunnels;
         _webConsole = services.Web;
 
         VmList = new InstanceListViewModel(_manager);
 
-        // 列表控件构造器注入 VM（保住依赖注入，不用无参构造 + 后设属性）
-        _listView = new Views.InstanceListView(VmList);
-        ListHost.Content = _listView;
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(AppTitleBar);
+        _micaSupported = MicaController.IsSupported();
+        var startupTheme = ThemeApplier.CurrentKey;
+        ApplyBackdrop(startupTheme);
+        ConfigureKeyboardAccelerators();
 
-        // 选中变化 → 装配右侧页签。走 VM 的 SelectionChanged 事件，
-        // 不直接读 ListView.SelectedItem，避免 View 之间耦合。
+        // 运行期主题预览（设置对话框）也要同步窗口背景。
+        ThemeApplier.ThemeChanged += () => DispatcherQueue.TryEnqueue(() =>
+        {
+            ApplyBackdrop(ThemeApplier.CurrentKey);
+        });
+
+        // 尺寸必须在 XamlRoot 可用后换算（AppWindow 用物理像素，XamlRoot 给缩放比）。
+        RootGrid.Loaded += (_, _) => ApplyWindowSizing();
+
+        // 选中变化 → 装配右侧工作区。走 VM 的 SelectionChanged 事件，
+        // 不直接读 NavigationView.SelectedItem，保持 View 之间无耦合。
         VmList.SelectionChanged += name => DispatcherQueue.TryEnqueue(() => OnSelectionChanged(name));
         VmList.Refresh();
 
-        // 实例状态变化（启动/停止/崩溃）时刷新侧栏徽标
-        _manager.OnEvent += _ => DispatcherQueue.TryEnqueue(VmList.Refresh);
-
-        // 后台预热各实例的 Java 要求。
-        // 冷缓存时 RequiredMajor 只能返回兜底值，而启动路径是同步的、不能联网，
-        // 于是「26.3 需要 Java 21」这种误判会让可用的 JDK 25 被拒绝启动（实测踩过）。
-        // 预热只影响匹配精度与提示文案，失败不致命——启动路径本身已有冷缓存放行。
+        // 后台预热各实例的 Java 要求（冷缓存时 RequiredMajor 只能返回兜底值，
+        // 而启动路径是同步的、不能联网，于是「26.3 需要 Java 21」这种误判会让
+        // 可用的 JDK 25 被拒绝启动——实测踩过）。
         var warmNames = VmList.Rows.Select(r => r.Name).ToList();
         _ = Task.Run(async () =>
         {
@@ -86,18 +103,111 @@ public sealed partial class MainWindow : Window
         {
             VmList.SelectedName = VmList.Rows[0].Name;
         }
+
+        Closed += (_, _) => VmList.Detach();
     }
+
+    // —— 窗口外观 ——
+
+    /// <summary>
+    /// Mica 只用于「跟随系统」：显式浅色/深色时 Mica 的 tint 可能与应用主题不一致
+    /// （它跟随系统而不是根元素的 RequestedTheme），此时退回纯色层更可靠。
+    /// </summary>
+    private void ApplyBackdrop(string themeKey)
+    {
+        var useMica = _micaSupported && themeKey == "system";
+        if (useMica)
+        {
+            // BaseAlt 是带导航栏应用的官方推荐变体。
+            SystemBackdrop = new MicaBackdrop { Kind = MicaKind.BaseAlt };
+            PageBackground.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            SystemBackdrop = null;
+            PageBackground.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void ApplyWindowSizing()
+    {
+        if (_windowSized) return;
+        _windowSized = true;
+
+        var scale = RootGrid.XamlRoot?.RasterizationScale ?? 1.0;
+        if (AppWindow.Presenter is OverlappedPresenter presenter)
+        {
+            // AppWindow 的尺寸 API 用物理像素；1000×680 是最小可用逻辑尺寸。
+            presenter.PreferredMinimumWidth = (int)(1000 * scale);
+            presenter.PreferredMinimumHeight = (int)(680 * scale);
+        }
+
+        AppWindow.ResizeClient(new SizeInt32((int)(1280 * scale), (int)(840 * scale)));
+    }
+
+    /// <summary>主题切换后同步系统标题栏（caption buttons 的颜色由系统画）。</summary>
+    // —— 键盘 ——
+
+    private void ConfigureKeyboardAccelerators()
+    {
+        AddAccelerator(VirtualKey.N, VirtualKeyModifiers.Control, async () => await CreateInstanceAsync());
+        AddAccelerator(VirtualKey.F5, VirtualKeyModifiers.None, () =>
+        {
+            VmList.Refresh();
+            return Task.CompletedTask;
+        });
+        // VK_OEM_COMMA (0xBC)：Windows.System.VirtualKey 没有 Comma 成员。
+        AddAccelerator((VirtualKey)0xBC, VirtualKeyModifiers.Control, async () => await OpenSettingsAsync());
+    }
+
+    private void AddAccelerator(VirtualKey key, VirtualKeyModifiers modifiers, Func<Task> action)
+    {
+        var accelerator = new KeyboardAccelerator { Key = key, Modifiers = modifiers };
+        accelerator.Invoked += async (_, args) =>
+        {
+            args.Handled = true;
+            await action();
+        };
+        RootGrid.KeyboardAccelerators.Add(accelerator);
+    }
+
+    // —— 导航 ——
+
+    /// <summary>
+    /// 只有「用户真正选中某个实例」时才写回 SelectedName。
+    /// NavigationView 在 MenuItemsSource 变化时会抛 null 的 SelectionChanged；
+    /// 把这个 null 回写会清空工作区（旧版退化就发生在这里）。
+    /// 选中被删除/被过滤时由 VM 自己显式清空。
+    /// </summary>
+    private void OnNavSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
+    {
+        if (args.SelectedItem is InstanceRow row)
+        {
+            VmList.SelectedName = row.Name;
+        }
+    }
+
+    private async void OnCreateInstanceClick(object sender, RoutedEventArgs e) =>
+        await CreateInstanceAsync();
+
+    private async void OnSettingsClick(object sender, RoutedEventArgs e) =>
+        await OpenSettingsAsync();
+
+    private void OnRefresh(object sender, RoutedEventArgs e) => VmList.Refresh();
 
     private void OnSelectionChanged(string? name)
     {
+        // 先解绑旧工作区：它持有 manager 事件订阅与控制台轮询计时器。
+        _workspace?.Detach();
+        _workspace = null;
+
         if (string.IsNullOrEmpty(name))
         {
-            TopTitle.Text = "未选择实例";
-            ContentHost.Content = new EmptyState();
+            ContentHost.Content = CreateEmptyState();
             return;
         }
-        TopTitle.Text = name;
-        // 页签内容由 InstanceTabs 装配（控制台/服务器配置/游戏配置/Mod/整合包/玩家/穿透）
+
+        // 工作区（实例头 + SelectorBar + 七个分区）由 InstanceTabs 装配。
         var tabs = new InstanceTabs(_manager, name, _tunnels);
         tabs.InstanceDeleted += deleted =>
         {
@@ -107,16 +217,16 @@ public sealed partial class MainWindow : Window
                 OnSelectionChanged(null);
             });
         };
-        // 改名后旧名已失效：刷新侧栏并选中新名（会重建页签）
+        // 改名后旧名已失效：刷新侧栏并选中新名（会重建工作区）
         tabs.InstanceRenamed += newName =>
         {
             DispatcherQueue.TryEnqueue(() =>
             {
                 VmList.Refresh();
-                VmList.SelectedName = newName;   // 触发 SelectionChanged → OnSelectionChanged 重建
+                VmList.SelectedName = newName;
             });
         };
-        // 整合包页新建实例成功：刷新侧栏并选中新实例（会触发页签重建）
+        // 整合包页新建实例成功：刷新侧栏并选中新实例
         tabs.InstanceCreated += created =>
         {
             DispatcherQueue.TryEnqueue(() =>
@@ -125,47 +235,80 @@ public sealed partial class MainWindow : Window
                 VmList.SelectedName = created;
             });
         };
+        _workspace = tabs;
         ContentHost.Content = tabs;
     }
 
-    private void OnRefresh(object sender, RoutedEventArgs e) => VmList.Refresh();
-
-    private async void OnCreateInstance(object sender, RoutedEventArgs e)
+    private EmptyState CreateEmptyState()
     {
-        var dialog = new CreateInstanceDialog(_manager) { XamlRoot = ContentHost.XamlRoot };
-        await dialog.ShowAsync();
-        VmList.Refresh();
-        // 新建成功后选中新实例
-        if (dialog.CreatedInstance is { } created)
+        var newButton = new Button
         {
-            VmList.SelectedName = created;
+            Content = "新建实例",
+            Style = (Style)Application.Current.Resources["AccentButtonStyle"],
+        };
+        newButton.Click += async (_, _) => await CreateInstanceAsync();
+
+        return new EmptyState
+        {
+            Glyph = "\uE7B8",
+            Title = "还没有实例",
+            Description = "创建一个服务器，几分钟内就能让朋友连进来。",
+            ActionContent = newButton,
+        };
+    }
+
+    // —— 对话框 ——
+
+    private async Task CreateInstanceAsync()
+    {
+        // 同一时刻只能有一个 ContentDialog；重复点击/快捷键叠加会抛 0x80000019。
+        if (_dialogOpen) return;
+        _dialogOpen = true;
+        try
+        {
+            var dialog = new CreateInstanceDialog(_manager) { XamlRoot = ContentHost.XamlRoot };
+            ThemeApplier.ApplyToDialog(dialog);
+            await dialog.ShowAsync();
+            VmList.Refresh();
+            // 新建成功后选中新实例
+            if (dialog.CreatedInstance is { } created)
+            {
+                VmList.SelectedName = created;
+            }
+        }
+        finally
+        {
+            _dialogOpen = false;
         }
     }
 
-    private async void OnOpenSettings(object sender, RoutedEventArgs e)
+    private async Task OpenSettingsAsync()
     {
-        var dialog = new SettingsDialog(_manager) { XamlRoot = ContentHost.XamlRoot };
-        await dialog.ShowAsync();
-        // 设置对话框里的主题开关是即时预览；用户如果点了取消，这里把落盘值重新贴回来，
-        // 避免「预览改了、没保存、界面却一直是深色」的错觉。
-        ThemeApplier.Apply(this, Core.Store.AppSettings.Load().Theme);
-        // 数据目录可能已搬走，重新扫描实例列表
-        VmList.Refresh();
-    }
-
-    /// <summary>未选实例时的占位内容。</summary>
-    private sealed class EmptyState : Grid
-    {
-        public EmptyState()
+        if (_dialogOpen) return;
+        _dialogOpen = true;
+        try
         {
-            Children.Add(new TextBlock
+            var dialog = new SettingsDialog(_manager) { XamlRoot = ContentHost.XamlRoot };
+            ThemeApplier.ApplyToDialog(dialog);
+            await dialog.ShowAsync();
+
+            // 设置对话框里的主题开关是即时预览；用户如果点了取消，这里把落盘值重新贴回来，
+            // 避免「预览改了、没保存、界面却一直是深色」的错觉。
+            var theme = Core.Store.AppSettings.Load().Theme;
+            ThemeApplier.Apply(this, theme);
+            // 数据目录可能已搬走，重新扫描实例列表
+            VmList.Refresh();
+
+            // 搬家后旧工作区的 VM 仍持有旧目录路径，必须重建；清空选中即可。
+            if (dialog.HomeMoved)
             {
-                Text = "从左侧选择一个实例，或点「新建实例」开一个服",
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(
-                    Windows.UI.Color.FromArgb(255, 0xA1, 0xA1, 0xAA)),
-            });
+                VmList.SelectedName = null;
+                OnSelectionChanged(null);
+            }
+        }
+        finally
+        {
+            _dialogOpen = false;
         }
     }
 }

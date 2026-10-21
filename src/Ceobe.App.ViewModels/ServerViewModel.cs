@@ -81,6 +81,13 @@ public partial class ServerViewModel : ObservableObject
 
     partial void OnIsBusyChanged(bool value) => OnPropertyChanged(nameof(CanSave));
 
+    // IsDirty 是派生属性；任一输入变化都要让绑定重新求值（旧版只在保存时读一次）。
+    partial void OnNameChanged(string value) => OnPropertyChanged(nameof(IsDirty));
+    partial void OnMemoryMbChanged(int value) => OnPropertyChanged(nameof(IsDirty));
+    partial void OnPortChanged(int value) => OnPropertyChanged(nameof(IsDirty));
+    partial void OnJvmArgsChanged(string value) => OnPropertyChanged(nameof(IsDirty));
+    partial void OnAuthlibInjectorUrlChanged(string? value) => OnPropertyChanged(nameof(IsDirty));
+
     /// <summary>从 meta 加载当前设置。</summary>
     public void Load()
     {
@@ -93,6 +100,7 @@ public partial class ServerViewModel : ObservableObject
         ServerRunning = _manager.Find(_instance)?.State.IsLive() ?? false;
         HasError = false;
         StatusText = RunningHint;
+        OnPropertyChanged(nameof(IsDirty));
     }
 
     [RelayCommand]
@@ -145,6 +153,7 @@ public partial class ServerViewModel : ObservableObject
         finally
         {
             IsBusy = false;
+            OnPropertyChanged(nameof(IsDirty));
         }
     }
 

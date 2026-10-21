@@ -45,6 +45,9 @@ public sealed partial class ModsPage : UserControl, IReloadable, System.Componen
 
     public bool NotBusy => _vm is { IsBusy: false } && _importVm is { IsBusy: false };
 
+    /// <summary>导入被拦下时用 InfoBar 说明原因，而不是只把按钮置灰。</summary>
+    public bool HasBlockedReason => _importVm?.BlockedReason is { Length: > 0 };
+
     public void Load(ModsViewModel vm, ImportViewModel importVm)
     {        _vm = vm;
         _importVm = importVm;
@@ -63,10 +66,13 @@ public sealed partial class ModsPage : UserControl, IReloadable, System.Componen
                 or nameof(ImportViewModel.SuggestedSubdir)
                 or nameof(ImportViewModel.OverwriteCount))
                 OnPropertyChanged(nameof(ImportSummary));
+            if (e.PropertyName is nameof(ImportViewModel.BlockedReason))
+                OnPropertyChanged(nameof(HasBlockedReason));
         };
         RaiseSupportChanged();
         OnPropertyChanged(nameof(NotBusy));
         OnPropertyChanged(nameof(ImportSummary));
+        OnPropertyChanged(nameof(HasBlockedReason));
         Bindings.Update();
     }
 
@@ -103,8 +109,24 @@ public sealed partial class ModsPage : UserControl, IReloadable, System.Componen
 
     private async void OnUninstall(object sender, RoutedEventArgs e)
     {
-        if (_vm is null) return;
-        await _vm.UninstallCommand.ExecuteAsync(null);
+        if (_vm is null || _vm.SelectedInstalled is null) return;
+
+        // 删除 mods/ 下的文件是不可逆动作，先确认。
+        var dialog = new ContentDialog
+        {
+            Title = "卸载 Mod",
+            Content = $"卸载「{_vm.SelectedInstalled.Title}」？\n\n会从 mods/ 删除对应文件。",
+            PrimaryButtonText = "卸载",
+            CloseButtonText = "取消",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = XamlRoot,
+        };
+        ThemeApplier.ApplyToDialog(dialog);
+
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        {
+            await _vm.UninstallCommand.ExecuteAsync(null);
+        }
     }
 
     private async void OnInspect(object sender, RoutedEventArgs e)

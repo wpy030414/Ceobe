@@ -33,6 +33,9 @@ public sealed partial class ModpacksPage : UserControl, IReloadable, System.Comp
     /// <summary>进度未知（-1）时显示不定进度条。</summary>
     public bool ProgressIndeterminate => _vm is { IsBusy: true, Progress: < 0 };
 
+    /// <summary>搜索完成且没有结果时显示空状态。</summary>
+    public bool ShowEmptyResults => _vm is { IsBusy: false, Results.Count: 0 };
+
     /// <summary>
     /// NumberBox.Value 是 double，而 VM 的 NewMemoryMb 是 int。
     /// 直接绑 int 会撞 WMC1121（类型不匹配），故在视图层做一层 double 投影——
@@ -59,12 +62,14 @@ public sealed partial class ModpacksPage : UserControl, IReloadable, System.Comp
                 case nameof(ModpacksViewModel.IsBusy):
                     OnPropertyChanged(nameof(NotBusy));
                     OnPropertyChanged(nameof(ProgressIndeterminate));
+                    OnPropertyChanged(nameof(ShowEmptyResults));
                     break;
                 case nameof(ModpacksViewModel.Progress):
                     OnPropertyChanged(nameof(ProgressIndeterminate));
                     break;
             }
         };
+        vm.Results.CollectionChanged += (_, _) => OnPropertyChanged(nameof(ShowEmptyResults));
         RaiseStatic();
         Bindings.Update();
     }
@@ -77,6 +82,7 @@ public sealed partial class ModpacksPage : UserControl, IReloadable, System.Comp
         OnPropertyChanged(nameof(NotBusy));
         OnPropertyChanged(nameof(ShowUnsupported));
         OnPropertyChanged(nameof(ProgressIndeterminate));
+        OnPropertyChanged(nameof(ShowEmptyResults));
         OnPropertyChanged(nameof(NewMemoryMbDouble));
     }
 

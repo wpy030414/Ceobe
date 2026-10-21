@@ -45,8 +45,7 @@ public sealed partial class GameConfigPage : UserControl, System.ComponentModel.
     }
 
     /// <summary>分组下拉仅在「分类」视图显示。</summary>
-    public Visibility ShowGroupNav =>
-        Vm?.View == ConfigView.Category ? Visibility.Visible : Visibility.Collapsed;
+    public bool ShowGroupNav => Vm?.View == ConfigView.Category;
 
     /// <summary>无 server.properties 时显示引导 InfoBar（InfoBar.IsOpen 要 bool，不是 Visibility）。</summary>
     public bool ShowNoProps => Vm is { PropsExist: false };
@@ -80,6 +79,17 @@ public sealed partial class GameConfigPage : UserControl, System.ComponentModel.
     }
 
     private void OnDiscard(object sender, RoutedEventArgs e) => _vm?.DiscardCommand.Execute(null);
+
+    /// <summary>切回本分区时回到顶部，避免上次滚动位置让第一眼看到半截列表。</summary>
+    public void ResetScroll() => PageScroll.ChangeView(null, 0, null, true);
+
+    private void OnTogglePack(object sender, RoutedEventArgs e)
+    {
+        if (_vm is not null && (sender as FrameworkElement)?.Tag is string pack)
+        {
+            _vm.TogglePackCommand.Execute(pack);
+        }
+    }
 
     // 本页把 VM 的三级视图状态映射成派生绑定属性（ViewIndex/ShowGroupNav/ShowNoProps），
     // 这些属性运行期会变，故实现 INotifyPropertyChanged 通知 x:Bind 刷新。

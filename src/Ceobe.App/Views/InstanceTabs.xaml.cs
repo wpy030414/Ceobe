@@ -1,3 +1,4 @@
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Ceobe.App.ViewModels;
 using Ceobe.Core.Event;
@@ -7,11 +8,11 @@ using Ceobe.Core.Tunnel;
 namespace Ceobe.App.Views;
 
 /// <summary>
-/// 实例页签容器 code-behind：把选中的实例名注入各页的 ViewModel。
-/// 只做接线，业务在各 ViewModel（闸门 C：逻辑可单测，不依赖 XAML）。
+/// 实例工作区：实例头 + SelectorBar + 七个分区页面。
+/// 只做接线——业务在各 ViewModel（闸门 C）。
 ///
-/// 七页齐全（对齐 Java 版 TabPane）：控制台 / 服务器配置 / 游戏配置 / Mod / 整合包 / 玩家 / 穿透。
-/// 后三页对应训练员反馈的整改项 2/1 与整合包装载路径，此前一直缺接线。
+/// 2026-10-22 Fluent 2 重构：TabView → SelectorBar；启停/删除从控制台页移到实例头，
+/// 使任意分区都能直接启停；页面全部同层声明，当前页可见并填满 * 行。
 /// </summary>
 public sealed partial class InstanceTabs : UserControl
 {
@@ -20,48 +21,44 @@ public sealed partial class InstanceTabs : UserControl
     private readonly ConsoleViewModel _console;
     private readonly TunnelViewModel _tunnel;
     private readonly Action<IInstanceEvent> _onManagerEvent;
+    private bool _detached;
 
-    /// <summary>
-    /// 实例被删除时冒泡到主窗口（主窗口据此刷新侧栏并清空选中）。
-    /// View 之间不直接依赖：ConsolePage 触发，本容器转发，MainWindow 订阅。
-    /// </summary>
+    /// <summary>实例被删除时冒泡到主窗口（主窗口据此刷新侧栏并清空选中）。</summary>
     public event Action<string>? InstanceDeleted;
 
-    /// <summary>
-    /// 实例被改名时冒泡到主窗口（页签标题与侧栏项都是实例名，改了必须重建）。
-    /// </summary>
+    /// <summary>实例被改名时冒泡到主窗口（页签标题与侧栏项都是实例名，改了必须重建）。</summary>
     public event Action<string>? InstanceRenamed;
 
-    /// <summary>
-    /// 整合包页「新建并安装」成功后冒泡：新实例需要立刻出现在侧栏并被选中，
-    /// 否则用户会以为新建失败（当前页还停留在旧实例上）。
-    /// </summary>
+    /// <summary>整合包页「新建并安装」成功后冒泡：新实例需要立刻出现在侧栏并被选中。</summary>
     public event Action<string>? InstanceCreated;
 
-    /// <param name="tunnels">
-    /// 本进程的隧道管理器（GUI 即监督进程，见 CeobeComposition.StartAppServices）。
-    /// 为 null 时穿透页退化为「只能经控制通道操作外部托管的实例」。
-    /// </param>
+    /// <summary>实例名（SelectorBar 上方的标题）。</summary>
+    public string InstanceName => _instance;
+
+    /// <summary>控制台 VM：实例头的状态点、启停按钮与删除动作都绑它。</summary>
+    public ConsoleViewModel Console => _console;
+
     public InstanceTabs(InstanceManager manager, string instance, TunnelManager? tunnels = null)
     {
-        InitializeComponent();
         _manager = manager;
         _instance = instance;
 
-        // 控制台页：接 ViewModel 并加载历史日志。
-        // 外部托管（CLI start -d）的实例还要按文件偏移增量跟随，由 ConsolePage 内部定时轮询。
+        // 必须在 InitializeComponent 之前建好：XAML 里的 x:Bind 在初始化时就会求值 Console。
         _console = new ConsoleViewModel(manager, instance);
+
+        InitializeComponent();
+
+        // 控制台页：接 ViewModel 并加载历史日志。
         ConsoleTab.Load(_console);
-        ConsoleTab.InstanceDeleted += name => InstanceDeleted?.Invoke(name);
 
         // 服务器配置页：改名成功后冒泡，让主窗口重建页签（标题即实例名）
         ServerTab.Load(new ServerViewModel(manager, instance));
         ServerTab.InstanceRenamed += name => InstanceRenamed?.Invoke(name);
 
-        // 游戏配置页（整改项 5：三级视图）
+        // 游戏配置页（整改项 5：三级视图 + 资源包/数据包复合控件）
         GameTab.Load(new GameConfigViewModel(manager, instance));
 
-        // Mod 页：上半 Modrinth 搜索装卸，下半整改项 4 一键导入（两个独立 VM）
+        // Mod 页：Modrinth 搜索装卸 + 一键导入（两个独立 VM）
         ModsTab.Load(new ModsViewModel(manager, instance), new ImportViewModel(manager, instance));
 
         // 整合包页：两条路径（装到本实例 / 按包新建实例）
@@ -75,36 +72,101 @@ public sealed partial class InstanceTabs : UserControl
         _tunnel = new TunnelViewModel(manager, instance, tunnels);
         TunnelTab.Load(_tunnel);
 
-        // 实例停止时穿透页的卡片要跟着复位——否则界面上还挂着一条早已失效的通道地址，
-        // 用户会照着它去分享。订阅必须成对解除，见 OnUnloaded。
-        _onManagerEvent = evt => _tunnel.HandleEvent(evt);
+        // 实例停止时穿透页的卡片要跟着复位——否则界面上还挂着一条早已失效的通道地址。
+        // 只转发状态/通道事件：日志事件由 ConsoleViewModel 自己消费，穿透页不关心。
+        _onManagerEvent = evt =>
+        {
+            if (evt is StateChanged or TunnelChanged) _tunnel.HandleEvent(evt);
+        };
         _manager.OnEvent += _onManagerEvent;
 
-        // 页签切回时重读磁盘：名单/整合包/通道状态都可能已被别处改动
-        Tabs.SelectionChanged += OnTabSelectionChanged;
+        // 默认落在控制台（使用频率最高，也对齐旧版启动行为）
+        SectionBar.SelectedItem = SectionBar.Items[0];
+
         Unloaded += OnUnloaded;
     }
 
-    /// <summary>
-    /// 切到某个页签时让它自己刷新一次。只读页实现 <see cref="IReloadable"/>；
-    /// 带未保存编辑的页（服务器配置/游戏配置）刻意不实现，避免冲掉用户正在改的内容。
-    /// </summary>
-    private void OnTabSelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void OnSectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
     {
-        if (Tabs.SelectedItem is TabViewItem { Content: IReloadable reloadable })
+        var index = sender.Items.IndexOf(sender.SelectedItem);
+        if (index < 0) return;
+
+        UserControl[] pages =
+        [
+            ConsoleTab, ServerTab, GameTab, ModsTab, ModpacksTab, PlayersTab, TunnelTab,
+        ];
+
+        for (var i = 0; i < pages.Length; i++)
         {
-            reloadable.Reload();
+            pages[i].Visibility = i == index ? Visibility.Visible : Visibility.Collapsed;
         }
+
+        // 切回只读页时重读磁盘：名单/整合包/通道状态可能已被别处改动。
+        // 带未保存编辑的页（服务器配置/游戏配置）刻意不实现 IReloadable。
+        if (pages[index] is IReloadable reloadable) reloadable.Reload();
+
+        // 游戏配置的字段很长，切回来时回到顶部（上次的滚动位置不应成为第一眼）。
+        if (pages[index] is GameConfigPage gameConfig) gameConfig.ResetScroll();
+    }
+
+    private async void OnStart(object sender, RoutedEventArgs e)
+    {
+        await _console.StartCommand.ExecuteAsync(null);
+        // 启动成功后本进程接管日志事件流，文件轮询必须停掉。
+        ConsoleTab.StopPolling();
+    }
+
+    private async void OnStop(object sender, RoutedEventArgs e) =>
+        await _console.StopCommand.ExecuteAsync(null);
+
+    /// <summary>
+    /// 删除确认：三选对话框（仅移除 / 连数据删除 / 取消）。
+    /// 不可逆操作必须在 View 层确认，VM 只接受已决定好的 purge 模式。
+    /// </summary>
+    private async void OnDelete(object sender, RoutedEventArgs e)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = "删除实例",
+            Content = $"删除实例「{_instance}」？\n\n" +
+                      "「仅移除」保留世界数据文件；「连数据删除」将永久删除整个实例目录，不可恢复。",
+            PrimaryButtonText = "仅移除",
+            SecondaryButtonText = "连数据删除",
+            CloseButtonText = "取消",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = XamlRoot,
+        };
+        ThemeApplier.ApplyToDialog(dialog);
+
+        var result = await dialog.ShowAsync();
+        switch (result)
+        {
+            case ContentDialogResult.Primary:
+                _console.DeleteCommand.Execute(false);
+                break;
+            case ContentDialogResult.Secondary:
+                _console.DeleteCommand.Execute(true);
+                break;
+            default:
+                return;
+        }
+
+        if (_console.Deleted) InstanceDeleted?.Invoke(_instance);
     }
 
     /// <summary>
-    /// 容器被替换（切换实例）时解绑事件源。
-    /// 不解绑的后果：每切一次实例就多一个永不释放的订阅，旧 VM 还会继续被写入日志行。
+    /// 解绑本轮工作区持有的事件订阅与轮询计时器。幂等；主窗口替换工作区前会显式调用，
+    /// Unloaded 也会兜底调用（两者不重复执行）。
     /// </summary>
-    private void OnUnloaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    public void Detach()
     {
+        if (_detached) return;
+        _detached = true;
+
         _manager.OnEvent -= _onManagerEvent;
         _console.Detach();
-        Unloaded -= OnUnloaded;
+        ConsoleTab.StopPolling();
     }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e) => Detach();
 }

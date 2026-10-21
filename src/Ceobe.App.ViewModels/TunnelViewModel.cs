@@ -304,7 +304,9 @@ public partial class TunnelViewModel : ObservableObject
     }
 
     /// <summary>把 Core 的实例事件接到卡片上（供界面订阅 manager.OnEvent 后转发）。</summary>
-    public void HandleEvent(IInstanceEvent evt)
+    public void HandleEvent(IInstanceEvent evt) => UiThread.Post(() => HandleEventCore(evt));
+
+    private void HandleEventCore(IInstanceEvent evt)
     {
         if (evt.Instance != _instance) return;
         if (evt is TunnelChanged tc) OnAddressChanged(tc.Kind, tc.PublicUrl);

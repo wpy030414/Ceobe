@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="Ceobe.App.Views.SettingsDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    Title="设置"
+    PrimaryButtonText="保存"
+    CloseButtonText="取消"
+    DefaultButton="Primary"
+    PrimaryButtonClick="OnPrimaryButtonClick">
+
+    <ScrollViewer MaxHeight="620" VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="12" MaxWidth="640">
+
+            <controls:SettingsCard Header="外观"
+                                   Description="浅色 / 深色 / 跟随系统；选择后立即预览。"
+                                   ContentAlignment="Right">
+                <ComboBox Width="160"
+                          ItemsSource="{x:Bind Vm.ThemeOptions}"
+                          DisplayMemberPath="Label"
+                          SelectedValuePath="Value"
+                          SelectedValue="{x:Bind Vm.Theme, Mode=TwoWay}"
+                          SelectionChanged="OnThemeSelectionChanged"
+                          AutomationProperties.Name="主题" />
+            </controls:SettingsCard>
+
+            <controls:SettingsCard Header="新建实例默认开启白名单"
+                                   Description="只影响新建实例的默认值；创建时仍会显式询问一次。"
+                                   ContentAlignment="Right">
+                <ToggleSwitch IsOn="{x:Bind Vm.DefaultWhitelistEnabled, Mode=TwoWay}"
+                              OnContent="开" OffContent="关"
+                              AutomationProperties.Name="新建实例默认开启白名单" />
+            </controls:SettingsCard>
+
+            <controls:SettingsExpander Header="数据目录"
+                                       Description="{x:Bind Vm.CurrentHome, Mode=OneWay}"
+                                       IsExpanded="False">
+                <StackPanel Spacing="12" Padding="0,4,0,0">
+                    <TextBox Header="当前数据目录"
+                             Text="{x:Bind Vm.CurrentHome, Mode=OneWay}"
+                             IsReadOnly="True"
+                             AutomationProperties.Name="当前数据目录" />
+
+                    <InfoBar IsOpen="{x:Bind HasOneDriveWarning, Mode=OneWay}"
+                             Severity="Warning" IsClosable="False"
+                             Title="{x:Bind Vm.OneDriveWarning, Mode=OneWay}" />
+
+                    <TextBox Header="新数据目录"
+                             PlaceholderText="如 D:\ceobe"
+                             Text="{x:Bind Vm.ProposedHome, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="新数据目录" />
+
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="预演搬家（只读）" Click="OnPlanMove"
+                                IsEnabled="{x:Bind NotMoving, Mode=OneWay}" />
+                        <Button Content="执行搬家" Click="OnExecuteMove"
+                                IsEnabled="{x:Bind NotMoving, Mode=OneWay}" />
+                        <Button Content="放弃搬家" Click="OnCancelMove"
+                                IsEnabled="{x:Bind NotMoving, Mode=OneWay}" />
+                        <ProgressRing Width="20" Height="20"
+                                      IsActive="{x:Bind Vm.IsMoving, Mode=OneWay}" />
+                    </StackPanel>
+
+                    <TextBlock Text="{x:Bind PlanSummary, Mode=OneWay}"
+                               Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                               TextWrapping="Wrap" />
+
+                    <ItemsControl ItemsSource="{x:Bind Vm.Plan.Blockers, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <TextBlock Text="{x:Bind}" TextWrapping="Wrap" FontSize="12"
+                                           Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <ItemsControl ItemsSource="{x:Bind Vm.Plan.Warnings, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <TextBlock Text="{x:Bind}" TextWrapping="Wrap" FontSize="12"
+                                           Foreground="{ThemeResource SystemFillColorCautionBrush}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </controls:SettingsExpander>
+
+            <controls:SettingsExpander Header="关于" IsExpanded="False">
+                <StackPanel Spacing="4" Padding="0,4,0,0">
+                    <TextBlock Text="{x:Bind AppDisplayVersion}" FontWeight="SemiBold" />
+                    <TextBlock Text="WinUI 3 · Windows App SDK 2.5.1 · .NET 10 · x64 · 非打包自包含"
+                               Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </controls:SettingsExpander>
+
+            <InfoBar IsOpen="{x:Bind Vm.HasError, Mode=OneWay}"
+                     Severity="Error" IsClosable="False"
+                     Title="{x:Bind Vm.StatusText, Mode=OneWay}" />
+
+            <TextBlock Text="{x:Bind Vm.StatusText, Mode=OneWay}"
+                       Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                       TextWrapping="Wrap"
+                       Visibility="{x:Bind ShowPlainStatus, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
+        </StackPanel>
+    </ScrollViewer>
+</ContentDialog>

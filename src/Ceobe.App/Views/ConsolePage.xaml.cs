@@ -3,17 +3,16 @@ using System.Runtime.CompilerServices;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 using Ceobe.App.ViewModels;
-using Ceobe.Core.Runtime;
 
 namespace Ceobe.App.Views;
 
 /// <summary>
 /// 控制台页 code-behind。只做绑定与手势转发；业务在 <see cref="ConsoleViewModel"/>（闸门 C）。
-/// 实现 INPC 是因为 x:Bind 绑到本页的 <see cref="Vm"/>/<see cref="ShowBanner"/> 等属性，
-/// 它们运行期会变（Load 之后才有 Vm）。
+///
+/// 2026-10-22 重构：启停/删除移到实例头（InstanceTabs），本页只负责日志与命令输入。
 /// </summary>
 public sealed partial class ConsolePage : UserControl, INotifyPropertyChanged
 {
@@ -38,8 +37,11 @@ public sealed partial class ConsolePage : UserControl, INotifyPropertyChanged
 
     /// <summary>外部托管提示文案。</summary>
     public string HostedHint => Vm?.IsHosted == false
-        ? "该实例由外部进程托管（如 CLI 启动），日志按文件增量跟随。"
+        ? "该实例由外部进程托管（CLI 启动），日志按文件增量跟随。"
         : "";
+
+    /// <summary>日志为空时显示空状态，而不是一块看不出边界的白板。</summary>
+    public bool ShowEmptyLog => Vm is null || Vm.Lines.Count == 0;
 
     /// <summary>注入 ViewModel 并加载历史日志。</summary>
     public void Load(ConsoleViewModel vm)
@@ -56,12 +58,13 @@ public sealed partial class ConsolePage : UserControl, INotifyPropertyChanged
                 OnPropertyChanged(nameof(HostedHint));
             }
         };
+
         vm.LoadHistory();
+        vm.Lines.CollectionChanged += OnLinesChanged;
+
         // 日志新增时，跟随模式下自动滚到底
-        vm.Lines.CollectionChanged += (_, _) =>
-        {
-            if (vm.Follow) LogScroll.ChangeView(null, LogScroll.ScrollableHeight, null);
-        };
+        OnPropertyChanged(nameof(ShowEmptyLog));
+        ScrollToLatest();
         OnPropertyChanged(nameof(ShowBanner));
         OnPropertyChanged(nameof(BannerSeverity));
         OnPropertyChanged(nameof(HostedHint));
@@ -73,20 +76,26 @@ public sealed partial class ConsolePage : UserControl, INotifyPropertyChanged
             _pollTimer.Tick += (_, _) => vm.PollExternalLog();
             _pollTimer.Start();
         }
+
+        Unloaded += OnUnloaded;
     }
 
-    private async void OnStart(object sender, RoutedEventArgs e)
+    private void OnLinesChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
-        if (Vm is null) return;
-        await Vm.StartCommand.ExecuteAsync(null);
-        // 启动会切到本进程托管，事件流接管日志；停掉文件轮询
-        StopPolling();
+        OnPropertyChanged(nameof(ShowEmptyLog));
+        if (_vm?.Follow == true) ScrollToLatest();
     }
 
-    private async void OnStop(object sender, RoutedEventArgs e)
+    private void ScrollToLatest()
     {
-        if (Vm is null) return;
-        await Vm.StopCommand.ExecuteAsync(null);
+        // 等 ItemsStackPanel 完成一次布局后再滚，否则 ScrollableHeight 还是旧值。
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (_vm is { Lines.Count: > 0 })
+            {
+                LogList.ScrollIntoView(_vm.Lines[^1]);
+            }
+        });
     }
 
     private async void OnSend(object sender, RoutedEventArgs e)
@@ -98,7 +107,19 @@ public sealed partial class ConsolePage : UserControl, INotifyPropertyChanged
 
     private void OnClear(object sender, RoutedEventArgs e) => Vm?.ClearViewCommand.Execute(null);
 
-    /// <summary>回车发送（对齐 Java 版 input.setOnAction）。</summary>
+    private void OnCopyLog(object sender, RoutedEventArgs e)
+    {
+        if (Vm is null || Vm.Lines.Count == 0) return;
+
+        var package = new DataPackage();
+        package.SetText(string.Join(Environment.NewLine, Vm.Lines));
+        Clipboard.SetContent(package);
+
+        Vm.HasError = false;
+        Vm.StatusText = $"已复制 {Vm.Lines.Count} 行日志";
+    }
+
+    /// <summary>回车发送（对齐旧版 input.setOnAction）。</summary>
     private async void OnInputKeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key != VirtualKey.Enter || Vm is null) return;
@@ -106,50 +127,15 @@ public sealed partial class ConsolePage : UserControl, INotifyPropertyChanged
         await Vm.SendCommand.ExecuteAsync(null);
     }
 
-    /// <summary>
-    /// 删除确认：三选对话框（仅移除 / 连数据删除 / 取消）。
-    /// 不可逆操作必须在 View 层确认，VM 只接受已决定好的 purge 模式——
-    /// 这样删除逻辑能被单测覆盖，不必为测它拉起 UI。
-    /// </summary>
-    private async void OnDelete(object sender, RoutedEventArgs e)
+    private void OnUnloaded(object sender, RoutedEventArgs e)
     {
-        if (Vm is null) return;
-        var dialog = new ContentDialog
-        {
-            Title = "删除实例",
-            Content = $"删除实例「{Vm.InstanceName}」？\n\n" +
-                      "「仅移除」保留世界数据文件；「连数据删除」将永久删除整个实例目录，不可恢复。",
-            PrimaryButtonText = "仅移除",
-            SecondaryButtonText = "连数据删除",
-            CloseButtonText = "取消",
-            DefaultButton = ContentDialogButton.Close,
-            XamlRoot = XamlRoot,
-        };
-        var result = await dialog.ShowAsync();
-        // 用 switch 语句而非表达式：表达式分支不能写 return 语句
-        switch (result)
-        {
-            case ContentDialogResult.Primary:
-                Vm.DeleteCommand.Execute(false);
-                break;
-            case ContentDialogResult.Secondary:
-                Vm.DeleteCommand.Execute(true);
-                break;
-            default:
-                return;   // 取消
-        }
-        if (Vm.Deleted)
-        {
-            StopPolling();
-            // 通知上层关闭页签并刷新列表（View 之间不直接依赖，用附加事件冒泡）
-            InstanceDeleted?.Invoke(Vm.InstanceName);
-        }
+        StopPolling();
+        if (_vm is not null) _vm.Lines.CollectionChanged -= OnLinesChanged;
+        Unloaded -= OnUnloaded;
     }
 
-    /// <summary>实例已删除，请求主界面刷新侧栏（由 InstanceTabs/MainWindow 订阅）。</summary>
-    public event Action<string>? InstanceDeleted;
-
-    private void StopPolling()
+    /// <summary>停止外部日志轮询。实例头启动成功后由 InstanceTabs 调用。</summary>
+    public void StopPolling()
     {
         _pollTimer?.Stop();
         _pollTimer = null;

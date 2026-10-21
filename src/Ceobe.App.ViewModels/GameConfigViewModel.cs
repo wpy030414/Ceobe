@@ -122,6 +122,7 @@ public partial class GameConfigViewModel : ObservableObject
         _pending.Clear();
         CanSave = false;
         HasError = false;
+        OnPropertyChanged(nameof(PendingCount));
 
         PropsExist = File.Exists(_propsFile);
         if (!PropsExist)
@@ -163,10 +164,11 @@ public partial class GameConfigViewModel : ObservableObject
         }
         UnknownCount = _all.Count(f => f.IsUnknown);
 
-        // 分组导航（含每组可见字段数，让用户知道点进去有多少东西）
+        // 分组导航（含每组可见字段数，让用户知道点进去有多少东西）。
+        // 资源包 4 键已单独聚成复合控件，不计入主列表/分组计数。
         foreach (var g in PropSchema.Groups())
         {
-            var count = _all.Count(f => !f.IsUnknown && f.Group == g);
+            var count = _all.Count(f => !f.IsUnknown && f.Group == g && !ResourcePackCluster.Contains(f.Key));
             if (count > 0) GroupNavs.Add(new GroupNav(g, count));
         }
         SelectedGroup ??= GroupNavs.FirstOrDefault()?.Name;
@@ -211,10 +213,15 @@ public partial class GameConfigViewModel : ObservableObject
     private void OnFieldChanged(PropField field, string value)
     {
         if (field.IsUnknown) return; // 未收录键只读，不该有改动
-        _pending[field.Key] = value;
-        CanSave = true;
+
+        // 改回原值时要从 pending 里移除，否则「未保存 N 项」会永远虚高。
+        if (field.IsModified) _pending[field.Key] = value;
+        else _pending.Remove(field.Key);
+
+        CanSave = _pending.Count > 0;
         HasError = false;
-        StatusText = $"有 {_pending.Count} 项未保存";
+        StatusText = _pending.Count == 0 ? "" : $"有 {_pending.Count} 项未保存";
+        OnPropertyChanged(nameof(PendingCount));
     }
 
     /// <summary>按当前视图 / 搜索词 / 选中分组重建 <see cref="Fields"/>。</summary>
@@ -235,16 +242,19 @@ public partial class GameConfigViewModel : ObservableObject
         switch (View)
         {
             case ConfigView.Common:
-                // 常用视图只收 schema 标记的键，且必须在文件里真实存在
+                // 常用视图只收 schema 标记的键，且必须在文件里真实存在；
+                // 资源包 4 键由独立复合控件渲染，避免与主列表重复。
                 foreach (var k in PropSchema.Common())
                 {
+                    if (ResourcePackCluster.Contains(k.Key)) continue;
                     var f = _all.FirstOrDefault(x => x.Key == k.Key && !x.IsUnknown);
                     if (f is not null) Fields.Add(f);
                 }
                 break;
 
             case ConfigView.Category:
-                foreach (var f in _all.Where(f => !f.IsUnknown && f.Group == SelectedGroup))
+                foreach (var f in _all.Where(f => !f.IsUnknown && f.Group == SelectedGroup
+                                                  && !ResourcePackCluster.Contains(f.Key)))
                 {
                     Fields.Add(f);
                 }
@@ -279,6 +289,7 @@ public partial class GameConfigViewModel : ObservableObject
             _pending.Clear();
             CanSave = false;
             HasError = false;
+            OnPropertyChanged(nameof(PendingCount));
             StatusText = "已保存 " + count + " 项" + (ServerRunning ? "（重启后生效）" : "");
         }
         catch (CeobeException e)

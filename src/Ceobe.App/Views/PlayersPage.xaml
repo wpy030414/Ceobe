@@ -5,30 +5,30 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:vm="using:Ceobe.App.ViewModels">
 
-    <!--
-      玩家页（整改项 2：训练员原话「白名单默认开启，但没有入口填写白名单，
-      只能在控制台输入指令，建议给玩家页面单开一页」）。
+    <UserControl.Resources>
+        <Style x:Key="PlayerRowStyle" TargetType="ListViewItem"
+               BasedOn="{StaticResource DefaultListViewItemStyle}">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="16,0" />
+            <Setter Property="MinHeight" Value="44" />
+        </Style>
+    </UserControl.Resources>
 
-      设计要点：
-      · 白名单开关放在最顶上——它是「谁能进服」的安全开关，必须第一眼看到；
-      · 四个名单（白名单/OP/封禁玩家/封禁IP）用单选分段，一次只看一张表，不堆成一坨；
-      · 运行中的改动走服务端命令热生效，停机时才本地写文件——两者的后果在状态栏如实区分。
+    <!--
+      玩家页（整改项 2）：白名单开关置顶，四个名单分段编辑。
+      运行中的改动走服务端命令热生效，停机时才本地写文件——后果在状态栏如实区分。
     -->
-    <Grid Padding="20" RowSpacing="10">
+    <Grid Padding="24,8,24,24" RowSpacing="12">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="玩家" FontSize="18" FontWeight="SemiBold" />
-
-        <!-- 白名单状态（安全开关） -->
-        <Border Grid.Row="1" Padding="12" CornerRadius="6"
-                Background="{ThemeResource LayerFillColorDefaultBrush}">
-            <StackPanel Spacing="6">
+        <!-- 白名单安全开关 -->
+        <Border Grid.Row="0" Style="{StaticResource CeobeCardStyle}">
+            <StackPanel Spacing="8">
                 <StackPanel Orientation="Horizontal" Spacing="18">
                     <CheckBox Content="启用白名单（只有名单内玩家能进入）"
                               IsChecked="{x:Bind Vm.WhitelistEnabled, Mode=TwoWay}"
@@ -37,12 +37,15 @@
                               IsChecked="{x:Bind Vm.EnforceWhitelist, Mode=TwoWay}"
                               Click="OnToggleEnforce" />
                 </StackPanel>
-                <TextBlock Text="{x:Bind Vm.StatusText, Mode=OneWay}" FontSize="12" TextWrapping="Wrap"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <TextBlock Text="{x:Bind Vm.StatusText, Mode=OneWay}"
+                           Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                           TextWrapping="Wrap" />
             </StackPanel>
         </Border>
 
-        <RadioButtons Grid.Row="2" MaxColumns="4" SelectedIndex="{x:Bind SectionIndex, Mode=TwoWay}">
+        <RadioButtons Grid.Row="1" MaxColumns="4"
+                      SelectedIndex="{x:Bind SectionIndex, Mode=TwoWay}"
+                      AutomationProperties.Name="玩家名单分类">
             <RadioButton Content="白名单" />
             <RadioButton Content="管理员 OP" />
             <RadioButton Content="封禁玩家" />
@@ -50,182 +53,293 @@
         </RadioButtons>
 
         <!-- ===== 白名单 ===== -->
-        <Grid Grid.Row="3" RowSpacing="8"
-              Visibility="{x:Bind WlVisible, Mode=OneWay, Converter={StaticResource BoolToVis}}">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
+        <Border Grid.Row="2" Style="{StaticResource CeobeCardStyle}" Padding="0"
+                Visibility="{x:Bind WlVisible, Mode=OneWay}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-            <Grid Grid.Row="0" ColumnSpacing="8">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBox Grid.Column="0" PlaceholderText="玩家名（离线模式按名算 UUID，正版模式查 Mojang）"
-                         Text="{x:Bind Vm.NewPlayerName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                <Button Grid.Column="1" Content="加入白名单" Click="OnAddWhitelist"
-                        Style="{StaticResource AccentButtonStyle}" />
-            </Grid>
+                <Grid Grid.Row="0" Padding="16,12" ColumnSpacing="8"
+                      BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                      BorderThickness="0,0,0,1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0"
+                             PlaceholderText="玩家名（离线模式按名算 UUID，正版模式查 Mojang）"
+                             Text="{x:Bind Vm.NewPlayerName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="要加入白名单的玩家名" />
+                    <Button Grid.Column="1" Content="加入白名单" Click="OnAddWhitelist"
+                            Style="{StaticResource AccentButtonStyle}" />
+                </Grid>
 
-            <ListView Grid.Row="1" ItemsSource="{x:Bind Vm.Whitelist, Mode=OneWay}">
-                <ListView.ItemTemplate>
-                    <DataTemplate x:DataType="vm:WhitelistRow">
-                        <Grid ColumnSpacing="12" Padding="0,2">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="160" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="{x:Bind Name}" FontWeight="SemiBold" />
-                            <TextBlock Grid.Column="1" Text="{x:Bind Uuid}" FontSize="11"
-                                       VerticalAlignment="Center" FontFamily="Consolas"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            <Button Grid.Column="2" Content="移除" Tag="{x:Bind Name}" Click="OnRemoveWhitelist" />
-                        </Grid>
-                    </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
+                <Grid Grid.Row="1" Padding="16,8" ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="160" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="玩家"
+                               Style="{StaticResource CeobeTableHeaderCellStyle}" />
+                    <TextBlock Grid.Column="1" Text="UUID"
+                               Style="{StaticResource CeobeTableHeaderCellStyle}" />
+                </Grid>
 
-            <Expander Grid.Row="2" Header="批量导入（逗号 / 换行 / 空格分隔）" HorizontalAlignment="Stretch">
-                <StackPanel Spacing="8" Padding="0,6,0,0">
-                    <TextBox x:Name="BulkBox" AcceptsReturn="True" Height="76" TextWrapping="Wrap"
-                             PlaceholderText="Steve, Alex, Notch" />
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Content="导入这些玩家" Click="OnImportWhitelist" />
-                        <Button Content="从 OP 列表导入" Click="OnImportFromOps" />
+                <ListView Grid.Row="2" ItemsSource="{x:Bind Vm.Whitelist, Mode=OneWay}"
+                          SelectionMode="None" ItemContainerStyle="{StaticResource PlayerRowStyle}"
+                          AutomationProperties.Name="白名单">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:WhitelistRow">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="160" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{x:Bind Name}" FontWeight="SemiBold"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{x:Bind Uuid}" FontSize="12"
+                                           FontFamily="{StaticResource CeobeMonoFont}"
+                                           VerticalAlignment="Center"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <Button Grid.Column="2" Content="移除" Tag="{x:Bind Name}"
+                                        Click="OnRemoveWhitelist"
+                                        AutomationProperties.Name="从白名单移除" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+
+                <Expander Grid.Row="3" Header="批量导入（逗号 / 换行 / 空格分隔）"
+                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                          Margin="16,0,16,12">
+                    <StackPanel Spacing="8" Padding="0,6,0,0">
+                        <TextBox x:Name="BulkBox" AcceptsReturn="True" Height="76" TextWrapping="Wrap"
+                                 PlaceholderText="Steve, Alex, Notch"
+                                 AutomationProperties.Name="批量导入玩家名" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="导入这些玩家" Click="OnImportWhitelist" />
+                            <Button Content="从 OP 列表导入" Click="OnImportFromOps" />
+                        </StackPanel>
                     </StackPanel>
-                </StackPanel>
-            </Expander>
-        </Grid>
+                </Expander>
+            </Grid>
+        </Border>
 
         <!-- ===== OP ===== -->
-        <Grid Grid.Row="3" RowSpacing="8"
-              Visibility="{x:Bind OpVisible, Mode=OneWay, Converter={StaticResource BoolToVis}}">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
+        <Border Grid.Row="2" Style="{StaticResource CeobeCardStyle}" Padding="0"
+                Visibility="{x:Bind OpVisible, Mode=OneWay}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
 
-            <Grid Grid.Row="0" ColumnSpacing="8">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBox Grid.Column="0" PlaceholderText="玩家名"
-                         Text="{x:Bind Vm.NewPlayerName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                <ComboBox Grid.Column="1" Width="120" SelectedIndex="{x:Bind OpLevelIndex, Mode=TwoWay}">
-                    <ComboBoxItem Content="等级 1" />
-                    <ComboBoxItem Content="等级 2" />
-                    <ComboBoxItem Content="等级 3" />
-                    <ComboBoxItem Content="等级 4（默认）" />
-                </ComboBox>
-                <Button Grid.Column="2" Content="设为 OP" Click="OnAddOp"
-                        Style="{StaticResource AccentButtonStyle}" />
+                <Grid Grid.Row="0" Padding="16,12" ColumnSpacing="8"
+                      BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                      BorderThickness="0,0,0,1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0" PlaceholderText="玩家名"
+                             Text="{x:Bind Vm.NewPlayerName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="要设为 OP 的玩家名" />
+                    <ComboBox Grid.Column="1" Width="120"
+                              SelectedIndex="{x:Bind OpLevelIndex, Mode=TwoWay}"
+                              AutomationProperties.Name="OP 等级">
+                        <ComboBoxItem Content="等级 1" />
+                        <ComboBoxItem Content="等级 2" />
+                        <ComboBoxItem Content="等级 3" />
+                        <ComboBoxItem Content="等级 4（默认）" />
+                    </ComboBox>
+                    <Button Grid.Column="2" Content="设为 OP" Click="OnAddOp"
+                            Style="{StaticResource AccentButtonStyle}" />
+                </Grid>
+
+                <Grid Grid.Row="1" Padding="16,8" ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="160" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="60" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="玩家"
+                               Style="{StaticResource CeobeTableHeaderCellStyle}" />
+                    <TextBlock Grid.Column="1" Text="UUID"
+                               Style="{StaticResource CeobeTableHeaderCellStyle}" />
+                    <TextBlock Grid.Column="2" Text="等级"
+                               Style="{StaticResource CeobeTableHeaderCellStyle}" />
+                </Grid>
+
+                <ListView Grid.Row="2" ItemsSource="{x:Bind Vm.Ops, Mode=OneWay}"
+                          SelectionMode="None" ItemContainerStyle="{StaticResource PlayerRowStyle}"
+                          AutomationProperties.Name="管理员 OP 名单">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:OpRow">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="160" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="60" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{x:Bind Name}" FontWeight="SemiBold"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{x:Bind Uuid}" FontSize="12"
+                                           FontFamily="{StaticResource CeobeMonoFont}"
+                                           VerticalAlignment="Center"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Grid.Column="2" Text="{x:Bind Level}" VerticalAlignment="Center" />
+                                <Button Grid.Column="3" Content="移除" Tag="{x:Bind Name}"
+                                        Click="OnRemoveOp" AutomationProperties.Name="移除 OP" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
             </Grid>
-
-            <ListView Grid.Row="1" ItemsSource="{x:Bind Vm.Ops, Mode=OneWay}">
-                <ListView.ItemTemplate>
-                    <DataTemplate x:DataType="vm:OpRow">
-                        <Grid ColumnSpacing="12" Padding="0,2">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="160" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="60" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="{x:Bind Name}" FontWeight="SemiBold" />
-                            <TextBlock Grid.Column="1" Text="{x:Bind Uuid}" FontSize="11"
-                                       VerticalAlignment="Center" FontFamily="Consolas"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            <TextBlock Grid.Column="2" Text="{x:Bind Level}" VerticalAlignment="Center" />
-                            <Button Grid.Column="3" Content="移除" Tag="{x:Bind Name}" Click="OnRemoveOp" />
-                        </Grid>
-                    </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
-        </Grid>
+        </Border>
 
         <!-- ===== 封禁玩家 ===== -->
-        <Grid Grid.Row="3" RowSpacing="8"
-              Visibility="{x:Bind BanVisible, Mode=OneWay, Converter={StaticResource BoolToVis}}">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
+        <Border Grid.Row="2" Style="{StaticResource CeobeCardStyle}" Padding="0"
+                Visibility="{x:Bind BanVisible, Mode=OneWay}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
 
-            <Grid Grid.Row="0" ColumnSpacing="8">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBox Grid.Column="0" PlaceholderText="要封禁的玩家名"
-                         Text="{x:Bind Vm.NewPlayerName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                <Button Grid.Column="1" Content="封禁" Click="OnBanPlayer" />
+                <Grid Grid.Row="0" Padding="16,12" ColumnSpacing="8"
+                      BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                      BorderThickness="0,0,0,1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0" PlaceholderText="要封禁的玩家名"
+                             Text="{x:Bind Vm.NewPlayerName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="要封禁的玩家名" />
+                    <Button Grid.Column="1" Content="封禁" Click="OnBanPlayer"
+                            Style="{StaticResource AccentButtonStyle}" />
+                </Grid>
+
+                <Grid Grid.Row="1" Padding="16,8" ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="160" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="140" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="玩家"
+                               Style="{StaticResource CeobeTableHeaderCellStyle}" />
+                    <TextBlock Grid.Column="1" Text="UUID"
+                               Style="{StaticResource CeobeTableHeaderCellStyle}" />
+                    <TextBlock Grid.Column="2" Text="到期"
+                               Style="{StaticResource CeobeTableHeaderCellStyle}" />
+                </Grid>
+
+                <ListView Grid.Row="2" ItemsSource="{x:Bind Vm.BannedPlayers, Mode=OneWay}"
+                          SelectionMode="None" ItemContainerStyle="{StaticResource PlayerRowStyle}"
+                          AutomationProperties.Name="封禁玩家名单">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:BanRow">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="160" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="140" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{x:Bind Name}" FontWeight="SemiBold"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{x:Bind Uuid}" FontSize="12"
+                                           FontFamily="{StaticResource CeobeMonoFont}"
+                                           VerticalAlignment="Center"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Grid.Column="2" Text="{x:Bind Expires}"
+                                           Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                                           VerticalAlignment="Center" />
+                                <Button Grid.Column="3" Content="解除" Tag="{x:Bind Name}"
+                                        Click="OnPardonPlayer" AutomationProperties.Name="解除封禁" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
             </Grid>
-
-            <ListView Grid.Row="1" ItemsSource="{x:Bind Vm.BannedPlayers, Mode=OneWay}">
-                <ListView.ItemTemplate>
-                    <DataTemplate x:DataType="vm:BanRow">
-                        <Grid ColumnSpacing="12" Padding="0,2">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="160" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="140" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="{x:Bind Name}" FontWeight="SemiBold" />
-                            <TextBlock Grid.Column="1" Text="{x:Bind Uuid}" FontSize="11"
-                                       VerticalAlignment="Center" FontFamily="Consolas"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            <TextBlock Grid.Column="2" Text="{x:Bind Expires}" FontSize="11" VerticalAlignment="Center" />
-                            <Button Grid.Column="3" Content="解除" Tag="{x:Bind Name}" Click="OnPardonPlayer" />
-                        </Grid>
-                    </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
-        </Grid>
+        </Border>
 
         <!-- ===== 封禁 IP ===== -->
-        <Grid Grid.Row="3" RowSpacing="8"
-              Visibility="{x:Bind IpBanVisible, Mode=OneWay, Converter={StaticResource BoolToVis}}">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
+        <Border Grid.Row="2" Style="{StaticResource CeobeCardStyle}" Padding="0"
+                Visibility="{x:Bind IpBanVisible, Mode=OneWay}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
 
-            <Grid Grid.Row="0" ColumnSpacing="8">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBox Grid.Column="0" PlaceholderText="要封禁的 IP，如 192.168.1.33"
-                         Text="{x:Bind Vm.NewIp, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                <Button Grid.Column="1" Content="封禁 IP" Click="OnBanIp" />
+                <Grid Grid.Row="0" Padding="16,12" ColumnSpacing="8"
+                      BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                      BorderThickness="0,0,0,1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0" PlaceholderText="要封禁的 IP，如 192.168.1.33"
+                             Text="{x:Bind Vm.NewIp, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="要封禁的 IP" />
+                    <Button Grid.Column="1" Content="封禁 IP" Click="OnBanIp"
+                            Style="{StaticResource AccentButtonStyle}" />
+                </Grid>
+
+                <Grid Grid.Row="1" Padding="16,8" ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="200" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="IP"
+                               Style="{StaticResource CeobeTableHeaderCellStyle}" />
+                    <TextBlock Grid.Column="1" Text="到期"
+                               Style="{StaticResource CeobeTableHeaderCellStyle}" />
+                </Grid>
+
+                <ListView Grid.Row="2" ItemsSource="{x:Bind Vm.BannedIps, Mode=OneWay}"
+                          SelectionMode="None" ItemContainerStyle="{StaticResource PlayerRowStyle}"
+                          AutomationProperties.Name="封禁 IP 名单">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:IpBanRow">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="200" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{x:Bind Ip}"
+                                           FontFamily="{StaticResource CeobeMonoFont}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{x:Bind Expires}"
+                                           Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                                           VerticalAlignment="Center" />
+                                <Button Grid.Column="2" Content="解除" Tag="{x:Bind Ip}"
+                                        Click="OnPardonIp" AutomationProperties.Name="解除 IP 封禁" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
             </Grid>
+        </Border>
 
-            <ListView Grid.Row="1" ItemsSource="{x:Bind Vm.BannedIps, Mode=OneWay}">
-                <ListView.ItemTemplate>
-                    <DataTemplate x:DataType="vm:IpBanRow">
-                        <Grid ColumnSpacing="12" Padding="0,2">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="200" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="{x:Bind Ip}" FontFamily="Consolas" />
-                            <TextBlock Grid.Column="1" Text="{x:Bind Expires}" FontSize="11" VerticalAlignment="Center" />
-                            <Button Grid.Column="2" Content="解除" Tag="{x:Bind Ip}" Click="OnPardonIp" />
-                        </Grid>
-                    </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
-        </Grid>
-
-        <InfoBar Grid.Row="4" IsOpen="{x:Bind Vm.HasError, Mode=OneWay}" Severity="Error"
-                 IsClosable="False" Title="操作未完成"
+        <InfoBar Grid.Row="3" IsOpen="{x:Bind Vm.HasError, Mode=OneWay}" Severity="Error"
+                 IsClosable="True" Title="操作未完成"
                  Message="{x:Bind Vm.StatusText, Mode=OneWay}" />
     </Grid>
 </UserControl>

@@ -30,9 +30,19 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _currentHome = "";
 
-    /// <summary>主题（light | dark）。</summary>
+    /// <summary>主题（light | dark | system）。</summary>
     [ObservableProperty]
-    private string _theme = "light";
+    private string _theme = AppSettings.ThemeSystem;
+
+    /// <summary>设置页的三态选项（无 WinUI 类型，供 ComboBox 绑定）。</summary>
+    public IReadOnlyList<ThemeOption> ThemeOptions { get; } =
+    [
+        new(AppSettings.ThemeSystem, "跟随系统"),
+        new(AppSettings.ThemeLight, "浅色"),
+        new(AppSettings.ThemeDark, "深色"),
+    ];
+
+    public sealed record ThemeOption(string Value, string Label);
 
     /// <summary>整改项 2：新建实例时白名单默认值。Java 版默认 true 又没入口，
     /// 导致新手开服后朋友进不来。改为默认 false，创建向导里显式问一次。</summary>
@@ -73,7 +83,7 @@ public partial class SettingsViewModel : ObservableObject
         // 先读当前生效值（可能是 Override 或默认 ~/.ceobe），再读设置文件
         CurrentHome = CeobeHome.Root();
         var settings = AppSettings.Load();
-        Theme = settings.Theme;
+        Theme = AppSettings.NormalizeTheme(settings.Theme);
         DefaultWhitelistEnabled = settings.DefaultWhitelistEnabled;
         ProposedHome = settings.HomePath;
         HasError = false;
@@ -90,7 +100,7 @@ public partial class SettingsViewModel : ObservableObject
     private void SaveSettings()
     {
         var settings = AppSettings.Load();
-        settings.Theme = string.Equals(Theme, "dark", StringComparison.OrdinalIgnoreCase) ? "dark" : "light";
+        settings.Theme = AppSettings.NormalizeTheme(Theme);
         settings.DefaultWhitelistEnabled = DefaultWhitelistEnabled;
         settings.LastInstallDir = ProposedHome;
         if (!settings.Save())

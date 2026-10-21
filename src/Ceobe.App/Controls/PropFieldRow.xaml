@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Ceobe.App.Controls.PropFieldRow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Ceobe.App.Controls"
+    xmlns:vm="using:Ceobe.App.ViewModels">
+
+    <UserControl.Resources>
+        <!--
+          每个字段只实例化与类型匹配的一个输入控件。
+          四个控件叠放 + Visibility 会让隐藏控件在初始化时回写坏值（实测把 motd 写成 "0"）。
+        -->
+        <DataTemplate x:Key="BoolInput" x:DataType="vm:PropField">
+            <CheckBox IsChecked="{x:Bind BoolValue, Mode=TwoWay}"
+                      IsEnabled="{x:Bind IsEditable}" />
+        </DataTemplate>
+
+        <DataTemplate x:Key="IntInput" x:DataType="vm:PropField">
+            <NumberBox Value="{x:Bind NumberValueDouble, Mode=TwoWay}"
+                       Minimum="{x:Bind MinDouble}" Maximum="{x:Bind MaxDouble}"
+                       SpinButtonPlacementMode="Compact" />
+        </DataTemplate>
+
+        <DataTemplate x:Key="EnumInput" x:DataType="vm:PropField">
+            <ComboBox ItemsSource="{x:Bind Options}"
+                      SelectedValue="{x:Bind Value, Mode=TwoWay}"
+                      HorizontalAlignment="Stretch"
+                      Loaded="OnEnumLoaded" />
+        </DataTemplate>
+
+        <DataTemplate x:Key="StringInput" x:DataType="vm:PropField">
+            <TextBox Text="{x:Bind Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     IsReadOnly="{x:Bind IsReadOnly}" />
+        </DataTemplate>
+
+        <controls:PropInputTemplateSelector x:Key="InputSelector"
+                                           BoolTemplate="{StaticResource BoolInput}"
+                                           IntTemplate="{StaticResource IntInput}"
+                                           EnumTemplate="{StaticResource EnumInput}"
+                                           StringTemplate="{StaticResource StringInput}" />
+    </UserControl.Resources>
+
+    <Grid Padding="16,10" ColumnSpacing="12"
+          BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+          BorderThickness="0,0,0,1">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="200" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="160" />
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0" Spacing="2">
+            <TextBlock Text="{x:Bind Field.Zh, Mode=OneWay}" FontWeight="SemiBold" TextWrapping="Wrap" />
+            <TextBlock Text="{x:Bind Field.Key, Mode=OneWay}" FontSize="12"
+                       FontFamily="{StaticResource CeobeMonoFont}"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{x:Bind Field.PolicyLabel, Mode=OneWay}" FontSize="12"
+                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+        </StackPanel>
+
+        <ContentControl Grid.Column="1"
+                        Content="{x:Bind Field, Mode=OneWay}"
+                        ContentTemplateSelector="{StaticResource InputSelector}"
+                        HorizontalContentAlignment="Stretch"
+                        VerticalAlignment="Center" />
+
+        <TextBlock Grid.Column="2" Text="{x:Bind Field.ValidationError, Mode=OneWay}"
+                   MaxWidth="160" TextWrapping="Wrap" FontSize="12"
+                   VerticalAlignment="Center"
+                   Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+    </Grid>
+</UserControl>

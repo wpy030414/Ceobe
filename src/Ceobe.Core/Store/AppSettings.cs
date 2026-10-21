@@ -12,8 +12,20 @@ namespace Ceobe.Core.Store;
 /// </summary>
 public sealed class AppSettings
 {
-    /// <summary>主题：light（默认）| dark。</summary>
-    public string Theme { get; set; } = "light";
+    public const string ThemeLight = "light";
+    public const string ThemeDark = "dark";
+    public const string ThemeSystem = "system";
+
+    /// <summary>主题：light | dark | system（默认跟随系统）。</summary>
+    public string Theme { get; set; } = ThemeSystem;
+
+    /// <summary>把任意历史值收敛到三态；未知/空一律跟随系统。</summary>
+    public static string NormalizeTheme(string? theme) => theme?.Trim().ToLowerInvariant() switch
+    {
+        ThemeLight => ThemeLight,
+        ThemeDark => ThemeDark,
+        _ => ThemeSystem,
+    };
 
     /// <summary>
     /// 数据根目录（实例、缓存、自管 JDK 都在它下面）。

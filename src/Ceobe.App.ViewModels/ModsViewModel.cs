@@ -242,4 +242,8 @@ public sealed record ModSearchRow(
 
 /// <summary>已安装行。<paramref name="Present"/> 为「存在/缺失」，对照磁盘标出被手动删掉的记录。</summary>
 public sealed record ModInstalledRow(
-    string FileName, string Title, string Version, string EnvLabel, string Present, string ProjectId);
+    string FileName, string Title, string Version, string EnvLabel, string Present, string ProjectId)
+{
+    /// <summary>记录在 instance.json 里、但磁盘文件已被手删——界面需要显式标红。</summary>
+    public bool Missing => Present == "缺失";
+}

@@ -20,6 +20,7 @@ namespace Ceobe.App.ViewModels;
 public partial class ConsoleViewModel : ObservableObject
 {
     private readonly InstanceManager _manager;
+    private readonly Action<IInstanceEvent> _onEvent;
     private readonly string _instance;
     private readonly string _dir;
     private readonly string _logFile;
@@ -71,7 +72,9 @@ public partial class ConsoleViewModel : ObservableObject
         _dir = manager.Dir(instance);
         _logFile = Path.Combine(_dir, "console.log");
         _hosted = manager.ProcessOf(instance) is not null;
-        _manager.OnEvent += OnEvent;
+        // Core 事件来自监督进程/日志泵线程；ObservableCollection 与绑定属性必须在 UI 线程改。
+        _onEvent = evt => UiThread.Post(() => OnEvent(evt));
+        _manager.OnEvent += _onEvent;
     }
 
     public string InstanceName => _instance;
@@ -366,5 +369,5 @@ public partial class ConsoleViewModel : ObservableObject
     }
 
     /// <summary>界面关闭时取消订阅，避免 Core 事件持有已释放的 ViewModel。</summary>
-    public void Detach() => _manager.OnEvent -= OnEvent;
+    public void Detach() => _manager.OnEvent -= _onEvent;
 }

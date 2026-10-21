@@ -7,6 +7,7 @@
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>Ceobe.App</RootNamespace>
     <AssemblyName>Ceobe</AssemblyName>
+    <ApplicationIcon>Assets\ceobe.ico</ApplicationIcon>
     <Platforms>x64</Platforms>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
     <UseWinUI>true</UseWinUI>
@@ -32,6 +33,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="Assets\ceobe.ico" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- 相对路径从本工程目录（src/Ceobe.App）起算：..\Ceobe.Core 而非 ..\..\Ceobe.Core。
          写错时 MSBuild 只报 MSB9008 warning 并**静默忽略该引用**，构建仍显示成功，
          但 App 实际没连上 Core——用错路径的症状会在很晚才暴露，故此处务必核对。 -->
@@ -49,6 +54,9 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
     <!-- MVVM 源生成器：闸门 C 的 UI 回归重心在 ViewModel 层（不引用 WinUI 类型，可无窗口单测） -->
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <!-- Windows 11 设置页同款 SettingsCard / SettingsExpander（官方 CommunityToolkit 控件）。
+         只加在 App 工程：ViewModels 必须保持零 WinUI 依赖（闸门 C）。 -->
+    <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.2.251219" />
   </ItemGroup>
 
 </Project>

@@ -3,37 +3,121 @@
     x:Class="Ceobe.App.Views.InstanceTabs"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Ceobe.App.Controls"
     xmlns:views="using:Ceobe.App.Views">
 
     <!--
-      实例页签容器。对齐 Java 版 MainView 的 TabPane，七页齐全：
-      控制台 / 服务器配置 / 游戏配置 / Mod / 整合包 / 玩家 / 穿透。
-      每页都是「无参构造 + Load(vm)」：XAML 以 x:Name 声明，VM 由 code-behind 注入，
-      业务全在 ViewModels（闸门 C：可无窗口单测）。
-
-      页签顺序即使用频率：先看日志，再改配置，最后才是导入与联机。
+      单个实例的工作区（2026-10-22 Fluent 2 重构）：
+      · 实例头：状态点 + 实例名 + 状态文字 + 启动/停止 + 更多（删除）；
+      · SelectorBar：七个分区（官方页内选择器，替代 TabView）；
+      · 页面宿主：七个页面同层，仅当前可见；Collapsed 的页面不参与布局，当前页自然填满 * 行。
     -->
-    <TabView x:Name="Tabs" IsAddTabButtonVisible="False">
-        <TabViewItem Header="控制台" IsClosable="False">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- ===== 实例头 ===== -->
+        <Grid Grid.Row="0" Padding="24,16,24,8" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <controls:StatusDot Grid.Column="0" State="{x:Bind Console.State, Mode=OneWay}"
+                                VerticalAlignment="Center" />
+
+            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                <TextBlock Text="{x:Bind InstanceName}"
+                           Style="{StaticResource CeobePageTitleStyle}"
+                           TextTrimming="CharacterEllipsis"
+                           AutomationProperties.HeadingLevel="Level1" />
+                <TextBlock Text="{x:Bind Console.StateLabel, Mode=OneWay}"
+                           Style="{StaticResource CeobeCaptionSecondaryStyle}" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8"
+                        VerticalAlignment="Center">
+                <Button Content="启动" Click="OnStart"
+                        Style="{StaticResource AccentButtonStyle}"
+                        IsEnabled="{x:Bind Console.CanStart, Mode=OneWay}" />
+                <Button Content="停止" Click="OnStop"
+                        IsEnabled="{x:Bind Console.CanStop, Mode=OneWay}" />
+            </StackPanel>
+
+            <DropDownButton Grid.Column="3" VerticalAlignment="Center"
+                            Style="{StaticResource CeobeSubtleIconButtonStyle}"
+                            ToolTipService.ToolTip="更多实例操作"
+                            AutomationProperties.Name="更多实例操作">
+                <FontIcon Glyph="&#xE712;" FontSize="14" />
+                <DropDownButton.Flyout>
+                    <MenuFlyout>
+                        <MenuFlyoutItem Text="删除实例" Click="OnDelete"
+                                        Style="{StaticResource CeobeDangerMenuFlyoutItemStyle}">
+                            <MenuFlyoutItem.Icon>
+                                <SymbolIcon Symbol="Delete" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                    </MenuFlyout>
+                </DropDownButton.Flyout>
+            </DropDownButton>
+        </Grid>
+
+        <!-- ===== 分区选择器 ===== -->
+        <SelectorBar x:Name="SectionBar" Grid.Row="1" Margin="24,0,24,8"
+                     SelectionChanged="OnSectionChanged"
+                     AutomationProperties.AutomationId="WorkspaceSections"
+                     AutomationProperties.Name="实例分区">
+            <SelectorBarItem Text="控制台" Tag="console">
+                <SelectorBarItem.Icon>
+                    <FontIcon Glyph="&#xE756;" FontSize="14" />
+                </SelectorBarItem.Icon>
+            </SelectorBarItem>
+            <SelectorBarItem Text="服务器配置" Tag="server">
+                <SelectorBarItem.Icon>
+                    <FontIcon Glyph="&#xE713;" FontSize="14" />
+                </SelectorBarItem.Icon>
+            </SelectorBarItem>
+            <SelectorBarItem Text="游戏配置" Tag="game">
+                <SelectorBarItem.Icon>
+                    <FontIcon Glyph="&#xE70F;" FontSize="14" />
+                </SelectorBarItem.Icon>
+            </SelectorBarItem>
+            <SelectorBarItem Text="Mod" Tag="mods">
+                <SelectorBarItem.Icon>
+                    <FontIcon Glyph="&#xE7B8;" FontSize="14" />
+                </SelectorBarItem.Icon>
+            </SelectorBarItem>
+            <SelectorBarItem Text="整合包" Tag="modpacks">
+                <SelectorBarItem.Icon>
+                    <FontIcon Glyph="&#xE8B7;" FontSize="14" />
+                </SelectorBarItem.Icon>
+            </SelectorBarItem>
+            <SelectorBarItem Text="玩家" Tag="players">
+                <SelectorBarItem.Icon>
+                    <FontIcon Glyph="&#xE716;" FontSize="14" />
+                </SelectorBarItem.Icon>
+            </SelectorBarItem>
+            <SelectorBarItem Text="穿透" Tag="tunnel">
+                <SelectorBarItem.Icon>
+                    <FontIcon Glyph="&#xE774;" FontSize="14" />
+                </SelectorBarItem.Icon>
+            </SelectorBarItem>
+        </SelectorBar>
+
+        <!-- ===== 页面宿主 ===== -->
+        <Grid Grid.Row="2">
             <views:ConsolePage x:Name="ConsoleTab" />
-        </TabViewItem>
-        <TabViewItem Header="服务器配置" IsClosable="False">
-            <views:ServerPage x:Name="ServerTab" />
-        </TabViewItem>
-        <TabViewItem Header="游戏配置" IsClosable="False">
-            <views:GameConfigPage x:Name="GameTab" />
-        </TabViewItem>
-        <TabViewItem Header="Mod" IsClosable="False">
-            <views:ModsPage x:Name="ModsTab" />
-        </TabViewItem>
-        <TabViewItem Header="整合包" IsClosable="False">
-            <views:ModpacksPage x:Name="ModpacksTab" />
-        </TabViewItem>
-        <TabViewItem Header="玩家" IsClosable="False">
-            <views:PlayersPage x:Name="PlayersTab" />
-        </TabViewItem>
-        <TabViewItem Header="穿透" IsClosable="False">
-            <views:TunnelPage x:Name="TunnelTab" />
-        </TabViewItem>
-    </TabView>
+            <views:ServerPage x:Name="ServerTab" Visibility="Collapsed" />
+            <views:GameConfigPage x:Name="GameTab" Visibility="Collapsed" />
+            <views:ModsPage x:Name="ModsTab" Visibility="Collapsed" />
+            <views:ModpacksPage x:Name="ModpacksTab" Visibility="Collapsed" />
+            <views:PlayersPage x:Name="PlayersTab" Visibility="Collapsed" />
+            <views:TunnelPage x:Name="TunnelTab" Visibility="Collapsed" />
+        </Grid>
+    </Grid>
 </UserControl>

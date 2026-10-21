@@ -244,6 +244,29 @@ public class GameConfigViewModelTest : IDisposable
         Assert.Equal(1, vm.PendingCount);
     }
 
+    [Fact(DisplayName = "改回原值后 pending 归零，且 PendingCount 通知")]
+    public void 改回原值()
+    {
+        var vm = NewVm();
+        vm.View = ConfigView.Raw;
+        var field = Field(vm, "motd");
+        var original = field.Value;
+
+        var changed = new List<string?>();
+        vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        field.Value = original + "-changed";
+        Assert.Equal(1, vm.PendingCount);
+        Assert.True(vm.CanSave);
+        Assert.Contains(nameof(GameConfigViewModel.PendingCount), changed);
+
+        changed.Clear();
+        field.Value = original;
+        Assert.Equal(0, vm.PendingCount);
+        Assert.False(vm.CanSave);
+        Assert.Contains(nameof(GameConfigViewModel.PendingCount), changed);
+    }
+
     [Fact(DisplayName = "恢复默认值")]
     public void 恢复默认()
     {

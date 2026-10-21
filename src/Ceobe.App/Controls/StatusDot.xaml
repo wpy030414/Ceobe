@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Ceobe.App.Controls.StatusDot"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    AutomationProperties.AccessibilityView="Raw">
+
+    <!--
+      实例状态点。四态各自一个带主题资源的圆点，靠 Visibility 切换——
+      不用 VisualStateManager：UserControl 的 VisualStateGroups 不在模板里，
+      GoToState(this, ...) 找不到状态；也不在代码里 new SolidColorBrush，
+      否则切主题/高对比度时颜色不会跟着变。
+    -->
+    <Grid Width="12" Height="12" VerticalAlignment="Center">
+        <Ellipse x:Name="LiveDot" Width="8" Height="8"
+                 Fill="{ThemeResource SystemFillColorSuccessBrush}" />
+        <Ellipse x:Name="BusyDot" Width="8" Height="8"
+                 Fill="{ThemeResource SystemFillColorCautionBrush}" Visibility="Collapsed" />
+        <Ellipse x:Name="CrashedDot" Width="8" Height="8"
+                 Fill="{ThemeResource SystemFillColorCriticalBrush}" Visibility="Collapsed" />
+        <Ellipse x:Name="IdleDot" Width="8" Height="8"
+                 Fill="{ThemeResource TextFillColorTertiaryBrush}" Visibility="Collapsed" />
+    </Grid>
+</UserControl>

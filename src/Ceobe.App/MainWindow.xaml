@@ -3,103 +3,136 @@
     x:Class="Ceobe.App.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:views="using:Ceobe.App.Views">
+    xmlns:controls="using:Ceobe.App.Controls"
+    xmlns:vm="using:Ceobe.App.ViewModels">
 
     <!--
-      主壳：左侧全高侧栏（实例列表）+ 右列（顶部栏 / 内容页签 / 底部状态栏）。
-      布局对齐 Java 版 MainView，让从旧版过来的用户不必重新找东西。
+      主壳（2026-10-22 Fluent 2 重构）：
+      · 内置 TitleBar + ExtendsContentIntoTitleBar：标题栏与应用同一主题；
+      · NavigationView：实例是顶层导航对象，官方侧栏语义（键盘/无障碍/选中指示）；
+      · 右侧工作区由 InstanceTabs 提供（实例头 + SelectorBar + 七个分区）；
+      · PageBackground 是 Mica 不可用时的纯色回退层，Mica 可用时在 code-behind 隐藏。
     -->
-    <Grid x:Name="RootGrid">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="248" MinWidth="200" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
+    <Grid x:Name="RootGrid" Background="Transparent">
+        <Grid x:Name="PageBackground"
+              Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" />
 
-        <!-- ===== 左侧：实例列表 ===== -->
-        <Grid Grid.Column="0" Background="{ThemeResource LayerFillColorDefaultBrush}">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-
-            <StackPanel Grid.Row="0" Padding="16,16,16,8" Spacing="2">
-                <TextBlock Text="ceobe" FontSize="20" FontWeight="SemiBold" />
-                <TextBlock Text="Minecraft 服务器编排" FontSize="12"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-            </StackPanel>
-
-            <!-- 列表工具条：新建 + 刷新 + 只看运行中 -->
-            <Grid Grid.Row="1" Padding="12,4,12,8">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <ToggleSwitch Grid.Column="0" IsOn="{x:Bind VmList.OnlyRunning, Mode=TwoWay}"
-                              OnContent="只看运行中" OffContent="全部实例"
-                              FontSize="12" MinWidth="0" />
-                <Button Grid.Column="1" Click="OnRefresh" ToolTipService.ToolTip="刷新列表"
-                        Padding="8" Background="Transparent" BorderThickness="0">
-                    <SymbolIcon Symbol="Refresh" />
-                </Button>
-            </Grid>
-
-            <!-- 实例列表抽成 UserControl：WinUI 的 Window 不是 FrameworkElement，
-                 带 Converter 的 x:Bind 在 Window 上会编译失败（生成码调 SetConverterLookupRoot），
-                 放进 UserControl 才可解析。此 UserControl 走构造器注入 VM，故不能在 XAML 里
-                 直接实例化（那要求无参构造），由 code-behind 构造后塞进这个占位宿主。 -->
-            <ContentControl Grid.Row="2" x:Name="ListHost" HorizontalContentAlignment="Stretch"
-                            VerticalContentAlignment="Stretch" />
-
-            <!-- 底部：设置入口 + 新建实例 -->
-            <StackPanel Grid.Row="3" Padding="12,8,12,12" Spacing="8">
-                <Button HorizontalAlignment="Stretch" Click="OnCreateInstance">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <SymbolIcon Symbol="Add" />
-                        <TextBlock Text="新建实例" />
-                    </StackPanel>
-                </Button>
-                <Button HorizontalAlignment="Stretch" Background="Transparent" Click="OnOpenSettings">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <SymbolIcon Symbol="Setting" />
-                        <TextBlock Text="设置（数据目录等）" />
-                    </StackPanel>
-                </Button>
-            </StackPanel>
-        </Grid>
-
-        <!-- 侧栏与内容区之间的分隔线（WinUI 3 无内置 GridSplitter，
-             那属于 CommunityToolkit 包；侧栏已设 MinWidth，不做拖拽调整） -->
-        <Border Grid.Column="0" Width="1" HorizontalAlignment="Right"
-                Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-
-        <!-- ===== 右列：顶部栏 / 页签 / 状态栏 ===== -->
-        <Grid Grid.Column="1">
+        <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- 顶部栏：选中实例的标题 -->
-            <Grid Grid.Row="0" Padding="20,14,20,10"
-                  BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
-                <TextBlock x:Name="TopTitle" Text="未选择实例" FontSize="16" FontWeight="SemiBold"
-                           VerticalAlignment="Center" />
-            </Grid>
+            <TitleBar x:Name="AppTitleBar" Grid.Row="0"
+                      Title="ceobe" Subtitle="Minecraft 服务器编排"
+                      IsBackButtonVisible="False"
+                      IsPaneToggleButtonVisible="False"
+                      Background="Transparent">
+                <TitleBar.IconSource>
+                    <ImageIconSource ImageSource="ms-appx:///Assets/ceobe.ico" />
+                </TitleBar.IconSource>
+            </TitleBar>
 
-            <!-- 内容页签：占位，实际页面由代码按选中实例装配 -->
-            <ContentControl x:Name="ContentHost" Grid.Row="1" Padding="0" />
+            <NavigationView x:Name="Nav" Grid.Row="1"
+                            PaneDisplayMode="Left"
+                            IsPaneOpen="True"
+                            IsPaneToggleButtonVisible="False"
+                            OpenPaneLength="288"
+                            CompactPaneLength="48"
+                            IsSettingsVisible="False"
+                            IsBackButtonVisible="Collapsed"
+                            Background="Transparent"
+                            MenuItemsSource="{x:Bind VmList.Rows, Mode=OneWay}"
+                            SelectedItem="{x:Bind VmList.SelectedRow, Mode=OneWay}"
+                            SelectionChanged="OnNavSelectionChanged"
+                            AutomationProperties.AutomationId="InstanceNav"
+                            AutomationProperties.Name="实例导航">
 
-            <!-- 底部状态栏 -->
-            <Border Grid.Row="2" Padding="20,8"
-                    Background="{ThemeResource LayerFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
-                <TextBlock x:Name="StatusBar" Text="{x:Bind VmList.StatusText, Mode=OneWay}"
-                           FontSize="12"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-            </Border>
+                <NavigationView.PaneHeader>
+                    <Grid Padding="0,4,0,8" ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0" Text="实例"
+                                   Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                                   VerticalAlignment="Center" />
+
+                        <ToggleButton Grid.Column="1"
+                                      IsChecked="{x:Bind VmList.OnlyRunning, Mode=TwoWay}"
+                                      ToolTipService.ToolTip="只看运行中"
+                                      AutomationProperties.Name="只看运行中"
+                                      AutomationProperties.AutomationId="InstanceFilter">
+                            <FontIcon Glyph="&#xE71C;" FontSize="14" />
+                        </ToggleButton>
+
+                        <Button Grid.Column="2" Click="OnRefresh"
+                                Style="{StaticResource CeobeSubtleIconButtonStyle}"
+                                ToolTipService.ToolTip="刷新实例列表 (F5)"
+                                AutomationProperties.Name="刷新实例列表"
+                                AutomationProperties.AutomationId="InstanceRefreshButton">
+                            <FontIcon Glyph="&#xE72C;" FontSize="14" />
+                        </Button>
+                    </Grid>
+                </NavigationView.PaneHeader>
+
+                <NavigationView.MenuItemTemplate>
+                    <DataTemplate x:DataType="vm:InstanceRow">
+                        <controls:InstanceListItem Row="{x:Bind}" />
+                    </DataTemplate>
+                </NavigationView.MenuItemTemplate>
+
+                <!--
+                  PaneFooter 而不是 FooterMenuItems：
+                  NavigationView 的 MenuItemTemplate 会被应用到 FooterMenuItems，导致静态项
+                  被 InstanceRow 模板错误渲染成空白。PaneFooter 是自定义 UIElement，不参与模板。
+                -->
+                <NavigationView.PaneFooter>
+                    <StackPanel Padding="8,8,8,12" Spacing="4">
+                        <Button Click="OnCreateInstanceClick"
+                                Style="{StaticResource CeobePaneActionButtonStyle}"
+                                AutomationProperties.Name="新建实例"
+                                AutomationProperties.AutomationId="NewInstanceButton">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <SymbolIcon Symbol="Add" />
+                                <TextBlock Text="新建实例" />
+                            </StackPanel>
+                        </Button>
+                        <Button Click="OnSettingsClick"
+                                Style="{StaticResource CeobePaneActionButtonStyle}"
+                                AutomationProperties.Name="设置"
+                                AutomationProperties.AutomationId="SettingsButton">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <SymbolIcon Symbol="Setting" />
+                                <TextBlock Text="设置" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </NavigationView.PaneFooter>
+
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- 工作区宿主。显式 Stretch：ContentControl 默认是 Left/Top，
+                         页面里的 * 行会因此塌成 0 高度。 -->
+                    <ContentControl x:Name="ContentHost" Grid.Row="0"
+                                    HorizontalContentAlignment="Stretch"
+                                    VerticalContentAlignment="Stretch" />
+
+                    <Border Grid.Row="1" Padding="24,8"
+                            BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                            BorderThickness="0,1,0,0">
+                        <TextBlock Text="{x:Bind VmList.StatusText, Mode=OneWay}"
+                                   Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                                   AutomationProperties.LiveSetting="Polite" />
+                    </Border>
+                </Grid>
+            </NavigationView>
         </Grid>
     </Grid>
 </Window>

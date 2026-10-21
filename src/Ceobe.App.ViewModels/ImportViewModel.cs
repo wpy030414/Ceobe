@@ -187,7 +187,14 @@ public partial class ImportViewModel : ObservableObject
         OnPropertyChanged(nameof(CanInstall));
         OnPropertyChanged(nameof(BlockedReason));
     }
-    partial void OnKindChanged(ImportKind? value) => OnPropertyChanged(nameof(BlockedReason));
+    partial void OnKindChanged(ImportKind? value)
+    {
+        OnPropertyChanged(nameof(BlockedReason));
+        OnPropertyChanged(nameof(KindLabel));
+    }
+
+    partial void OnConfidenceChanged(ImportConfidence value) =>
+        OnPropertyChanged(nameof(ConfidenceLabel));
     partial void OnMatchChanged(MatchVerdict value)
     {
         OnPropertyChanged(nameof(CanInstall));

@@ -239,7 +239,7 @@ public class WireCompatibilityTest
             File.WriteAllText(Path.Combine(dir, "settings.json"), "{ not json");
 
             var s = AppSettings.Load();
-            Assert.Equal("light", s.Theme);   // 回落默认
+            Assert.Equal("system", s.Theme);   // 回落默认（2026-10-22：默认跟随系统）
             Assert.False(s.IsDark);
         }
         finally

@@ -50,8 +50,13 @@ public class InstanceListViewModelTest : IDisposable
             Port = port,
         };
         File.WriteAllText(Path.Combine(dir, "instance.json"), JsonUtil.Write(meta));
-        // .state 文件决定非本进程托管实例的显示状态
+        // .state 文件决定非本进程托管实例的显示状态；live 态还必须有存活的 .pid，
+        // 否则 Core 会把它当残留状态修正为 STOPPED。
         File.WriteAllText(Path.Combine(dir, ".state"), state.ToString());
+        if (state.IsLive())
+        {
+            File.WriteAllText(Path.Combine(dir, ".pid"), Environment.ProcessId.ToString());
+        }
     }
 
     private static InstanceManager NewManager() => new(new FakeJavaLocator());
@@ -94,6 +99,77 @@ public class InstanceListViewModelTest : IDisposable
             Assert.Equal("FABRIC 26.3 · :25565", vm.Rows[0].Detail);
             Assert.Equal("PAPER 26.3 · :25567", vm.Rows[1].Detail);
             Assert.Equal("已停止", vm.Rows[0].StateLabel);
+        }
+        finally
+        {
+            vm.Detach();
+        }
+    }
+
+    [Fact(DisplayName = "刷新保留选中实例与行对象（NavigationView 不丢工作区）")]
+    public void 刷新保留选中()
+    {
+        Seed("alpha", 25565, InstanceState.STOPPED);
+        Seed("beta", 25566, InstanceState.STOPPED);
+        var vm = new InstanceListViewModel(NewManager());
+        try
+        {
+            vm.Refresh();
+            var row = vm.Rows[0];
+            vm.SelectedName = "alpha";
+
+            // 刷新（例如打开设置后重扫）不得清空选中、不得换掉行对象
+            vm.Refresh();
+
+            Assert.Same(row, vm.Rows[0]);
+            Assert.Same(row, vm.SelectedRow);
+            Assert.Equal("alpha", vm.SelectedName);
+        }
+        finally
+        {
+            vm.Detach();
+        }
+    }
+
+    [Fact(DisplayName = "只看运行中：实例停止时移出列表并清空选中")]
+    public void 只看运行中状态变化()
+    {
+        Seed("a", 25565, InstanceState.RUNNING);
+        Seed("b", 25566, InstanceState.RUNNING);
+        var manager = NewManager();
+        var vm = new InstanceListViewModel(manager);
+        try
+        {
+            vm.OnlyRunning = true;
+            vm.Refresh();
+            Assert.Equal(2, vm.Rows.Count);
+            vm.SelectedName = "a";
+
+            RaiseStateChanged(manager, "a", InstanceState.STOPPED);
+
+            Assert.Equal("b", Assert.Single(vm.Rows).Name);
+            Assert.Null(vm.SelectedName);
+            Assert.Equal("1 / 1 个实例运行中", vm.StatusText);
+        }
+        finally
+        {
+            vm.Detach();
+        }
+    }
+
+    [Fact(DisplayName = "状态事件就地更新状态栏与 DetailLine")]
+    public void 事件更新状态栏()
+    {
+        Seed("live", 25565, InstanceState.STOPPED);
+        var manager = NewManager();
+        var vm = new InstanceListViewModel(manager);
+        try
+        {
+            vm.Refresh();
+            RaiseStateChanged(manager, "live", InstanceState.RUNNING);
+
+            Assert.Equal("1 / 1 个实例运行中", vm.StatusText);
+            Assert.Equal("PAPER 26.3 · :25565 · 运行中", vm.Rows[0].DetailLine);
         }
         finally
         {

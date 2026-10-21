@@ -109,6 +109,10 @@ public partial class PropField : ObservableObject
         get => _value;
         set
         {
+            // ComboBox 的 SelectedItem 在 ItemsSource 初始化阶段可能先推一个 null；
+            // 这不是用户输入，交给 Validate 会 NRE。保持原值即可。
+            if (value is null) return;
+
             if (_value == value) return;
 
             if (IsUnknown) return; // 只读：静默忽略，避免绑定回写造成困惑
@@ -129,6 +133,7 @@ public partial class PropField : ObservableObject
 
             _value = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(IsModified));
             // 校验失败也要更新界面显示（用户在打字），但不记入 pending，
             // 否则会把非法值写进 server.properties
             if (error is null) _onChange?.Invoke(this, value);

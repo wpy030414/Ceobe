@@ -77,9 +77,34 @@ public class SettingsViewModelTest : IDisposable
     {
         var vm = NewVm();
         Assert.Equal(_home, vm.CurrentHome);
-        Assert.Equal("light", vm.Theme);
+        Assert.Equal("system", vm.Theme);   // 2026-10-22：默认跟随系统
         Assert.False(vm.DefaultWhitelistEnabled);   // 整改项 2：默认不再强开白名单
         Assert.Null(vm.Plan);
+    }
+
+    [Fact(DisplayName = "主题三态保存与规范化")]
+    public void 主题三态()
+    {
+        var vm = NewVm();
+
+        vm.Theme = "dark";
+        vm.SaveSettingsCommand.Execute(null);
+        Assert.Equal("dark", AppSettings.Load().Theme);
+        Assert.True(AppSettings.Load().IsDark);
+
+        vm.Theme = "light";
+        vm.SaveSettingsCommand.Execute(null);
+        Assert.Equal("light", AppSettings.Load().Theme);
+        Assert.False(AppSettings.Load().IsDark);
+
+        vm.Theme = "system";
+        vm.SaveSettingsCommand.Execute(null);
+        Assert.Equal("system", AppSettings.Load().Theme);
+
+        // 未知值一律收敛到跟随系统，不写脏数据
+        vm.Theme = "sepia";
+        vm.SaveSettingsCommand.Execute(null);
+        Assert.Equal("system", AppSettings.Load().Theme);
     }
 
     [Fact(DisplayName = "保存主题与默认白名单")]

@@ -82,6 +82,25 @@ public class ServerViewModelTest : IDisposable
         Assert.True(vm.CanSave);
     }
 
+    [Fact(DisplayName = "IsDirty 在任一字段变化时通知（未保存标记不滞后）")]
+    public void 脏标记通知()
+    {
+        var vm = NewVm();
+        var changed = new List<string?>();
+        vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        vm.MemoryMb = 4096;
+        Assert.Contains(nameof(ServerViewModel.IsDirty), changed);
+
+        changed.Clear();
+        vm.Name = "renamed";
+        Assert.Contains(nameof(ServerViewModel.IsDirty), changed);
+
+        changed.Clear();
+        vm.Port = 25600;
+        Assert.Contains(nameof(ServerViewModel.IsDirty), changed);
+    }
+
     [Fact(DisplayName = "运行中禁改：CanSave 为假且给提示")]
     public void 运行中禁改()
     {

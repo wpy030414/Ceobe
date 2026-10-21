@@ -93,7 +93,50 @@ public partial class CreateViewModel : ObservableObject
     /// <summary>选中类型变化时，模组类加载器版本框才有意义。</summary>
     public bool NeedsLoaderVersion => SelectedType is ServerType.FABRIC or ServerType.NEOFORGE;
 
-    partial void OnSelectedTypeChanged(ServerType value) => OnPropertyChanged(nameof(NeedsLoaderVersion));
+    /// <summary>
+    /// ComboBox 的绑定目标。直接绑 <see cref="SelectedType"/> 时，ItemsSource 晚于
+    /// SelectedValue 赋值会让下拉框显示为空；用选项对象本身做 TwoWay 绑定最稳。
+    /// </summary>
+    public TypeOption SelectedTypeOption
+    {
+        get => Types.FirstOrDefault(t => t.Type == SelectedType) ?? Types[0];
+        set
+        {
+            if (value is not null && value.Type != SelectedType) SelectedType = value.Type;
+        }
+    }
+
+    partial void OnSelectedTypeChanged(ServerType value)
+    {
+        OnPropertyChanged(nameof(NeedsLoaderVersion));
+        OnPropertyChanged(nameof(SelectedTypeOption));
+    }
+
+    /// <summary>
+    /// NumberBox.Value 是 double，VM 的 MemoryMb 是 int；直接 x:Bind 会撞 WMC1121。
+    /// 与 ModpacksPage.NewMemoryMbDouble / PropField.NumberValueDouble 同一个原因。
+    /// </summary>
+    public double MemoryMbDouble
+    {
+        get => MemoryMb;
+        set
+        {
+            if (!double.IsNaN(value) && !double.IsInfinity(value)) MemoryMb = (int)Math.Round(value);
+        }
+    }
+
+    public double PortDouble
+    {
+        get => Port;
+        set
+        {
+            if (!double.IsNaN(value) && !double.IsInfinity(value)) Port = (int)Math.Round(value);
+        }
+    }
+
+    partial void OnMemoryMbChanged(int value) => OnPropertyChanged(nameof(MemoryMbDouble));
+
+    partial void OnPortChanged(int value) => OnPropertyChanged(nameof(PortDouble));
 
     /// <summary>创建实例。成功置 <see cref="CreatedInstance"/>，失败给可执行提示。</summary>
     [RelayCommand]
