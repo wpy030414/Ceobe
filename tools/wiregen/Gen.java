@@ -85,6 +85,9 @@ public final class Gen {
         InstanceMeta m = new InstanceMeta("old", ServerType.PAPER, "1.21.4", null);
         m.memoryMb = 2048;
         m.mods = List.of();
+        // 固定时间戳：默认是 Instant.now()，会让 fixture 每次重生成都产生 diff 噪音，
+        // 而这个字段在「缺字段宽容读回」这条用例里并不是被验证的对象
+        m.createdAt = Instant.parse("2025-01-01T00:00:00Z");
         return m;
     }
 
@@ -95,6 +98,7 @@ public final class Gen {
         m.launchArgsFile = "libraries/net/neoforged/neoforge/21.4.1/win_args.txt";
         m.authlibInjectorUrl = "https://auth.example.test/yggdrasil";
         m.mods = List.of();
+        m.createdAt = Instant.parse("2025-06-01T12:00:00Z"); // 固定，理由同 minimal()
         return m;
     }
 

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- 无头 CLI（等价 Java 的 ceobe-cli）：docker 风格子命令，脚本化友好，输出可切 JSON 形态 -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Ceobe.Cli</RootNamespace>
+    <AssemblyName>ceobe</AssemblyName>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <!-- 自包含单文件分发（Windows 专属，ADR-019 已放弃跨平台） -->
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ceobe.Core\Ceobe.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta5.25306.1" />
+  </ItemGroup>
+
+</Project>

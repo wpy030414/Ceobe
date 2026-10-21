@@ -1,0 +1,15 @@
+{
+  "name": "alpha",
+  "serverType": "FABRIC",
+  "gameVersion": "26.3",
+  "loaderVersion": "0.16.9",
+  "memoryMb": 4096,
+  "jvmArgs": "-XX:+UseG1GC",
+  "port": 25570,
+  "javaHome": "C:\\jdk-25",
+  "launchJar": "server.jar",
+  "createdAt": "2026-10-15T03:31:44.123Z",
+  "mods": [],
+  "lastPinggyAddress": "tcp://x.run.pinggy-free.link:35663",
+  "lastCloudflareUrl": "https://abc-def-ghi.trycloudflare.com"
+}
