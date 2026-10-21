@@ -1,16 +1,17 @@
 name: Windows Build
 
-# 产品已收敛为 Windows 专属的 C# / WinUI 3（ADR-019），流水线随之从三平台矩阵
-# 缩为单一 windows-latest：macOS/Linux 的 jpackage 产物不再有意义。
+# 产品已收敛为 Windows 专属的 C# / WinUI 3（ADR-019）。
 #
-# 触发：
-#   · main 推送 / PR        → 编译 + 全量测试（网络用例默认排除，见 Core.Tests.csproj）
-#   · 推送 v* 标签          → 额外打包并发布 Release
-#   · 手动 workflow_dispatch
+# 训练员决定（2026-10-22）：
+#   · 流水线只构建，不跑测试（`dotnet test` 已移除）。
+#   · 版本号唯一来源是 Directory.Build.props 的 <Version>；CI 只读不写，
+#     产物名、MSI ProductVersion、Release tag 全部由它派生。
+#   · main 推送即发布 Release（同名先删后建，保持幂等）。
+#   · 产物分两档：`win11`（框架依赖，小）+ `portable`（自包含，免装运行时）。
+#   · GUI 交付形态：zip 散文件 + MSI 安装包；CLI 是单体 exe。
 on:
   push:
     branches: [ main ]
-    tags: [ 'v*' ]
   pull_request:
   workflow_dispatch:
 
@@ -29,8 +30,11 @@ env:
 
 jobs:
   build:
-    name: Build & Test
+    name: Build & Package
     runs-on: windows-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      msi_version: ${{ steps.ver.outputs.msi_version }}
     steps:
       - uses: actions/checkout@v5
 
@@ -39,11 +43,33 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      # 版本权威：只认 Directory.Build.props 的 <Version>。
+      # 展示形态由点分四段还原：26.10.22.01 -> 26.10.22-01（与关于页/CLI 同一规则）。
+      # MSI ProductVersion 只接受 1-3 段数字，故取前三段。
+      - name: Read version from Directory.Build.props
+        id: ver
+        shell: pwsh
+        run: |
+          [xml]$props = Get-Content Directory.Build.props
+          $raw = ($props.Project.PropertyGroup | ForEach-Object { $_.Version } |
+                  Where-Object { $_ } | Select-Object -First 1)
+          if (-not $raw) { throw "Directory.Build.props 缺少 <Version>" }
+          $parts = $raw.Split('.')
+          if ($parts.Count -ge 4) {
+            $display = ($parts[0..2] -join '.') + '-' + $parts[3]
+            $msi     = ($parts[0..2] -join '.')
+          } else {
+            $display = $raw
+            $msi     = $raw
+          }
+          Write-Output "Version from props: $raw -> display=$display msi=$msi"
+          "version=$display" >> $env:GITHUB_OUTPUT
+          "msi_version=$msi" >> $env:GITHUB_OUTPUT
+
       - name: Restore
         run: dotnet restore ceobe.slnx
 
-      # 闸门 C 的 CI 守卫：ViewModels 必须保持 net10.0 且零 WinUI 依赖。
-      # 只查 using 与工程引用，避免把解释性注释里的 "Microsoft.UI" 当成违规。
+      # 闸门 C 的 CI 守卫（静态 grep，不是测试）：ViewModels 必须保持 net10.0 且零 WinUI 依赖。
       - name: Gate C - ViewModels must not reference WinUI
         shell: pwsh
         run: |
@@ -65,31 +91,26 @@ jobs:
       - name: Build GUI shell
         run: dotnet build src/Ceobe.App/Ceobe.App.csproj -c Release --no-restore
 
-      # 网络用例（Trait Category=network）由 test 工程默认排除：
-      # 它们要真实下载服务端 jar / JDK，几分钟起步且受网络环境影响。
-      # 需要时手动跑：dotnet test --filter "Category=network"
-      # 同时守住测试数量下限：静默少跑一批用例比失败更危险。
-      - name: Test
-        shell: pwsh
-        run: |
-          dotnet test ceobe.slnx -c Release --no-build --logger "trx;LogFileName=test.trx"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $count = 0
-          foreach ($trx in (Get-ChildItem -Recurse -Filter test.trx)) {
-            [xml]$doc = Get-Content $trx.FullName
-            $count += @($doc.TestRun.Results.UnitTestResult).Count
-          }
-          Write-Output "Tests executed: $count (baseline 485)"
-          if ($count -lt 485) { throw "Test count shrank: $count < 485" }
+      # ---------- 两档 GUI 产物 ----------
+      # win11：框架依赖。不自带 .NET 运行时，也不带 WinUI 原生。
+      #   目标机需自备 .NET 10 运行时 + Windows App Runtime 2.5.x。
+      #   zip 约 27M（自包含约 84M），给「下载要快、机器已就绪」的 Win11 用户。
+      - name: Publish GUI (win11 / framework-dependent)
+        run: >
+          dotnet publish src/Ceobe.App/Ceobe.App.csproj
+          -c Release -r win-x64 --self-contained false
+          -p:WindowsAppSDKSelfContained=false
+          -o dist/app-fd
 
-      # GUI 必须同时带 SelfContained + WindowsAppSDKSelfContained，
-      # 否则产物缺 WinUI 原生运行时（Microsoft.ui.xaml.dll / Ceobe.pri），
-      # 在没装 Windows App SDK 的机器上开窗即崩。详见 Ceobe.App.csproj。
-      - name: Publish GUI
+      # portable：双自包含。两个开关缺一不可：
+      #   SelfContained 带 .NET 运行时；WindowsAppSDKSelfContained 带 WinUI 原生
+      #   （Microsoft.ui.xaml.dll / Ceobe.pri）。只开前者会在用户机开窗即崩。
+      - name: Publish GUI (portable / self-contained)
         run: >
           dotnet publish src/Ceobe.App/Ceobe.App.csproj
           -c Release -r win-x64 --self-contained true
-          -o dist/app
+          -p:WindowsAppSDKSelfContained=true
+          -o dist/app-sc
 
       - name: Publish CLI
         run: >
@@ -97,39 +118,79 @@ jobs:
           -c Release -r win-x64 --self-contained true
           -o dist/cli
 
-      # 自包含发布最容易静默退化成「开发机能跑、用户机开窗崩」：
-      # 缺 WindowsAppSDK 原生部分或 SettingsControls 依赖时，发布本身仍会成功。
-      # 注意：本 SDK 版本把页面 XAML 资源合并进 Ceobe.pri，发布目录不再有独立 .xbf；
-      # 旧文档里的 resources.pri 也对应 Ceobe.pri。
-      - name: Verify GUI artifact payload
+      # 两档的产物完整性各查各的：FD 版**不该**有 Microsoft.ui.xaml.dll，
+      # 有就说明退化成自包含、体积白白翻三倍；SC 版**必须**有，否则用户机开窗即崩。
+      - name: Verify GUI payloads
         shell: pwsh
         run: |
-          $required = @(
-            'dist/app/Ceobe.exe',
-            'dist/app/Microsoft.ui.xaml.dll',
-            'dist/app/Ceobe.pri',
-            'dist/app/Ceobe.App.ViewModels.dll',
-            'dist/app/CommunityToolkit.WinUI.Controls.SettingsControls.dll',
-            'dist/app/Assets/ceobe.ico'
+          $fdRequired = @(
+            'dist/app-fd/Ceobe.exe',
+            'dist/app-fd/Ceobe.pri',
+            'dist/app-fd/Ceobe.App.ViewModels.dll',
+            'dist/app-fd/Microsoft.WindowsAppRuntime.Bootstrap.dll',
+            'dist/app-fd/CommunityToolkit.WinUI.Controls.SettingsControls.dll',
+            'dist/app-fd/Assets/ceobe.ico'
           )
-          foreach ($path in $required) {
-            if (-not (Test-Path $path)) { throw "Missing GUI artifact: $path" }
+          foreach ($p in $fdRequired) { if (-not (Test-Path $p)) { throw "FD missing: $p" } }
+          if (Test-Path 'dist/app-fd/Microsoft.ui.xaml.dll') {
+            throw "FD payload unexpectedly bundles WinUI native (Microsoft.ui.xaml.dll)"
           }
-          if (-not (Get-ChildItem dist/app -Filter 'Microsoft.WindowsAppRuntime*.pri')) {
+
+          $scRequired = @(
+            'dist/app-sc/Ceobe.exe',
+            'dist/app-sc/Ceobe.pri',
+            'dist/app-sc/Microsoft.ui.xaml.dll',
+            'dist/app-sc/Ceobe.App.ViewModels.dll',
+            'dist/app-sc/CommunityToolkit.WinUI.Controls.SettingsControls.dll',
+            'dist/app-sc/Assets/ceobe.ico'
+          )
+          foreach ($p in $scRequired) { if (-not (Test-Path $p)) { throw "SC missing: $p" } }
+          if (-not (Get-ChildItem dist/app-sc -Filter 'Microsoft.WindowsAppRuntime*.pri')) {
             throw "Missing WindowsAppRuntime PRI payload"
           }
+
+      # ---------- MSI（框架依赖负载，对应 win11 档） ----------
+      - name: Restore dotnet tools (WiX)
+        run: dotnet tool restore
+
+      - name: Build MSI
+        shell: pwsh
+        run: |
+          $payload = Join-Path $env:GITHUB_WORKSPACE 'dist\app-fd'
+          $msi = "ceobe-${{ steps.ver.outputs.version }}-win11-x64.msi"
+          dotnet wix build -arch x64 `
+            -d MsiVersion=${{ steps.ver.outputs.msi_version }} `
+            -d PayloadDir="$payload" `
+            -o $msi tools/installer/ceobe.wxs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-ChildItem $msi | Select-Object Name, @{n='MB';e={[math]::Round($_.Length/1MB,1)}}
+
+      - name: Package zips
+        shell: pwsh
+        run: |
+          $v = "${{ steps.ver.outputs.version }}"
+          # 散文件目录直接打包；产物名以 props 派生版本为准，不用 tag 名。
+          Compress-Archive -Path 'dist/app-fd/*' -DestinationPath "ceobe-$v-win11-x64.zip" -Force
+          Compress-Archive -Path 'dist/app-sc/*' -DestinationPath "ceobe-$v-portable-x64.zip" -Force
+          Compress-Archive -Path 'dist/cli/*'    -DestinationPath "ceobe-$v-cli-x64.zip" -Force
+          Get-ChildItem *.zip,*.msi | Select-Object Name, @{n='MB';e={[math]::Round($_.Length/1MB,1)}}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v6
         with:
           name: ceobe-windows
-          path: dist
+          path: |
+            ceobe-*.zip
+            ceobe-*.msi
           if-no-files-found: error
           retention-days: 14
 
+  # main 推送即发布；PR 只构建不发布。
+  # 版本号来自 props，tag 与 Release 名由它派生——不再手动打 tag，
+  # 同一版本重复推送时先删后建（幂等收敛）。
   release:
     name: Publish Release
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build
     runs-on: windows-latest
     permissions:
@@ -140,25 +201,33 @@ jobs:
       - name: Download build artifacts
         uses: actions/download-artifact@v7
         with:
+          name: ceobe-windows
           path: dist
-
-      - name: Package zips
-        shell: pwsh
-        run: |
-          $tag = $env:GITHUB_REF_NAME
-          Compress-Archive -Path 'dist/ceobe-windows/app/*' -DestinationPath "ceobe-gui-$tag.zip" -Force
-          Compress-Archive -Path 'dist/ceobe-windows/cli/*' -DestinationPath "ceobe-cli-$tag.zip" -Force
-          Get-ChildItem *.zip | Select-Object Name, Length
 
       - name: Publish to GitHub Releases
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = $env:GITHUB_REF_NAME
-          # 同名 Release 已存在则删除重建：同日多次推送同一标签时保持幂等
+          $v = "${{ needs.build.outputs.version }}"
+          $tag = "v$v"
           gh release view $tag 2>$null
           if ($LASTEXITCODE -eq 0) {
             gh release delete $tag --yes --cleanup-tag
           }
-          gh release create $tag --title $tag --generate-notes --latest "ceobe-gui-$tag.zip" "ceobe-cli-$tag.zip"
+          $notes = @"
+          ## 选哪个包
+
+          | 包 | 大小 | 适用 | 需要先装 |
+          |---|---|---|---|
+          | ceobe-$v-win11-x64.msi / -win11-x64.zip | ~23M / ~27M | **Win11 推荐**，下载快 | .NET 10 运行时 + Windows App Runtime 2.5.x |
+          | ceobe-$v-portable-x64.zip | ~84M | 免装运行时，任何 Windows 10 1809+ | 无 |
+          | ceobe-$v-cli-x64.zip | ~31M | 无头 CLI（单体 exe） | 无 |
+
+          > win11 档在缺少运行时时会弹框提示并给出下载链接，不会静默崩溃。
+          > 不确定自己机器是否就绪，直接下 portable 档。
+
+          "@
+          gh release create $tag --title "ceobe $v" --target ${{ github.sha }} `
+            --notes $notes --generate-notes --latest `
+            (Get-ChildItem dist/*.zip, dist/*.msi | ForEach-Object FullName)
