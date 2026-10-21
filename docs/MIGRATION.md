@@ -67,8 +67,17 @@ ceobe.sln
 
 - 页签顺序：实例列表 → 控制台 → 配置（含整改项 5）→ Mod/整合包（整改项 4）→ **玩家**（整改项 2，新页签）→ 穿透（整改项 1）→ 设置（整改项 3）。
 - 旧 GUI 的 14 个 Java 文件 → XAML + code-behind + ViewModel；`PropsPaneBase` 的通用表单渲染器由 `DataTemplateSelector` 按 `PropType` 分派。
-- **闸门 C**：见「UI 回归」小节。
+- **闸门 C**：UI 回归达标（见下节）。
 - 已知倒退：WinUI 3 unpackaged 分发的 Windows App SDK 引导、FilePicker 初始化需显式处理；拖拽导入依赖 `DragOver/Drop` + 包内 `DataPackageView`，需实测。
+
+### UI 回归（闸门 C 的具体手段）
+
+Java 版靠 `-Dceobe.snapshot=<png> [-Dceobe.snapshot.tab=配置]` 启动即导出 Scene 快照，无需窗口焦点；WinUI 3 **无等价廉价手段**，这是本次重构明确接受的倒退，替代方案分两层：
+
+1. **逻辑层不靠截图**：把 `PropsPaneBase`/各 Pane 的可观测行为下沉到 ViewModel，用普通单测断言（分组结果、requiresRestart 标记、字段→控件类型分派、导入嗅探结果）。ViewModel 不引用 WinUI 类型，可在无窗口环境跑。
+2. **像素层只在关键页做**：`WinAppDriver`/` FlaUI` 驱动 UIA 树，断言控件存在与文本，配合 `Windows.UI.ViewManagement`/`GraphicsCaptureAPI` 抓窗口位图存 baseline；仅在 CI 的 Windows job 里跑，且需要交互式会话（CI 上的 WinUI 3 无头渲染不可靠，遇阻则退化为「人工首版验收 + 之后只信 UIA 断言」）。
+
+结论：像素级回归不追求覆盖率，验收重心放在 ViewModel 层；这一条与 ADR-019「后果」中记录的倒退风险一致。
 
 ### 阶段三：文档、CI 与归档
 
