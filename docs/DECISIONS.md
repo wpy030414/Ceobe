@@ -198,3 +198,22 @@
 - 为什么不选其他：方案 ① 与 jpackage 打包语义对抗、增大镜像体积，且不解决"用户已在别处装 JDK"的诉求。
 - 后果：`java.home` 不再被无条件信任；打包 GUI 首次启动需宿主设有可用 `JAVA_HOME` 或存在自管 JDK，否则新建对话框会给出"可一键安装 Java N"的提示。
 - 何时重新审视：jpackage 改为在 app-image 中保留 java 启动器时。
+
+## ADR-019：全线重构为 C# / .NET 10 + WinUI 3（弃 Java/JavaFX），范围收缩为 Windows 专属
+- 日期：2026-10-21
+- 状态：已采纳
+- 背景：项目所有者判定「Minecraft 服务器编排」这类工具的实际用户几乎全在 Windows，跨平台支持是纯成本无收益；同时 Java 栈在本项目上的痛点集中在分发（jpackage 产物体积大、冷启动慢、JavaFX 观感靠自研 CSS 硬撑、CI 需跑三平台矩阵、ADR-017/018 两条后果都是 macOS/jpackage 打包约束逼出来的）。要求功能集合不变，改用 C# + WinUI 3 重构整个 App。
+- 考虑过的方案：① WinUI 3 + Windows App SDK；② WPF(.NET 10)；③ Avalonia；④ 只重写 GUI、经进程/IPC 复用 Java core；⑤ 一次性推倒重来。
+- 决策：
+  1. UI 选 **WinUI 3 + Windows App SDK**（方案 ①）；目标框架 `net10.0-windows10.0.19041.0`。
+  2. 节奏选 **渐进三阶段**（方案 ① 的分期版），Java 版自本 ADR 起**功能冻结、只修 bug**，基线 tag `pre-csharp-migration`（= `5993956`）：
+     - 阶段一：`Ceobe.Core` + `Ceobe.Cli`（`net10.0`）。验收 = Java 侧 10 个测试类与 `scripts/smoke-cli.sh` 的等价 E2E 全绿，且对同一实例目录树双跑结果一致。
+     - 阶段二：`Ceobe.App`（WinUI 3），逐页签替换（实例列表→控制台→配置→Mod/整合包→玩家→穿透→设置）。
+     - 阶段三：改写 PRD/ARCHITECTURE/specs 与 CI（单一 Windows 自包含产物），Java 三模块目录归档删除。
+  3. **保留独立 CLI**（不并入 GUI 命令面板）：它既是无头/远程场景的交付物，也是阶段一证明 core 语义等价的主要自动化抓手。
+  4. 依赖对位：Jackson→`System.Text.Json`（source-gen）、SnakeYAML→YamlDotNet、picocli→`System.CommandLine`、Java HttpClient→`HttpClient`、虚拟线程日志泵→`Channel<T>` + `IAsyncEnumerable`、JavaFX/AtlantaFX/CSS→WinUI 3 XAML + `CommunityToolkit.WinUI`。
+  5. **语义原样搬运、不得重写**的七条硬契约：server.properties 保序保注释保 `\:` 转义；`Mirrors` 的 BMCLAPI / Modrinth CDN / Temurin 清华改写与上游回退；Mojang piston-meta 与 Paper Fill v3 的响应契约；ADR-007 的监督进程 + `.ctl` 随机 token + `.state`/`.pid`；端口跨实例排他；`.mrpack` 的 `env.server` 过滤与 overrides/server-overrides 优先级；CalVer `YY.MM.DD-HH` 单点权威（改由 `Ceobe.csproj` 的 `<Version>` 承担）。
+- 为什么选这个：WinUI 3 是唯一在「原生 Fluent 观感 + 系统级通知/凭据/文件关联」上不留债的选择，且已与「Windows 专属」的范围收缩对齐；保留 Java 版做只修 bug 的热备，使阶段一/二期间用户始终有可用产物，避免 8841 行 + 18 条 ADR 的一次性硬切。CLI 先行是因为 core 的正确性可以用 CLI 廉价地证成，GUI 不行。
+- 为什么不选其他：② WPF 工程风险最低（纯自包含单文件 exe、无 Windows App SDK 引导、UI 自动化成熟），但观感上比 WinUI 3 旧一挡，与「界面杂乱」的整改诉求方向不符；③ Avalonia 的跨平台能力正是本次明确放弃的目标，等于为不会用掉的能力付抽象成本；④ 跨语言边界要把日志流、状态机、文件锁全部重造一遍，是自找的复杂度；⑤ 中途无可用版本，且七条硬契约一次性搬迁的回归面无法验证。
+- 后果：**失去「宿主 JVM 即运行时」这条免费退路**——Java 版 `InstanceMeta.javaHome=null` 可直接继承当前 JVM，C# 版进程不是 Java，`JavaResolver` + `JdkInstaller`（Adoptium + 清华镜像）从锦上添花升级为生死线，下载失败即一个玩家都开不了服，必须优先做失败可见化与手动指定 JDK 兜底。UI 回归手段倒退：`-Dceobe.snapshot` 那类「启动即导出 Scene 快照」在 WinUI 3 无等价廉价方案，需另建（见 ADR-020 与 MIGRATION 的验收矩阵）。CI 从三平台矩阵收敛为单 Windows job，但需引入 .NET SDK 与（若走 MSIX）证书/PACKAGE 环节。本机当前未安装 dotnet SDK，阶段一开工前需先装。
+- 何时重新审视：若 WinUI 3 非打包（unpackaged）分发在实际用户手上反复出问题（Windows App SDK 引导失败、FilePicker 初始化、自包含体积），应立刻降级到 WPF(.NET 10) 复用全部 XAML 语义之外的 core 成果——core/cli 与 UI 框架无关，止损成本仅为一个 UI 层。
