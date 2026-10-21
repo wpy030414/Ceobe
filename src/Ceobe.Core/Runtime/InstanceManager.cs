@@ -262,19 +262,23 @@ public sealed partial class InstanceManager : IInstanceHost
         }
         var sink = progress ?? NullProgress.Instance;
         sink.Update($"安装服务端 {spec.ServerType} {spec.GameVersion}", 0, -1);
-        var launchJar = await _installJar(dir, spec.GameVersion, spec.LoaderVersion, sink, ct)
+        var installed = await _installJar(spec.ServerType, dir, spec.GameVersion, spec.LoaderVersion, sink, ct)
             .ConfigureAwait(false);
 
         var meta = new InstanceMeta
         {
             Name = spec.Name,
             ServerType = spec.ServerType,
-            GameVersion = spec.GameVersion,
-            LoaderVersion = spec.LoaderVersion,
+            // provider 实际安装的版本与 loader：可能与请求值不同（如「latest stable loader」），
+            // 以 provider 返回为准，否则 instance.json 记的是假的
+            GameVersion = installed.GameVersion,
+            LoaderVersion = installed.LoaderVersion,
             MemoryMb = spec.MemoryMb,
             JvmArgs = spec.JvmArgs ?? "",
             Port = spec.Port,
-            LaunchJar = launchJar,
+            LaunchJar = installed.LaunchJar,
+            // NeoForge 走参数文件启动（ADR-010），丢了这条会错误地用 -jar server.jar 拉起
+            LaunchArgsFile = installed.LaunchArgsFile,
         };
         // 解析应使用的 Java：显式指定 > 自管 JDK > 宿主 JAVA_HOME（C# 版无「继承当前 JVM」退路）
         try

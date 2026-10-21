@@ -21,7 +21,7 @@ public class InstanceControlProtocolTest
     [Fact(DisplayName = "ERR 转异常并保留消息")]
     public void ERR转异常并保留消息()
     {
-        var ex = Assert.Throws<Util.CeobeException>(() => InstanceControl.Parse(["ERR 实例未运行"]));
+        var ex = Assert.Throws<Ceobe.Core.Util.CeobeException>(() => InstanceControl.Parse(["ERR 实例未运行"]));
         Assert.Equal("实例未运行", ex.Message);
     }
 
@@ -47,7 +47,7 @@ public class InstanceControlProtocolTest
             Assert.False(InstanceControl.IsAvailable(dir));
             Assert.Null(InstanceControl.State(dir));
             // Call 必须给出「未由监督进程托管」的可操作提示，而不是裸异常
-            var ex = Assert.Throws<Util.CeobeException>(() => InstanceControl.Call(dir, "STATE"));
+            var ex = Assert.Throws<Ceobe.Core.Util.CeobeException>(() => InstanceControl.Call(dir, "STATE"));
             Assert.Contains("监督进程", ex.Message);
         }
         finally

@@ -48,8 +48,24 @@ public interface IJavaLocator
 }
 
 /// <summary>
-/// 把「安装服务端 jar」这件事倒置成委托，解耦 runtime ↔ providers。
-/// 返回实际用于启动的 jar 文件名（相对实例目录）。
+/// 服务端安装结果（runtime 本地形态，等价 <c>Providers.InstalledServer</c>）。
+/// 刻意不复用 Providers 的类型：那会让 runtime → providers 产生编译期依赖，
+/// 破坏「provider 可独立替换」的 SPI 边界（ADR-004）。装配方负责把两者对接。
 /// </summary>
-public delegate Task<string> JarInstaller(string instanceDir, string gameVersion, string? loaderVersion,
-    Util.IProgressSink progress, CancellationToken ct);
+/// <param name="LaunchJar">相对实例目录的启动 jar（NeoForge 情形与 <paramref name="LaunchArgsFile"/> 同值）。</param>
+/// <param name="GameVersion">provider 实际安装的游戏版本（可能与请求值不同）。</param>
+/// <param name="LoaderVersion">实际选定的 loader 版本；可空。</param>
+/// <param name="LaunchArgsFile">非空时改用参数文件启动（NeoForge）：<c>java @&lt;file&gt; nogui</c>。</param>
+public sealed record JarInstallResult(string LaunchJar, string GameVersion, string? LoaderVersion,
+    string? LaunchArgsFile);
+
+/// <summary>
+/// 把「安装服务端 jar」这件事倒置成委托，解耦 runtime ↔ providers
+/// （依赖方向由装配方决定：CLI/GUI 把 ProviderRegistry 接进来）。
+/// 必须带 <paramref name="serverType"/>：provider 的选择依据就是它，
+/// 少了这个参数 CreateAsync 无法表达「按类型装」，会退化成只能装一种服务端。
+/// 返回完整 <see cref="JarInstallResult"/> 而非裸 jar 名：NeoForge 的参数文件启动
+/// （ADR-010）与 provider 校正后的版本号都要回写进 instance.json，丢字段会导致启动方式错误。
+/// </summary>
+public delegate Task<JarInstallResult> JarInstaller(Model.ServerType serverType, string instanceDir,
+    string gameVersion, string? loaderVersion, Util.IProgressSink progress, CancellationToken ct);
