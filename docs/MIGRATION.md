@@ -3,6 +3,23 @@
 > 依据 ADR-019。本文档是迁移期的唯一施工图；功能集合不变，语义以本仓库 Java 实现为权威参考。
 > 基线：tag `pre-csharp-migration`（= `5993956`，版本 `26.10.15-14`）。Java 版自此刻起功能冻结、只修 bug。
 
+## 当前进度（2026-10-21）
+
+| 阶段 / 闸门 | 状态 | 证据 |
+|-------------|------|------|
+| 阶段一 Core + CLI | 完成 | Core 261 个测试全绿；CLI 顶层命令 + 隐藏 `supervise`，退出码 0/1/2 实测 exe |
+| 闸门 A（Java 测试等价搬迁） | 完成 | Java 侧 10 个测试类逐条对照 |
+| 闸门 B（双跑对读） | 完成 | `tools/wiregen` 用真实 Jackson 生成 fixture，Java/C# 双向对读；并修掉 Java 侧 `isDark()` 只读属性导致主题丢失的 bug |
+| 阶段二 GUI | 完成 | 七个页签齐全；ViewModel 209 个测试全绿；UI Automation 实测七页逐个切换不崩溃 |
+| 闸门 C（UI 回归） | 按约定口径达成 | 重心在 ViewModel 单测 + UIA 断言；像素基线按本文档既定方案放弃 |
+| 阶段三 文档 / CI | 完成 | ARCHITECTURE / PRD / specs 改写为 C# 事实；ADR-001/002/008/016/017/018 标注取代；CI 收敛为 `windows-latest` |
+| 阶段三 Java 归档 | **待训练员确认** | 见下 |
+
+> **关于删除 Java 源码**：ADR-019 与本文原先写的是「删除 `ceobe-core/`、`ceobe-cli/`、`ceobe-gui/`、`pom.xml`」。
+> 但训练员选定的节奏是「渐进三阶段，Java 冻结只修 bug」，且**待决事项 4**（整改项 1～5 的 hotfix 是否回打 Java 版）
+> 尚未拍板。因此本轮**不执行删除**：Java 实现保留在原处，作为语义参考与回打基线。
+> 待训练员明确「Java 永久退役」后再归档/删除；基线 tag `pre-csharp-migration` 始终可回溯。
+
 ## 目标形态
 
 ```
@@ -83,7 +100,7 @@ Java 版靠 `-Dceobe.snapshot=<png> [-Dceobe.snapshot.tab=配置]` 启动即导�
 
 - `AGENTS.md` / `README.md` / `docs/ARCHITECTURE.md` / `docs/specs/*` 全面改写到 C# 事实；ADR-001（Maven）、ADR-002（JavaFX）、ADR-016（跨平台打包）、ADR-017 的 jpackage 段、ADR-018 的 jpackage 成因，标记为「已被 ADR-019 取代/部分失效」。
 - CI：三平台矩阵 → 单一 `windows-latest`，产出 `.exe`（MSIX 或裸自包含待定，见待决项）。
-- 删除 `ceobe-core/`、`ceobe-cli/`、`ceobe-gui/`、`pom.xml`，保留 tag 作为考古入口。
+- Java 源码归档/删除：**待训练员确认**（理由见文首「当前进度」后的说明）；基线 tag `pre-csharp-migration` 保留作考古入口。
 
 ## 训练员反馈整改项（2026-10-21）
 

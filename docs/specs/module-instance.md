@@ -1,5 +1,9 @@
 # Spec — 实例生命周期（ceobe-core/instance + runtime）
 
+> **实现现状（2026-10-21）**：本文描述产品语义契约；C# 实现见 `src/Ceobe.Core/Runtime`（InstanceManager / ServerProcess / InstanceControl / ControlServer）与 `src/Ceobe.Core/Model`。
+> Java 版实现已功能冻结，仅作语义参考；迁移决策见 ADR-019。
+
+
 ## 要构建什么
 - 目标：实例的创建、启动、停止、删除、状态查询；进程的可靠托管。
 

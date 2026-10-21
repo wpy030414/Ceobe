@@ -1,6 +1,8 @@
 # DECISIONS
 
 ## ADR-001：构建系统用 Maven（弃 Gradle）
+
+> **状态：已被 ADR-019 取代（2026-10-21）。** 现役构建为 .NET SDK / MSBuild（`ceobe.slnx`）；Maven 仅存在于归档的 Java 版中，不参与构建。保留本条作决策考古。
 - 日期：2026-10-15
 - 状态：已采纳
 - 背景：仓库原有项目为 Maven；本机未预装任何构建工具。
@@ -12,6 +14,8 @@
 - 何时重新审视：需要复杂变体构建（多平台 runtime image）时。
 
 ## ADR-002：GUI 选 JavaFX（弃 Swing）
+
+> **状态：已被 ADR-019 取代（2026-10-21）。** 现役 GUI 为 WinUI 3 + Windows App SDK；JavaFX 版已冻结。保留本条作决策考古。
 - 日期：2026-10-15
 - 状态：已采纳
 - 背景：要求 shadcn/ui 风格 + JDK 25。
@@ -83,6 +87,8 @@
 - 何时重新审视：需要远程（跨机）管理时，届时控制通道需升级为带认证的网络协议。
 
 ## ADR-008：包名与 Maven 坐标 = `im.xrl.ceobe.*` / `im.xrl:ceobe-*`
+
+> **状态：已被 ADR-019 取代（2026-10-21）。** C# 侧命名空间根为 `Ceobe`，工程名 `Ceobe.Core` / `Ceobe.Cli` / `Ceobe.App` / `Ceobe.App.ViewModels`，用户可见产物名仍为小写 `ceobe.exe`。
 - 日期：2026-10-15
 - 状态：已采纳
 - 背景：初始骨架使用 `im.xrl.ceobe` 作为临时命名空间；项目所有者要求改为自有域名反写。
@@ -165,6 +171,10 @@
 - 何时重新审视：需要热改（不停止实例）内存/端口时。
 
 ## ADR-016：GUI 默认浅色 + 跨平台打包（CI 产出 exe/dmg/AppImage）
+
+> **状态：部分失效（2026-10-21，见 ADR-019）。**
+> 「默认浅色」仍然有效（`settings.json` 的 `theme` 默认 `light`）；
+> 「跨平台打包」作废——产品已收缩为 Windows 专属，CI 只产出 Windows 自包含产物。
 - 日期：2026-10-15
 - 状态：已采纳
 - 背景：项目所有者要求默认白色主题（深色手动切换）、侧栏占满 100vh、设置项收敛到弹窗；并要求「main 推送即取消同名旧任务，构建 exe/dmg/AppImage」。
@@ -175,6 +185,11 @@
 - 何时重新审视：需要签名/公证（macOS notarization、Windows 代码签名）或自动发布 Release 时。
 
 ## ADR-017：版本号改 CalVer + CI 自动发布 Release
+
+> **状态：部分失效（2026-10-21，见 ADR-019）。**
+> CalVer 单点权威仍然有效，权威位置由根 `pom.xml` 改为 `Directory.Build.props` 的 `<Version>`；
+> 「安装包版号取前三段 / macOS jpackage 只接受 1–3 段数字」整段作废——不再有 jpackage。
+> 新增约束：`<Version>` 必须是点分四段（`26.10.21.01`），因为 NuGet 按 SemVer2 拒绝数字前导零的 prerelease 标识。
 - 日期：2026-10-15
 - 状态：已采纳
 - 背景：项目此前用 `0.1.0-SNAPSHOT`（无发布语义），CI 只上传 Actions artifact、不进 Releases，且安装包版号硬编码 `1.0.0`；同时 CI 报出 actions Node 20 弃用、`setup-java@v4` 停止维护等警告。项目所有者要求：版本号改 CalVer、以根目录 pom 为唯一权威，并在 CI 通过后自动发布 Release（tag `v<CalVer>`，标题与正文复用 commit message）。
@@ -189,6 +204,11 @@
 - 何时重新审视：JDK 27 移除 macOS 版本限制后，可让包版号直接采用完整 CalVer；或需要签名/公证时。
 
 ## ADR-018：服务端运行时不得回退到 GUI 打包镜像（jpackage 会剥离 bin/java）
+
+> **状态：部分失效（2026-10-21，见 ADR-019）。**
+> jpackage 相关的成因与处置（剥离 `bin/java`）已不适用——C# 版没有 JRE 打包镜像。
+> 但本条的**教训仍然有效且更严**：服务端运行时 Java 必须由 ceobe 自行探测/托管，
+> 不得假设宿主环境或任何打包产物自带可用 JRE。
 - 日期：2026-10-15
 - 状态：已采纳
 - 背景：从打包 GUI 启动实例"无法启动"，`console.log` 里只留下一行启动命令行、之后再无任何输出（连报错都没有）。定位：`ServerProcess.buildCommand` 在 `meta.javaHome` 为空（"继承当前 JVM"）时回退到 `System.getProperty("java.home")`；而 jpackage 生成的运行时镜像**剥离了 `bin/java(.exe)`**（GUI 由原生 `Ceobe.exe` 经 `jli.dll`/`server/jvm.dll` 启动，无需该启动器）。于是 `pb.start()` 抛 IOException，异常被 `Fx.background` 捕获后只写进 GUI 文本框、不落 `console.log` → 表现为"静默失败"。同时 `JavaResolver` 仅按主版本比较就把该镜像判为"已就绪"，无任何提示。

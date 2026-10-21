@@ -1,37 +1,58 @@
-# Spec — JavaFX GUI（ceobe-gui）
+# Spec — WinUI 3 GUI（Ceobe.App）
+
+> **实现现状（2026-10-21）**：`src/Ceobe.App`（XAML 视图 + 接线）+ `src/Ceobe.App.ViewModels`（全部状态与逻辑）。
+> JavaFX 版 `ceobe-gui/` 已功能冻结，仅作语义参考；迁移决策见 ADR-019。
 
 ## 要构建什么
-- 目标：shadcn/ui 观感的桌面面板：实例列表、创建向导、控制台、配置表单、Mod 市场、穿透面板。
+
+- 目标：Windows 原生桌面面板，覆盖实例列表、创建向导、控制台、两类配置、Mod、整合包、玩家、穿透、设置。
 
 ## 行为
-- 布局：左侧全高侧栏（仅「Ceobe」标题 + 新建按钮 + 实例卡片列表）占满 100vh；右列为「顶部栏（选中实例名 + 右侧「⚙ 设置」）→ 内容页签 → 底部状态栏」，状态栏仅覆盖主内容区。
-- 创建向导：三步（类型×版本 → 内存/端口/JVM → 确认并下载，带进度条与阶段文案）。
-- 控制台：日志区（等宽、自动滚底、暂停跟随开关）+ 输入框（↑ 历史）+ 状态徽标（五态色）。
-- 两个配置页签：**服务器配置**（实例级：名称/内存/端口/JVM 参数/authlib-injector，写 `instance.json`）与 **游戏配置**（`server.properties` 全部键，按 schema 分组为类型化控件、原子写；保存时重读以只改本面板的键）。改端口会同步 `server.properties`；设 authlib 会自动关闭 `online-mode`。
-- 顶部栏右侧「⚙ 设置」弹窗（当前仅暴露主题一项）。
-- 开发自检：`-Dceobe.snapshot=<png> [-Dceobe.snapshot.tab=配置]` 启动即自动选中首个实例、切页签并把 Scene 导出为 PNG（无需窗口焦点，便于 UI 回归）。
-- Mod 页：搜索框+结果卡（图标/简介/下载量/env 徽标）→ 安装；已装列表可卸载；vanilla/paper 实例显示"无 mods 目录"空态。
-- 整合包页：搜索 Modrinth 整合包（可勾选「仅适配本实例」按当前版本/加载器过滤）→「安装到本实例」（校验加载器/版本一致）或「新建实例并安装」（依索引 dependencies 自动建 fabric/neoforge 实例再装）；带进度条与阶段文案。
-- 穿透页：每通道开关卡（CF Web 控制台 / Pinggy 玩家连接 / 局域网直连）；地址大字 + 一键复制 + "地址已轮换"横幅；剩余有效期倒计时。
-- 主题：**浅色默认**、深色可选；在右侧「⚙ 设置」对话框切换并持久化到 `~/.ceobe/settings.json`（`theme`）。token 驱动（`.theme-light` / `.theme-dark`），8px 圆角、1px hairline 边框、focus ring。字体中文优先「Microsoft YaHei UI」（避免细点位字体的像素感），拉丁回退 Inter（内嵌）。
+
+- **布局**：左侧全高侧栏（产品标题 + 新建实例 + 设置 + 实例列表，实例行带运行状态圆点）；右列为「顶部栏（实例名 + 刷新）→ 内容页签 → 状态栏」。
+- **启动**：自动选中第一个实例，右侧直接落到控制台——空白面板对「管服」没有信息量。
+- **页签（七页，固定顺序）**：
+  1. **控制台**：日志区（等宽、自动滚底、跟随开关）+ 命令输入 + 启停/删除；
+  2. **服务器配置**：实例级（名称/内存/端口/JVM/String authlib），写 `instance.json`，改端口同步 `server.properties`；运行中只读；
+  3. **游戏配置**（整改项 5）：三级视图「常用 / 分类 / 原始」；分类视图按组导航 + 搜索；复合控件（资源包、数据包）与 `requiresRestart` 标记；
+  4. **Mod**：Modrinth 搜索/安装/卸载 + 已装清单 + **一键导入**（拖入 `.jar`/`.mrpack`/`.zip`，识别→预览→确认）；
+  5. **整合包**：搜索后可「装到当前实例」（校验版本/加载器一致）或「按包新建实例」（版本与加载器由包索引决定）；
+  6. **玩家**（整改项 2）：白名单开关置顶，白名单/OP/封禁玩家/封禁 IP 四表分段编辑，支持批量导入与「从 OP 导入」；
+  7. **穿透**（整改项 1）：每条通道卡片显示地址、三态结论（已实测可达 / 无法验证 / 未探测）、诊断详情；`server-ip` 绑定冲突在开启前红字警告。
+- **创建向导**：三步（类型×版本 → 内存/端口/JVM → 确认并下载，带进度条与阶段文案）。
+- **设置弹窗**：数据目录搬家（预演 → 确认 → 执行，失败回滚）、主题（深/浅，即时预览并持久化）、新建实例默认是否开白名单。
+- **主题**：读 `settings.json` 的 `theme`，**浅色默认**；运行期切换走窗口根元素的 `RequestedTheme`（`Application.RequestedTheme` 只在启动前可设）。
+- **页签刷新**：切回页签时按 `IReloadable` 重读磁盘（名单/整合包/通道状态会被别处改动）；带未保存编辑的页不实现，避免冲掉输入。
 
 ## 输入 / 输出
-- 输入：core API + 事件流。
-- 输出：JavaFX Scene；所有耗时操作走后台线程（Virtual Threads），UI 线程仅渲染。
+
+- 输入：`Ceobe.Core` 公共 API + `InstanceManager.OnEvent` 事件流。
+- 输出：XAML 视觉树；所有耗时操作 `async` 且不阻塞 UI 线程。
 
 ## 约束
-- 仅消费 core 公共 API；禁止 GUI 内散落业务逻辑。
-- AtlantaFX PrimerLight/PrimerDark 为基座 + `shadcn.css` 覆盖（明暗 token 全走 CSS 变量，挂 `.theme-light`/`.theme-dark` 切换）。
-- JavaFX 25.0.4 win 分类器；`javafx-maven-plugin` 跑 `mvn javafx:run`。
+
+- **ViewModel 不引用任何 WinUI 类型**：这是闸门 C 的前提。类型判断（是否 bool/int/enum）在 VM 层返回纯 `bool`，到 View 层才经 Converter 映射成 `Visibility`。
+- View 只做绑定、手势转发与拖放落文件；业务逻辑一律在 ViewModel。
+- 分发：非打包自包含（`WindowsPackageType=None` + `SelfContained` + `WindowsAppSDKSelfContained`），免 MSIX 与证书。
 
 ## 边界条件
-- 实例被 CLI 外部删除 → 列表事件刷新不崩溃。
-- 下载中断 → 向导可重试且不产生脏实例（临时目录→完成后 rename）。
 
-## 验收标准
-- [ ] PRD 场景 1 全程 GUI 完成，无命令行参与。
-- [ ] 事件流驱动的日志/状态在 1s 内反映进程实际变化。
-- [ ] 穿透地址复制即用（原版客户端直连成功）。
+- 实例被 CLI 外部删除 → 页签容器收到事件后关闭页签并清空选中，不崩溃。
+- 实例被改名 → 关闭当前页签、刷新侧栏并按新名重建。
+- 下载中断 → 向导可重试且不产生脏实例（临时目录 → 完成后 rename）。
+- 拖入多个文件 → 只识别第一个并明确提示，不静默丢弃其余。
+- 非打包 WinUI 的 `FileOpenPicker` 需要 HWND，而 `UserControl` 拿不到：**导入一律走拖放 + 手填路径**，不依赖 Picker。
+
+## 验收标准（闸门 C）
+
+- [ ] ViewModel 层单测覆盖全部分支（当前 209 个用例全绿）。
+- [ ] 七个页签在真实窗口里逐个切换不崩溃（UI Automation 断言 TabItem 数量与名称）。
+- [ ] 构建 + 测试 + 发布全绿（CI `windows-latest`）。
+
+> **明确的倒退**：JavaFX 版靠 `-Dceobe.snapshot=<png>` 启动即导出 Scene 快照做像素回归；
+> WinUI 3 没有等价廉价手段。替代方案是把可观测行为下沉到 ViewModel 单测，
+> 像素层只靠 UIA 断言控件存在与文本，不追求截图基线。
 
 ## 完成定义
-- 新用户零文档完成开服+分享地址。
+
+- 新用户零文档完成开服 + 分享地址。

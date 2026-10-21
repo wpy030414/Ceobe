@@ -1,5 +1,9 @@
 # Spec — 服务端 jar 提供者（ceobe-core/provider）
 
+> **实现现状（2026-10-21）**：本文描述产品语义契约；C# 实现见 `src/Ceobe.Core/Providers`。
+> Java 版实现已功能冻结，仅作语义参考；迁移决策见 ADR-019。
+
+
 ## 要构建什么
 - 目标：ServerJarProvider SPI + 五实现，屏蔽各官方源的协议差异。
 

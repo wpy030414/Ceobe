@@ -1,5 +1,9 @@
 # Spec — 穿透与 Web 控制台（ceobe-core/tunnel + webconsole）
 
+> **实现现状（2026-10-21）**：本文描述产品语义契约；C# 实现见 `src/Ceobe.Core/Tunnel`。
+> Java 版实现已功能冻结，仅作语义参考；迁移决策见 ADR-019。
+
+
 ## 要构建什么
 - 目标：TunnelProvider SPI，默认装配 CF Quick Tunnel（HTTP）+ Pinggy（TCP 自动续期）+ LanDirect；内嵌只读 Web 控制台作为 CF 隧道的目标。
 

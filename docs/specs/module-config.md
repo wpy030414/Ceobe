@@ -1,5 +1,9 @@
 # Spec — 配置可视化（ceobe-core/config）
 
+> **实现现状（2026-10-21）**：本文描述产品语义契约；C# 实现见 `src/Ceobe.Core/Config`。
+> Java 版实现已功能冻结，仅作语义参考；迁移决策见 ADR-019。
+
+
 ## 要构建什么
 - 目标：server.properties 的类型化 schema + 保序保注释读写，为 GUI 表单与 CLI get/set 提供统一后端。
 

@@ -1,0 +1,111 @@
+name: Windows Build
+
+# 产品已收敛为 Windows 专属的 C# / WinUI 3（ADR-019），流水线随之从三平台矩阵
+# 缩为单一 windows-latest：macOS/Linux 的 jpackage 产物不再有意义。
+#
+# 触发：
+#   · main 推送 / PR        → 编译 + 全量测试（网络用例默认排除，见 Core.Tests.csproj）
+#   · 推送 v* 标签          → 额外打包并发布 Release
+#   · 手动 workflow_dispatch
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  DOTNET_NOLOGO: 'true'
+  DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 'true'
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore ceobe.slnx
+
+      - name: Build
+        run: dotnet build ceobe.slnx -c Release --no-restore
+
+      # 网络用例（Trait Category=network）由 test 工程默认排除：
+      # 它们要真实下载服务端 jar / JDK，几分钟起步且受网络环境影响。
+      # 需要时手动跑：dotnet test --filter "Category=network"
+      - name: Test
+        run: dotnet test ceobe.slnx -c Release --no-build
+
+      # GUI 必须同时带 SelfContained + WindowsAppSDKSelfContained，
+      # 否则产物缺 WinUI 原生运行时（Microsoft.ui.xaml.dll / resources.pri），
+      # 在没装 Windows App SDK 的机器上开窗即崩。详见 Ceobe.App.csproj。
+      - name: Publish GUI
+        run: >
+          dotnet publish src/Ceobe.App/Ceobe.App.csproj
+          -c Release -r win-x64 --self-contained true
+          -o dist/app
+
+      - name: Publish CLI
+        run: >
+          dotnet publish src/Ceobe.Cli/Ceobe.Cli.csproj
+          -c Release -r win-x64 --self-contained true
+          -o dist/cli
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: ceobe-windows
+          path: dist
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: dist
+
+      - name: Package zips
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          Compress-Archive -Path 'dist/ceobe-windows/app/*' -DestinationPath "ceobe-gui-$tag.zip" -Force
+          Compress-Archive -Path 'dist/ceobe-windows/cli/*' -DestinationPath "ceobe-cli-$tag.zip" -Force
+          Get-ChildItem *.zip | Select-Object Name, Length
+
+      - name: Publish to GitHub Releases
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          # 同名 Release 已存在则删除重建：同日多次推送同一标签时保持幂等
+          gh release view $tag 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            gh release delete $tag --yes --cleanup-tag
+          }
+          gh release create $tag --title $tag --generate-notes --latest "ceobe-gui-$tag.zip" "ceobe-cli-$tag.zip"
