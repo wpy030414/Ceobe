@@ -20,6 +20,8 @@ ceobe 是本机 Minecraft 服务器多实例管理器：下载服务端 jar（va
 # 若 dotnet 未在 PATH（本机装在 %LOCALAPPDATA%\Microsoft\dotnet）
 & "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" build ceobe.slnx -c Debug
 & "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" test  ceobe.slnx -c Debug
+# GUI 不在解构建范围内，必须显式编（原因见「已知易错点」）
+dotnet build src/Ceobe.App/Ceobe.App.csproj -c Debug
 
 # 发布（自包含，目标机无需装 .NET）
 dotnet publish src/Ceobe.App/Ceobe.App.csproj -c Release -r win-x64 --self-contained true -o dist/app
@@ -57,6 +59,9 @@ dotnet publish src/Ceobe.Cli/Ceobe.Cli.csproj -c Release -r win-x64 --self-conta
 - XAML 的 `x:Bind` 在 `DataTemplate` 里默认 `OneTime`：会变的属性必须显式 `Mode=OneWay`。
 - **构建/发布前先关掉正在运行的 `Ceobe.exe`**：它锁住输出目录里的 DLL，MSBuild 要么报 `MSB3027`，
   要么在某些增量路径下跳过复制却仍显示成功——于是你跑的还是旧二进制，端到端会得出错误结论（实测踩过）。
+- **`dotnet build ceobe.slnx` 不会编 GUI**：`Ceobe.App` 只声明 x64，而解默认 Any CPU，该工程被静默跳过。
+  编译 GUI 必须显式 `dotnet build src/Ceobe.App/Ceobe.App.csproj`；CI 已单列这一步。
+  也不要给解加 x64 平台——那会把产物落到 `bin/x64/Release/...`，与 `bin/Release/...` 并存，更容易拿错。
 
 ## 目录速查
 

@@ -45,6 +45,11 @@ jobs:
       - name: Build
         run: dotnet build ceobe.slnx -c Release --no-restore
 
+      # 必须单独构建 GUI：Ceobe.App 只声明 x64 平台，而解默认 Any CPU，
+      # `dotnet build ceobe.slnx` 会静默跳过它（构建显示成功但 GUI 没编）。
+      - name: Build GUI shell
+        run: dotnet build src/Ceobe.App/Ceobe.App.csproj -c Release --no-restore
+
       # 网络用例（Trait Category=network）由 test 工程默认排除：
       # 它们要真实下载服务端 jar / JDK，几分钟起步且受网络环境影响。
       # 需要时手动跑：dotnet test --filter "Category=network"
