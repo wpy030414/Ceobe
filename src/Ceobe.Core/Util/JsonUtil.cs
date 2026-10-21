@@ -20,20 +20,23 @@ namespace Ceobe.Core.Util;
 /// </summary>
 public static class JsonUtil
 {
-    /// <summary>写盘用：缩进 + 忽略 null。</summary>
+    /// <summary>写盘用：缩进 + 忽略 null + camelCase。</summary>
     public static readonly JsonSerializerOptions WriteOptions = new()
     {
         WriteIndented = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        // Jackson 按字段名原样输出（小驼峰），System.Text.Json 默认按 C# 成员名输出（PascalCase）。
+        // 不加这条，C# 写出的是 "Name"/"GameVersion"，Java 侧读不回且**不报错**——静默丢数据。
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    /// <summary>读盘用：允许注释与尾逗号（对外 API 响应偶尔带注释）。</summary>
+    /// <summary>读盘用：允许注释与尾逗号 + camelCase。</summary>
     public static readonly JsonSerializerOptions ReadOptions = new()
     {
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
-        PropertyNameCaseInsensitive = false,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
     /// <summary>解析外部 API 响应为 DOM（等价 Jackson readTree）。</summary>

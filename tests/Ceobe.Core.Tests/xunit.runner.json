@@ -1,0 +1,14 @@
+{
+  "$schema": "https://xunit.net/schema/current/xunit.runner.schema.json",
+  "//": [
+    "为什么关掉 collection 级并行：Ceobe.Core 的公共 API 大量使用进程级静态状态——",
+    "CeobeHome.Override（数据根目录）、Mirrors 的镜像基址、JdkStore 的自管 JDK 缓存、",
+    "ProviderRegistry 的静态注册表。xunit 默认让不同 collection 并行，实测已造成串扰：",
+    "JavaResolverTest.自管JDK_命中_自动选用 单独跑绿、全量跑红（JdkStore 扫描被并发",
+    "Dispose 重置后扫到真实 ~/.ceobe/jdk）。",
+    "Jdk 包已用 [Collection] 在包内串行，但那只挡住包内，挡不住跨包并发。",
+    "这里改为整体串行：正确性优先，代价是全量测试约 40 秒。",
+    "注意 method 级并行仍然开着（同一 class 内），故测试类内也不要写全局状态。"
+  ],
+  "parallelizeTestCollections": false
+}

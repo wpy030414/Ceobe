@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using Ceobe.Core.Model;
@@ -130,12 +129,13 @@ public sealed class ModrinthClient
         };
     }
 
-    /// <summary>卸载：删除记录中的文件（文件不存在视同成功，对齐 deleteIfExists）。</summary>
+    /// <summary>卸载：删除记录中的文件（文件不存在视同成功，对齐 Java deleteIfExists）。</summary>
     public Task UninstallAsync(string instanceDir, ModEntry entry, CancellationToken ct = default)
     {
+        var path = Path.Combine(instanceDir, "mods", entry.FileName);
         try
         {
-            File.Delete(Path.Combine(instanceDir, "mods", entry.FileName));
+            if (File.Exists(path)) File.Delete(path);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
@@ -296,6 +296,4 @@ internal static class JsonNav
         }
         return list;
     }
-
-    public static JsonElement ParseRoot(string text) => JsonUtil.Parse(text).RootElement;
 }

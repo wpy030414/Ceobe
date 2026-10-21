@@ -89,16 +89,17 @@ public static class MrpackInstaller
     }
 
     /// <summary>
-    /// 安装整合包：兼容两种形态——直接是 .mrpack，或外层归档（zip 内含唯一 .mrpack，
-    /// 整改项 4 的 ModImporter 会用外层 zip 路径调到这里）。
+    /// 把整合包安装进已有实例目录。逐字对齐 Java install 语义：只吃 .mrpack 本体
+    /// （缺 modrinth.index.json 即抛，不做归档套壳的兼容猜测）。
     /// </summary>
-    public static Task<Result> InstallAsync(string instanceDir, string mrpackOrZip,
+    public static Task<Result> InstallAsync(string instanceDir, string mrpack,
         IProgressSink? progress = null, CancellationToken ct = default) =>
-        InstallFromLocalAsync(instanceDir, mrpackOrZip, progress, ct);
+        InstallCoreAsync(instanceDir, Path.GetFullPath(mrpack), progress, ct);
 
     /// <summary>
-    /// 整改项 4 地基：从**本地文件**安装（与远程下载走同一 <see cref="ReadIndex"/>/<see cref="InstallCoreAsync"/>）。
-    /// 既接受 .mrpack，也接受「解一层就是 .mrpack」的 zip（ModImporter 识别后的入口）。
+    /// 整改项 4 新增入口：从**本地文件**安装（复用同一 <see cref="ReadIndex"/>/<see cref="InstallCoreAsync"/>）。
+    /// 既接受 .mrpack，也接受「解一层就是唯一 .mrpack」的外层 zip——这是 PCL 式导入常见的套壳形态；
+    /// 多义（0 个或多个内层包）时不做静默猜测，原样抛出缺索引异常。
     /// </summary>
     public static async Task<Result> InstallFromLocalAsync(string instanceDir, string localFile,
         IProgressSink? progress = null, CancellationToken ct = default)

@@ -12,4 +12,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Ceobe.Core\Ceobe.Core.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- SDK 项目默认不复制 None 项；缺这条 xunit 读不到配置，collection 级并行仍会串扰全局静态 -->
+    <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

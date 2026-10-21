@@ -140,6 +140,8 @@ internal static class ProviderSupport
             try
             {
                 await process.WaitForExitAsync(ct).ConfigureAwait(false);
+            // WaitForExitAsync 不保证异步输出事件已排空；进程已退出时同步等待流 EOF（对齐 Java 读完再取码）
+            process.WaitForExit();
             }
             catch (OperationCanceledException)
             {
