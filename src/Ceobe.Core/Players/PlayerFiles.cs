@@ -26,8 +26,10 @@ public enum PlayerListKind
 ///      这类命令让服务端自己改内存并顺手写文件，或重启。
 ///    所以本层把「写文件」与「该下发什么命令」分开暴露（<see cref="ReloadCommands"/>），
 ///    由 GUI/CLI 组成原子操作，两侧不各猜一半。
-/// 2. 历史格式有两种：裸数组，以及 <c>{"version":N,"profileList":[…]}</c>；
-///    读入一律宽容，写出统一用带 version 的新形态。
+/// 2. **写出一律是裸 JSON 数组**（实测原版 26.3 的唯一接受形态）。早期版本写成
+///    <c>{"version":N,"profileList":[…]}</c>，真实服务端读它直接抛 Gson 解析异常，
+///    白名单等于没生效——见下方 <see cref="WriteArray"/> 的说明。读入则保留宽容：
+///    裸数组与旧 envelope 都认，让被旧版本写坏的文件仍能在界面上显示、并在下次写入时自动修复。
 /// 3. 离线模式（online-mode=false）下 whitelist 要写 UUID，而 UUID 由玩家名按
 ///    <see cref="OfflinePlayerUuid"/> 算出——算错的话服务端接受文件但玩家照样进不来。
 /// </summary>
@@ -43,9 +45,8 @@ public static class PlayerFiles
     /// </summary>
     internal const string StampPattern = "yyyy-MM-dd HH:mm:ss";
 
-    /// <summary>永久封禁：vanilla 存 <c>new Date(Long.MAX_VALUE)</c>，可读字段写字符串 "forever"。
-    /// 期望值由本机 JDK 25 实测（<c>new Date(Long.MAX_VALUE)</c> → 公元 292278994 年，恒不生效）。</summary>
-    internal const long PermanentExpiry = long.MaxValue;
+    // 注：永久封禁在文件里就是字符串 "forever"（原版实测：banned-players.json 的 expires 字段），
+    // 没有额外的毫秒数派生字段；早期版本自造的 expiresLong 已移除。
 
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
@@ -87,7 +88,7 @@ public static class PlayerFiles
                 UuidOf(node, name!),
                 name!,
                 ClampLevel(Int(node, "level", 4)),
-                Bool(node, "bypassPlayerLimit", false)));
+                Bool(node, "bypassesPlayerLimit", false)));
         }
         return outList;
     }
@@ -133,7 +134,7 @@ public static class PlayerFiles
         {
             list.Add(new JsonObject { ["uuid"] = e.Uuid, ["name"] = e.Name });
         }
-        WriteEnvelope(WhitelistPath(instanceDir), "profileList", 1, list);
+        WriteArray(WhitelistPath(instanceDir), list);
     }
 
     public static void WriteOps(string instanceDir, IReadOnlyList<OpEntry> entries)
@@ -146,10 +147,10 @@ public static class PlayerFiles
                 ["uuid"] = e.Uuid,
                 ["name"] = e.Name,
                 ["level"] = ClampLevel(e.Level),
-                ["bypassPlayerLimit"] = e.BypassPlayerLimit,
+                ["bypassesPlayerLimit"] = e.BypassPlayerLimit,
             });
         }
-        WriteEnvelope(OpsPath(instanceDir), "ops", 2, list);
+        WriteArray(OpsPath(instanceDir), list);
     }
 
     public static void WriteBannedPlayers(string instanceDir, IReadOnlyList<BanEntry> entries)
@@ -164,15 +165,11 @@ public static class PlayerFiles
                 ["uuid"] = e.Uuid,
                 ["name"] = e.Name,
                 ["created"] = created,
-                ["createdTime"] = StampToMillis(created),
                 ["source"] = string.IsNullOrEmpty(e.Source) ? "ceobe" : e.Source,
                 ["expires"] = expires,
-                // 永久封禁存 Long.MAX_VALUE（本机 JDK 实测：new Date(Long.MAX_VALUE) → 公元 292278994 年，
-                // 恒不到期）。不是 -1。
-                ["expiresLong"] = expires == "forever" ? PermanentExpiry : StampToMillis(expires),
             });
         }
-        WriteEnvelope(BannedPlayersPath(instanceDir), "items", 3, list);
+        WriteArray(BannedPlayersPath(instanceDir), list);
     }
 
     public static void WriteBannedIps(string instanceDir, IReadOnlyList<IpBanEntry> entries)
@@ -186,13 +183,11 @@ public static class PlayerFiles
             {
                 ["ip"] = e.Ip,
                 ["created"] = created,
-                ["createdTime"] = StampToMillis(created),
                 ["source"] = string.IsNullOrEmpty(e.Source) ? "ceobe" : e.Source,
                 ["expires"] = expires,
-                ["expiresLong"] = expires == "forever" ? PermanentExpiry : StampToMillis(expires),
             });
         }
-        WriteEnvelope(BannedIpsPath(instanceDir), "items", 3, list);
+        WriteArray(BannedIpsPath(instanceDir), list);
     }
 
     // —— 命令下发 ——
@@ -319,11 +314,17 @@ public static class PlayerFiles
         }
     }
 
-    /// <summary>MC 的 envelope 形态：version + 数组字段。缩进两格，UTF-8 无 BOM。</summary>
-    private static void WriteEnvelope(string path, string arrayKey, int version, JsonArray list)
+    /// <summary>
+    /// 写出名单文件：**裸 JSON 数组**，缩进两格，UTF-8 无 BOM。
+    ///
+    /// 为什么不能包一层 envelope：实测原版 26.3 的 <c>StoredUserList.load</c> 直接把文件
+    /// 当 JSON 数组解析，喂它 <c>{"version":1,"profileList":[…]}</c> 会抛
+    /// <c>JsonSyntaxException</c>，整份名单被当成空——界面上「已写入」，玩家却一个都进不来。
+    /// whitelist / ops / banned-players / banned-ips 四种文件都是这个形态。
+    /// </summary>
+    private static void WriteArray(string path, JsonArray list)
     {
-        var root = new JsonObject { ["version"] = version, [arrayKey] = list };
-        var text = root.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        var text = list.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
         try
         {
             // 原子写：temp + replace，避免服务端恰好在读时看到半个文件

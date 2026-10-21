@@ -93,13 +93,17 @@ public class PlayerFilesTest : IDisposable
         Assert.Equal(2, PlayerFiles.ReadWhitelist(_dir).Count);
     }
 
-    [Fact(DisplayName = "写出形态是 envelope 而非裸数组")]
-    public void 写出Envelope()
+    [Fact(DisplayName = "写出形态是裸数组（原版 26.3 只认这个）")]
+    public void 写出是裸数组()
     {
         PlayerFiles.WriteWhitelist(_dir, [new(OfflinePlayerUuid.Compute("steve"), "steve")]);
         var text = File.ReadAllText(PlayerFiles.WhitelistPath(_dir));
-        Assert.Contains("\"version\"", text);
-        Assert.Contains("\"profileList\"", text);
+        Assert.StartsWith("[", text.TrimStart());
+        // envelope 形态会让服务端抛 Gson 异常、整份名单被当成空——实测踩过
+        Assert.DoesNotContain("\"version\"", text);
+        Assert.DoesNotContain("\"profileList\"", text);
+        Assert.Contains("\"uuid\"", text);
+        Assert.Contains("\"name\"", text);
         Assert.DoesNotContain("\"Mods\"", text); // 不得出现 PascalCase 键
     }
 
@@ -122,13 +126,15 @@ public class PlayerFilesTest : IDisposable
         Assert.Equal(1, read[2].Level); // 钳到下限
     }
 
-    [Fact(DisplayName = "OP 文件用 ops 字段与 version=2")]
+    [Fact(DisplayName = "OP 写出裸数组，布尔键名是 bypassesPlayerLimit")]
     public void Op写出形态()
     {
         PlayerFiles.WriteOps(_dir, [new(OfflinePlayerUuid.Compute("steve"), "steve", 4, false)]);
         var text = File.ReadAllText(PlayerFiles.OpsPath(_dir));
-        Assert.Contains("\"ops\"", text);
-        Assert.Contains("\"bypassPlayerLimit\"", text);
+        Assert.StartsWith("[", text.TrimStart());
+        // 复数 s：由原版 26.3 亲自写出的 ops.json 实测确认（写错则该项按默认 false 读回）
+        Assert.Contains("\"bypassesPlayerLimit\"", text);
+        Assert.DoesNotContain("\"ops\"", text);
     }
 
     // —— 封禁 ——
@@ -146,9 +152,11 @@ public class PlayerFilesTest : IDisposable
         Assert.Equal("forever", read[0].Expires);
 
         var text = File.ReadAllText(PlayerFiles.BannedPlayersPath(_dir));
-        // vanilla 的永久封禁是 new Date(Long.MAX_VALUE)，不是 -1
-        Assert.Contains(long.MaxValue.ToString(), text);
-        Assert.DoesNotContain("\"expiresLong\": -1", text);
+        Assert.StartsWith("[", text.TrimStart());
+        Assert.Contains("\"expires\": \"forever\"", text);
+        // 服务端 schema 只有 uuid/name/created/source/expires，自造的派生字段一律不写
+        Assert.DoesNotContain("expiresLong", text);
+        Assert.DoesNotContain("createdTime", text);
     }
 
     [Fact(DisplayName = "封禁 IP 往返（按 ip 去重）")]
