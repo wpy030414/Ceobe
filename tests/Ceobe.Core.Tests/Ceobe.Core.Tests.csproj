@@ -3,6 +3,14 @@
     <RootNamespace>Ceobe.Core.Tests</RootNamespace>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <!--
+      网络用例（ProviderNetworkTest，Trait Category=network）默认不跑：
+      它们会真实下载服务端 jar / JDK，几十分钟且受网络环境影响，
+      与 Java 版 @Tag("network") 的语义保持一致。
+      显式跑：dotnet test 加 filter 参数 "Category=network"。
+      这里加条件是为了不覆盖命令行传进来的 filter。
+    -->
+    <VSTestTestCaseFilter Condition="'$(VSTestTestCaseFilter)' == ''">Category!=network</VSTestTestCaseFilter>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
