@@ -55,6 +55,8 @@ dotnet publish src/Ceobe.Cli/Ceobe.Cli.csproj -c Release -r win-x64 --self-conta
 - `Window` 不是 `FrameworkElement`：转换器 / 主题 / 某些 x:Bind 需要把内容放进 `UserControl`，主题切换要设 `Window.Content` 的 `RequestedTheme`。
 - `System.CommandLine` 必须设 `EnableDefaultExceptionHandler = false`，否则退出码契约失效。
 - XAML 的 `x:Bind` 在 `DataTemplate` 里默认 `OneTime`：会变的属性必须显式 `Mode=OneWay`。
+- **构建/发布前先关掉正在运行的 `Ceobe.exe`**：它锁住输出目录里的 DLL，MSBuild 要么报 `MSB3027`，
+  要么在某些增量路径下跳过复制却仍显示成功——于是你跑的还是旧二进制，端到端会得出错误结论（实测踩过）。
 
 ## 目录速查
 
