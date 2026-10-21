@@ -218,12 +218,12 @@ public partial class ModsViewModel : ObservableObject
     private sealed class VmProgress(ModsViewModel vm) : IProgressSink
     {
         private string? _last;
-        public void Update(string stage, long done, long total)
+        public void Update(string stage, long done, long total) => UiThread.Post(() =>
         {
             if (stage == _last) return;
             _last = stage;
             vm.StatusText = stage;
-        }
+        });
     }
 }
 

@@ -33,6 +33,10 @@ public partial class App : Application
         var settings = Core.Store.AppSettings.Load();
         settings.Apply();
 
+        // 记下 UI 线程的同步上下文：Core 的进度回调是自研 IProgressSink（不做 marshal），
+        // ViewModel 要靠它把状态写回 UI 线程，否则 x:Bind 会在下载线程碰控件（0x8001010E）。
+        ViewModels.UiThread.Capture();
+
         try
         {
             _window = new MainWindow();

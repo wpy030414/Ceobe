@@ -283,13 +283,13 @@ public partial class ModpacksViewModel : ObservableObject
     private sealed class VmProgress(ModpacksViewModel vm) : IProgressSink
     {
         private string? _last;
-        public void Update(string stage, long done, long total)
+        public void Update(string stage, long done, long total) => UiThread.Post(() =>
         {
             if (total > 0) vm.Progress = Math.Clamp(done / (double)total, 0, 1);
             if (stage == _last) return;
             _last = stage;
             vm.StatusText = stage;
-        }
+        });
     }
 }
 

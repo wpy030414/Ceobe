@@ -140,9 +140,25 @@ public partial class CreateViewModel : ObservableObject
             HasError = false;
             StatusText = $"实例 {meta.Name} 创建完成";
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // 用户真的取消：交给上层（上层是 async void 事件，不再从这里抛）
+            throw;
+        }
         catch (OperationCanceledException)
         {
-            throw;
+            // HttpClient 超时同样表现为 TaskCanceledException，但 ct 并未被取消。
+            // 早期版本无条件 rethrow，于是「下载超时」从 async void 事件里直接冒到
+            // 未处理异常处理器：界面看起来只是卡着，日志里却是一整段崩溃堆栈。
+            HasError = true;
+            StatusText = "创建超时：查询版本或下载服务端长时间无响应，请检查网络后重试";
+        }
+        catch (Exception e) when (e is System.Net.Http.HttpRequestException
+                                     or System.IO.IOException
+                                     or System.Net.Sockets.SocketException)
+        {
+            HasError = true;
+            StatusText = "创建失败（网络）: " + e.Message + "；可检查网络/镜像后重试";
         }
         catch (CeobeException e)
         {
@@ -188,12 +204,14 @@ public partial class CreateViewModel : ObservableObject
     private sealed class VmProgress(CreateViewModel vm) : IProgressSink
     {
         private string? _last;
-        public void Update(string stage, long done, long total)
+
+        // 回调来自下载线程：必须 marshal 回 UI 线程再改属性，否则 x:Bind 会跨线程碰控件
+        public void Update(string stage, long done, long total) => UiThread.Post(() =>
         {
             if (stage == _last) return;
             _last = stage;
             vm.StatusText = stage;
-        }
+        });
     }
 }
 

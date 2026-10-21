@@ -418,13 +418,13 @@ public partial class ImportViewModel : ObservableObject
     {
         private string? _last;
 
-        public void Update(string stage, long done, long total)
+        public void Update(string stage, long done, long total) => UiThread.Post(() =>
         {
             // 节流：同一 stage 只更新一次，避免 UI 线程被字节级进度刷爆
             if (stage == _last) return;
             _last = stage;
             vm.ProgressText = stage;
-        }
+        });
     }
 }
 
