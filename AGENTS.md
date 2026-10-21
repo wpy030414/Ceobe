@@ -23,9 +23,16 @@ ceobe 是本机 Minecraft 服务器多实例管理器：下载服务端 jar（va
 # GUI 不在解构建范围内，必须显式编（原因见「已知易错点」）
 dotnet build src/Ceobe.App/Ceobe.App.csproj -c Debug
 
-# 发布（自包含，目标机无需装 .NET）
-dotnet publish src/Ceobe.App/Ceobe.App.csproj -c Release -r win-x64 --self-contained true -o dist/app
+# 发布 —— 两档 GUI 产物（CI 用同一组命令，见 .github/workflows/windows.yml）
+# win11 档：框架依赖，目标机需自备 .NET 10 运行时 + Windows App Runtime 2.5.x（约 79M）
+dotnet publish src/Ceobe.App/Ceobe.App.csproj -c Release -r win-x64 --self-contained false -p:WindowsAppSDKSelfContained=false -o dist/app-fd
+# portable 档：双自包含，免装运行时（约 232M）；两个开关缺一不可，理由见「已知易错点」
+dotnet publish src/Ceobe.App/Ceobe.App.csproj -c Release -r win-x64 --self-contained true -p:WindowsAppSDKSelfContained=true -o dist/app-sc
 dotnet publish src/Ceobe.Cli/Ceobe.Cli.csproj -c Release -r win-x64 --self-contained true -o dist/cli
+
+# MSI（负载 = win11 档；per-user 装到 %LOCALAPPDATA%\Programs\ceobe，不触发 UAC）
+dotnet tool restore
+dotnet wix build -arch x64 -d MsiVersion=26.10.22 -d PayloadDir=<上面的 app-fd 绝对路径> -o ceobe.msi tools/installer/ceobe.wxs
 ```
 
 - **网络用例默认排除**（`Trait("Category","network")`，在 `Ceobe.Core.Tests.csproj` 里用 `VSTestTestCaseFilter` 落实）：它们会真实下载服务端 jar，几分钟起步。需要时显式加 filter `Category=network`。
@@ -95,6 +102,8 @@ dotnet publish src/Ceobe.Cli/Ceobe.Cli.csproj -c Release -r win-x64 --self-conta
 - `tests/` — `Ceobe.Core.Tests`（域核心 + 闸门 A/B）、`Ceobe.App.ViewModels.Tests`（闸门 C）
 - `tools/wiregen/` — 闸门 B 的真值 fixture 生成器（真实 Jackson + 真实 Java 模型类）；Java 源码已移除，重跑前需从 tag `pre-csharp-migration` 取出对应模型
 - `tools/ui-smoke/` — 本地交互式 UIA 冒烟（不跑 CI）：导航/分区/日志高度/可访问名/对话框/浅色深色亮度
+- `tools/installer/ceobe.wxs` — MSI 定义（WiX v6）；版本经 `dotnet-tools.json` 锁定，CI 用 `dotnet tool restore` 取
 - `docs/PRD.md` — 产品需求；`docs/ARCHITECTURE.md` — 结构与外部契约；`docs/DECISIONS.md` — ADR；`docs/specs/` — 模块规格；`docs/MIGRATION.md` — 迁移施工图与进度
 - 已退役的 Java 实现不在工作树中：需要对照时从 tag `pre-csharp-migration` 取
-- `.github/workflows/windows.yml` — CI：Windows 编译 + 测试 + 闸门 C 检查 + 发布产物完整性；推 `v*` 标签时打包发布 Release
+- `.github/workflows/windows.yml` — CI：**不跑测试**，只编译 + 闸门 C + 两档产物 + MSI + 完整性校验；
+  main 推送即发布 Release，版本只读 `Directory.Build.props`（不读 tag）。测试仍在本地跑。

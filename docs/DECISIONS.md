@@ -255,3 +255,30 @@
 - 为什么不选其他：① 需要为 `TabView` 的默认 Top 与企业级 `ContentControl` 对齐写一堆 workaround，仍保留「非官方页签」观感；③ 左侧仍是自绘列表，失去 NavigationView 的键盘/无障碍/未来紧凑模式能力，且顶部 NavigationView 在 7 项时会把溢出项收进 More，反而不如 SelectorBar 直观。
 - 后果：`InstanceTabs` 从 TabView 改为 SelectorBar，页面刷新仍按 `IReloadable`；`SettingsCard` 增加一个新的 UI 依赖（已用 artifact 检查守护）；深色/浅色/系统三态需要同时验证 Mica 与纯色回退；`TabView` 相关的旧经验（默认 Top、Collect/SelectionChanged）不再适用，已写入 AGENTS 已知易错点。CI 增加闸门 C grep、测试数量下限与发布产物完整性检查；UIA smoke 仅在本地交互式会话运行。
 - 何时重新审视：需要 NavigationView 紧凑模式（需为每个实例项提供 `Icon`）或引入跨平台 UI 框架时。
+
+## ADR-021：分发形态定为「两档 zip + per-user MSI」，CI 只构建不测试
+- 日期：2026-10-22
+- 状态：已采纳（结清 `docs/MIGRATION.md` 待决项 1）
+- 背景：ADR-019 之后分销形态一直挂着「MSIX 还是裸自包含」未决，而旧的 `v*` tag 触发式 Release 从未跑通（tag `v26.10.15-14` 指向的 commit 里还没有 `windows.yml`，「Publish Release」永远 skipped）。训练员 2026-10-22 明确三点：CI 不需要测试、版本只认 `Directory.Build.props`、产物按「带 SDK / 不带 SDK」区分且 Win11 用户要更小更快的包；同时希望交付物是 MSI 或单体 exe。
+- 实测（本机 .NET SDK 10.0.402 / WinUI 3 unpackaged / WindowsAppSDK 2.5.1）：
+
+  | 组合 | 解压后 | 文件数 | zip | 目标机前置 |
+  |---|---|---|---|---|
+  | `SelfContained=true` + `WindowsAppSDKSelfContained=true`（portable） | 232M | 529 | 89M | 无 |
+  | `SelfContained=false` + `WindowsAppSDKSelfContained=false`（win11） | 79M | 60 | 27M | .NET 10 运行时 + Windows App Runtime 2.5.x |
+  | `SelfContained=true` + `WindowsAppSDKSelfContained=false` | 156M | 247 | 61M | Windows App Runtime 2.5.x |
+  | FD + `PublishSingleFile=true` | 78M | 1 exe | 27M | **启动即退（exit 0），不可用** |
+  | SC + `PublishSingleFile=true` | 223M | 1 exe | 84M | 无；能渲染窗口，但 WinUI 未背书单文件 |
+
+  MSI 用 WiX v6 从 win11 档负载构建：23M，per-user 安装到 `%LOCALAPPDATA%\Programs\ceobe`，实测安装→启动（窗口渲染）→卸载零残留。
+- 决策：
+  1. GUI 出 **两档**：`win11`（框架依赖，推荐）与 `portable`（双自包含，零前置兜底）；CLI 保持单体 exe。
+  2. GUI 交付 = **zip 散文件 + MSI**；MSI 负载取 win11 档，per-user、免 UAC、带开始菜单快捷方式与 ARP 卸载项。
+  3. **不做 GUI 单体 exe**：FD 单文件实测不可用，SC 单文件虽有可运行证据但属未背书形态，且每次首启要把 232M 解到 `%TEMP%`。
+  4. **不做 MSIX**：需证书或旁加载，与 `WindowsPackageType=None` 的免证书前提冲突。
+  5. 版本权威仍是 `Directory.Build.props` 的 `<Version>`，CI **只读**；产物名、MSI `ProductVersion`、Release tag 全部由它派生。main 推送即发布（同名 Release 先删后建），不再需要手动打 tag。
+  6. **CI 不跑测试**（训练员决定），只保留编译、闸门 C 静态检查与产物完整性校验；`dotnet test` 归本地。原「测试数量下限 485」守卫随之移除。
+- 为什么选这个：`win11` 档把 153M 的 .NET 运行时留给系统管理，下载体积降到 portable 的 1/3；MSI 让「应用和功能」里可卸载、有快捷方式，但不改变程序本身的便携数据模型（数据仍在 `%USERPROFILE%\.ceobe`）。版本只认 props 消除了 tag 与产物版号漂移这一类事故。
+- 为什么不选其他：MSIX 要证书/旁加载；GUI 单体 exe 在 FD 下直接坏掉，SC 下未获官方支持；把测试留在 CI 与训练员要求相反（代价是 CI 不再是质量闸门，失败只能靠本地测试与 UIA 冒烟发现）。
+- 后果：**win11 档的前置条件不是「系统自带」**——实测 inbox 只有 `Microsoft.WindowsAppRuntime.CBS.2` 2.4.1（`NonRemovable=True`），而 ceobe 需要的 `Microsoft.WindowsAppRuntime.2` 2.5.1 是 Store 签名、`NonRemovable=False`（后装）。缺运行时由 .NET apphost 与 WinAppSDK bootstrapper（默认 `OnNoMatch_ShowUI`）弹框提示并给下载链接，不会静默崩溃；发布说明必须写明这一点。另外 `Directory.Build.props` 当前是 3 段 `26.10.22`，与硬契约 7 的「点分四段」不一致，CI 兼容两种形态（4 段 → 展示 `26.10.22-01`、MSI 取前三段）。
+- 何时重新审视：Windows 11 把 Windows App Runtime 2.5.x 纳入 inbox 后，「Win11 推荐」的口径可收紧为「系统自带即可」；或者需要企业分发（GPO/SCCM）时再评估 MSIX。

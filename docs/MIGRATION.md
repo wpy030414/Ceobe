@@ -128,14 +128,14 @@ Java 版靠 `-Dceobe.snapshot=<png> [-Dceobe.snapshot.tab=配置]` 启动即导�
 1. **逻辑层不靠截图**：把 `PropsPaneBase`/各 Pane 的可观测行为下沉到 ViewModel，用普通单测断言（分组结果、requiresRestart 标记、字段→控件类型分派、导入嗅探结果）。ViewModel 不引用 WinUI 类型，可在无窗口环境跑。
 2. **像素层只在关键页做**：`WinAppDriver`/`FlaUI` 驱动 UIA 树，断言控件存在与文本，配合 `Windows.UI.ViewManagement`/`GraphicsCaptureAPI` 抓窗口位图存 baseline；仅在 CI 的 Windows job 里跑，且需要交互式会话（CI 上的 WinUI 3 无头渲染不可靠，遇阻则退化为「人工首版验收 + 之后只信 UIA 断言」）。
 
-**2026-10-22 落地**：新增 `tools/ui-smoke/Invoke-UiSmoke.ps1`（本地交互式运行，不进 GitHub-hosted CI）：独立 `CEOBE_HOME`、UIA 断言实例导航/七个分区/日志区高度/按钮可访问名/两个对话框，浅色与深色两次启动截图并检查中心亮度（深色 < 0.35、浅色 > 0.65）。CI 负责闸门 C grep、测试数量下限（485）与发布产物完整性（`Microsoft.ui.xaml.dll`、`Ceobe.pri`、SettingsControls 与图标）。
+**2026-10-22 落地**：新增 `tools/ui-smoke/Invoke-UiSmoke.ps1`（本地交互式运行，不进 GitHub-hosted CI）：独立 `CEOBE_HOME`、UIA 断言实例导航/七个分区/日志区高度/按钮可访问名/两个对话框，浅色与深色两次启动截图并检查中心亮度（深色 < 0.35、浅色 > 0.65）。CI 只做闸门 C grep 与两档产物完整性校验；测试不在 CI 跑（训练员 2026-10-22 决定：CI 只构建），原「测试数量下限 485」守卫随之移除。
 
 结论：像素级回归不追求覆盖率，验收重心放在 ViewModel 层；这一条与 ADR-019「后果」中记录的倒退风险一致。
 
 ### 阶段三：文档、CI 与归档
 
 - `AGENTS.md` / `README.md` / `docs/ARCHITECTURE.md` / `docs/specs/*` 全面改写到 C# 事实；ADR-001（Maven）、ADR-002（JavaFX）、ADR-016（跨平台打包）、ADR-017 的 jpackage 段、ADR-018 的 jpackage 成因，标记为「已被 ADR-019 取代/部分失效」。
-- CI：三平台矩阵 → 单一 `windows-latest`，产出 `.exe`（MSIX 或裸自包含待定，见待决项）。
+- CI：三平台矩阵 → 单一 `windows-latest`，产出两档 zip（`win11` 框架依赖 / `portable` 自包含）+ MSI（见 ADR-021）。
 - Java 源码：已从工作树移除，不参与任何构建；历史与基线 tag `pre-csharp-migration` 保留作考古入口。
 
 ## 训练员反馈整改项（2026-10-21）
@@ -184,7 +184,7 @@ Java 版靠 `-Dceobe.snapshot=<png> [-Dceobe.snapshot.tab=配置]` 启动即导�
 
 ## 待决事项（需训练员拍板）
 
-1. 分发形态：MSIX（需证书/或旁加载）还是自包含裸 exe + 手动更新？影响阶段三 CI 设计。
+1. ~~分发形态：MSIX（需证书/或旁加载）还是自包含裸 exe + 手动更新？~~ **已决（2026-10-22，ADR-021）**：两档 zip + per-user MSI（WiX v6），不走 MSIX。
 2. 长期联机的首选穿透方案：Tailscale（要装客户端、要登录）/ ZeroTier / 自建 frp（有 VPS 才可行）——决定整改项 1 做到哪一档。
 3. PCL 整合包样例：待训练员提供实例，据此定嗅探与格式兼容范围。
 4. Java 版冻结期间是否允许把整改项 1～5 的 hotfix 打回 Java 版（还是全部只进 C# 版）。
