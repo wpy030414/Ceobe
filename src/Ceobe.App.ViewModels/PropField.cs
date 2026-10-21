@@ -67,6 +67,24 @@ public partial class PropField : ObservableObject
     /// <summary>是否允许编辑（未收录键只读）。</summary>
     public bool IsEditable => !IsUnknown;
 
+    // —— 类型判断（纯 bool，供 View 层按类型分派控件；刻意不用 WinUI 的 Visibility，
+    //    保持 VM 层零 UI 依赖，可无窗口单测——闸门 C）——
+
+    /// <summary>布尔开关（ToggleSwitch/CheckBox）。未收录键不套用类型控件，统一走只读文本。</summary>
+    public bool IsBool => !IsUnknown && Type == PropType.Bool;
+
+    /// <summary>整数（NumberBox）。</summary>
+    public bool IsInt => !IsUnknown && Type == PropType.Int;
+
+    /// <summary>枚举（ComboBox）。</summary>
+    public bool IsEnum => !IsUnknown && Type == PropType.Enum;
+
+    /// <summary>文本框：String 类型，或未收录键（只读展示）。</summary>
+    public bool IsString => !IsBool && !IsInt && !IsEnum;
+
+    /// <summary>只读（未收录键）。View 层据此把 TextBox 设为只读。</summary>
+    public bool IsReadOnly => IsUnknown;
+
     /// <summary>
     /// 生效方式文案（整改项 5）。Java 版没有这个信息，用户改完不知道要不要重启——
     /// 「改了没反应」是配置界面最伤信任的体验，故把它做成一等公民。
@@ -157,6 +175,23 @@ public partial class PropField : ObservableObject
             Value = value.Value.ToString(CultureInfo.InvariantCulture);
         }
     }
+
+    // WinUI 的 NumberBox 的 Value/Minimum/Maximum 都是 double，直接绑 long 会报 WMC1121
+    // （类型不匹配）。故另给 double 形态。double 是基础类型、非 UI 类型，VM 层仍可无窗口单测。
+    // NumberBox.Value 不可空，无值时给下限，避免绑定 null 触发控件异常。
+
+    /// <summary>NumberBox.Value 用的 double 形态。</summary>
+    public double NumberValueDouble
+    {
+        get => NumberValue ?? Min;
+        set => Value = ((long)value).ToString(CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>NumberBox.Minimum 用的 double 形态。</summary>
+    public double MinDouble => Min;
+
+    /// <summary>NumberBox.Maximum 用的 double 形态。</summary>
+    public double MaxDouble => Max;
 
     /// <summary>Bool 字段的勾选形态（供 ToggleSwitch 绑定）。</summary>
     public bool BoolValue

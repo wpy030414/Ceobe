@@ -15,5 +15,11 @@
         <TabViewItem Header="控制台" IsClosable="False">
             <views:ConsolePage x:Name="ConsoleTab" />
         </TabViewItem>
+        <TabViewItem Header="服务器配置" IsClosable="False">
+            <views:ServerPage x:Name="ServerTab" />
+        </TabViewItem>
+        <TabViewItem Header="游戏配置" IsClosable="False">
+            <views:GameConfigPage x:Name="GameTab" />
+        </TabViewItem>
     </TabView>
 </UserControl>

@@ -54,7 +54,7 @@ public sealed partial class MainWindow : Window
             return;
         }
         TopTitle.Text = name;
-        // 页签内容由 InstanceTabs 装配（控制台/配置/Mod/整合包/玩家/穿透）
+        // 页签内容由 InstanceTabs 装配（控制台/服务器配置/游戏配置/Mod/整合包/玩家/穿透）
         var tabs = new InstanceTabs(_manager, name);
         tabs.InstanceDeleted += deleted =>
         {
@@ -62,6 +62,15 @@ public sealed partial class MainWindow : Window
             {
                 VmList.Refresh();
                 OnSelectionChanged(null);
+            });
+        };
+        // 改名后旧名已失效：刷新侧栏并选中新名（会重建页签）
+        tabs.InstanceRenamed += newName =>
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                VmList.Refresh();
+                VmList.SelectedName = newName;   // 触发 SelectionChanged → OnSelectionChanged 重建
             });
         };
         ContentHost.Content = tabs;

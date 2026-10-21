@@ -19,6 +19,11 @@ public sealed partial class InstanceTabs : UserControl
     /// </summary>
     public event Action<string>? InstanceDeleted;
 
+    /// <summary>
+    /// 实例被改名时冒泡到主窗口（页签标题与侧栏项都是实例名，改了必须重建）。
+    /// </summary>
+    public event Action<string>? InstanceRenamed;
+
     public InstanceTabs(InstanceManager manager, string instance)
     {
         InitializeComponent();
@@ -29,5 +34,12 @@ public sealed partial class InstanceTabs : UserControl
         // 外部托管（CLI start -d）的实例还要按文件偏移增量跟随，由 ConsolePage 内部定时轮询。
         ConsoleTab.Load(new ConsoleViewModel(manager, instance));
         ConsoleTab.InstanceDeleted += name => InstanceDeleted?.Invoke(name);
+
+        // 服务器配置页：改名成功后冒泡，让主窗口重建页签（标题即实例名）
+        ServerTab.Load(new ServerViewModel(manager, instance));
+        ServerTab.InstanceRenamed += name => InstanceRenamed?.Invoke(name);
+
+        // 游戏配置页（整改项 5：三级视图）
+        GameTab.Load(new GameConfigViewModel(manager, instance));
     }
 }
