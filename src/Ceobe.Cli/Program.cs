@@ -33,7 +33,14 @@ public static class Program
         Output.ConfigureEncoding();
 
         var root = BuildRoot();
-        var config = new CommandLineConfiguration(root);
+        // EnableDefaultExceptionHandler 默认 true：库会先吞掉 action 抛出的异常并打印
+        // "Unhandled exception:" + 全栈，导致下面的 catch 永不触发——用户看到裸栈而非
+        // 「错误: 实例不存在: xxx」，且退出码契约（CeobeSpec=2 / CeobeException=1）整体失效。
+        // 关掉它，把异常处理权交回本文件。
+        var config = new CommandLineConfiguration(root)
+        {
+            EnableDefaultExceptionHandler = false,
+        };
 
         // 根选项要在子命令 action 之前生效，故先解析一次取 --format
         try
@@ -109,6 +116,10 @@ public static class Program
         // 隐藏入口：被 `start -d` 派生的监督进程使用（C# 版重新拉起自身可执行文件，
         // 不需要 Java 版的 classpath + java 启动器那套）
         root.Add(InstanceCommands.Supervise());
+
+        // 无子命令时打印帮助并返回 0（对齐 Java picocli 的 run() 语义）。
+        // 不设这个 action 的话，beta5 会报「未提供必需的命令」并返回 -1，与 Java 版行为不符。
+        root.SetAction(pr => new System.CommandLine.Help.HelpAction().Invoke(pr));
         return root;
     }
 

@@ -95,10 +95,22 @@ public static class InstanceCommands
         };
         cmd.SetAction(async (pr, ct) =>
         {
+            // 先做**纯本地**校验再联网：实例名/内存/端口写错时应立刻失败。
+            // Java 版是先 listVersions() 再 new InstanceSpec(...)，名字打错也要白等一次
+            // 版本查询（无网时是干等超时）。既然在重写，就把快速失败做对。
+            //
+            // 校验必须走 InstanceSpec.Validate()（抛 CeobeSpec → 退出码 2，用法错误档），
+            // 而不是 InstanceManager.ValidateName（抛 CeobeException → 退出码 1，系统故障档）：
+            // 用户打错名字是用法错误，Java 版 create 路径的退出码就是 2，不能改语义。
             var serverType = CliParse.Type(pr.GetValue(type)!);
             var manager = CoreWiring.NewManager();
-            var provider = ProviderRegistry.Of(serverType);
+            var localPort = CliParse.ResolvePort(pr.GetValue(port), manager);
+            // 版本号未知时用占位值构造一次 spec，只为触发名字/内存/端口的本地校验
+            new InstanceSpec(pr.GetValue(name), serverType, "0", pr.GetValue(loader),
+                CliParse.Memory(pr.GetValue(mem)!), pr.GetValue(jvm), localPort, pr.GetValue(javaHome))
+                .Validate();
 
+            var provider = ProviderRegistry.Of(serverType);
             var gameVersion = pr.GetValue(version);
             if (string.IsNullOrWhiteSpace(gameVersion))
             {
