@@ -14,6 +14,34 @@
 | 闸门 C（UI 回归） | 按约定口径达成 | 重心在 ViewModel 单测 + UIA 断言；像素基线按本文档既定方案放弃 |
 | 阶段三 文档 / CI | 完成 | ARCHITECTURE / PRD / specs 改写为 C# 事实；ADR-001/002/008/016/017/018 标注取代；CI 收敛为 `windows-latest` |
 | 阶段三 Java 归档 | **待训练员确认** | 见下 |
+| 端到端真机验收 | 完成（穿透公网侧未验） | 见「端到端验收记录」 |
+
+## 端到端验收记录（2026-10-21 真机实测）
+
+不只看「页签切得动」，而是用 UI Automation 驱动真实窗口跑完整业务链路，服务端为**真实下载的原版 26.3**：
+
+| 步骤 | 结果 | 证据 |
+|------|------|------|
+| GUI 新建实例（原版 26.3，自动端口） | ✅ | 经 BMCLAPI 下载 62 MB `server.jar`，生成 `instance.json` / `eula.txt` / `server.properties` |
+| GUI 启动 | ✅ | `console.log`：`Done (2.528s)! For help, type "help"` |
+| GUI 下发命令 | ✅ | 输入 `say ceobe-e2e-ok` → 日志回显 `[Not Secure] [Server] ceobe-e2e-ok` |
+| GUI 停止 | ✅ | `.state` = `STOPPED`，日志有 `Stopping server` / `Saving worlds`，`java.exe` 归零 |
+| GUI 加白名单 | ✅ | 正版 UUID 与 `api.mojang.com` 直接核对一致（离线公式结果不同，确认走的是正版分支） |
+| 服务端接受名单文件 | ✅（修复后） | 修复前启动即抛 `JsonSyntaxException`；修复后 `Done (0.475s)` 零异常 |
+| GUI 开 Pinggy 通道 | ⚠️ 仅验证守卫 | 服务端未运行时正确拒绝：「玩家通道需在服务端就绪后开启」；公网侧可达性仍**未实测** |
+
+这次端到端抓到并修掉三个单测覆盖不到的真 bug（提交 `bc1b07c`、`d530e96`）：
+
+1. **进度回调跨线程改 UI**：Core 的 `IProgressSink` 不做 marshal，下载线程直接写绑定属性 →
+   WinUI 抛 `0x8001010E` 并卡死界面。新增 `UiThread` 统一回投。
+2. **网络超时崩成未处理异常**：`CreateAsync` 无条件 rethrow `OperationCanceledException`，
+   `HttpClient` 超时于是从 `async void` 事件冒到全局处理器——界面看着只是卡住，日志里是崩溃。
+3. **名单文件格式臆断**：写成 `{"version","profileList"}`，真实服务端当 JSON 数组解析直接抛异常，
+   整份白名单被当成空——界面显示「已写入」，玩家一个都进不来。已改为裸数组，
+   键名修正为 `bypassesPlayerLimit`（复数 s），由原版服务端亲自写出的文件确认。
+
+> 教训：这三处都通过了单元测试。单测验证的是「我们的假设内部自洽」，
+> 端到端验证的是「假设与真实服务端一致」——两者不可互相替代。
 
 > **关于删除 Java 源码**：ADR-019 与本文原先写的是「删除 `ceobe-core/`、`ceobe-cli/`、`ceobe-gui/`、`pom.xml`」。
 > 但训练员选定的节奏是「渐进三阶段，Java 冻结只修 bug」，且**待决事项 4**（整改项 1～5 的 hotfix 是否回打 Java 版）
