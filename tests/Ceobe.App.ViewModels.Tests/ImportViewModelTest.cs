@@ -329,7 +329,7 @@ public class ImportViewModelTest : IDisposable
         await vm.InspectCommand.ExecuteAsync(jarPath);
 
         Assert.Equal(1, vm.OverwriteCount);
-        Assert.Single(vm.Files.Where(f => f.Overwrites));
+        Assert.Single(vm.Files, f => f.Overwrites);
         Assert.Contains(vm.Notes, n => n.Contains("覆盖"));
     }
 

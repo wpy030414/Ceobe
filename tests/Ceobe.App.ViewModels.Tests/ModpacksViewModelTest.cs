@@ -56,9 +56,9 @@ public class ModpacksViewModelTest : IDisposable
     // ========== 类型能力 ==========
 
     [Theory(DisplayName = "有加载器的类型可装整合包")]
-    [InlineData(ServerType.FABRIC, "fabric")]
-    [InlineData(ServerType.NEOFORGE, "neoforge")]
-    public void 支持整合包(ServerType type, string loaderId)
+    [InlineData(ServerType.FABRIC)]
+    [InlineData(ServerType.NEOFORGE)]
+    public void 支持整合包(ServerType type)
     {
         Seed(type);
         var vm = NewVm();
