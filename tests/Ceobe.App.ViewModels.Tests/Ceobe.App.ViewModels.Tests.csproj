@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Ceobe.App.ViewModels.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- 两个都是 net10.0，可直接引用：这正是 ViewModel 必须独立成库的原因（闸门 C） -->
+    <ProjectReference Include="..\..\src\Ceobe.App.ViewModels\Ceobe.App.ViewModels.csproj" />
+    <ProjectReference Include="..\..\src\Ceobe.Core\Ceobe.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Ceobe.Core 大量使用进程级静态（CeobeHome.Override），并行会串扰，与 Core.Tests 同样处理 -->
+    <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

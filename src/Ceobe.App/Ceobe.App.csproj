@@ -22,6 +22,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- 相对路径从本工程目录（src/Ceobe.App）起算：..\Ceobe.Core 而非 ..\..\Ceobe.Core。
+         写错时 MSBuild 只报 MSB9008 warning 并**静默忽略该引用**，构建仍显示成功，
+         但 App 实际没连上 Core——用错路径的症状会在很晚才暴露，故此处务必核对。 -->
     <ProjectReference Include="..\Ceobe.Core\Ceobe.Core.csproj" />
     <!-- ViewModel 拆成独立 net10.0 工程：测试工程要能引用它（闸门 C） -->
     <ProjectReference Include="..\Ceobe.App.ViewModels\Ceobe.App.ViewModels.csproj" />

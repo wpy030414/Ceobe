@@ -9,6 +9,9 @@
     <!-- 等价 Java 的「同包测试可见 package-private」：协议解析、ctl 读写等实现细节
          保持 internal，仅对测试工程开放，避免为了测试污染 core 的公共 API。 -->
     <InternalsVisibleTo Include="Ceobe.Core.Tests" />
+    <!-- ViewModel 测试要触发实例事件（真实来源是 ServerProcess 的日志泵/看门狗，
+         不可能靠拉起真 MC 服务端来测），故开放 InstanceManager.PublishForTest 这个缝 -->
+    <InternalsVisibleTo Include="Ceobe.App.ViewModels.Tests" />
   </ItemGroup>
 
 </Project>

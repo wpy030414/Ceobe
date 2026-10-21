@@ -1,0 +1,5 @@
+{
+  "$schema": "https://xunit.net/schema/current/xunit.runner.schema.json",
+  "//": "Ceobe.Core 的公共 API 大量使用进程级静态（CeobeHome.Override / Mirrors / JdkStore / ProviderRegistry），跨 collection 并行会互相串扰。整体串行，与 Ceobe.Core.Tests 同样处理。",
+  "parallelizeTestCollections": false
+}

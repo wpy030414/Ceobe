@@ -502,6 +502,17 @@ public sealed partial class InstanceManager : IInstanceHost
     /// <summary>注入隧道诊断日志到实例事件流（GUI 控制台可见）。</summary>
     public void TunnelLog(string name, string line) => Publish(new InstanceLog(name, line));
 
+    /// <summary>
+    /// 测试缝：从外部派发一个实例事件。
+    ///
+    /// 为什么需要：<see cref="OnEvent"/> 是 public event，外部只能订阅不能触发；
+    /// 而状态变化事件的真实来源是 <see cref="ServerProcess"/> 的日志泵与看门狗——
+    /// 要触发它就得拉起一个真的 MC 服务端。ViewModel 的「事件到达后就地更新行」
+    /// 这条逻辑（闸门 C 的重点）不可能靠真进程来测，故开这个 internal 缝。
+    /// 仅供测试程序集使用，不对 GUI/CLI 暴露。
+    /// </summary>
+    internal void PublishForTest(IInstanceEvent evt) => Publish(evt);
+
     // —— 元数据 IO ——
 
     private List<InstanceMeta> LoadAllMetas()

@@ -13,7 +13,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Ceobe.Core\Ceobe.Core.csproj" />
+    <!-- 相对路径从本工程目录（src/Ceobe.App.ViewModels）起算：..\Ceobe.Core。
+         写成 ..\..\Ceobe.Core 时 MSBuild 只报 MSB9008 warning 并静默忽略，
+         构建仍显示成功，但 ViewModel 实际没连上 Core。 -->
+    <ProjectReference Include="..\Ceobe.Core\Ceobe.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Ceobe.App.ViewModels/Ceobe.App.ViewModels.csproj" />
+    <Project Path="src/Ceobe.App/Ceobe.App.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="src/Ceobe.Cli/Ceobe.Cli.csproj" />
+    <Project Path="src/Ceobe.Core/Ceobe.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Ceobe.App.ViewModels.Tests/Ceobe.App.ViewModels.Tests.csproj" />
+    <Project Path="tests/Ceobe.Core.Tests/Ceobe.Core.Tests.csproj" />
+  </Folder>
+</Solution>
