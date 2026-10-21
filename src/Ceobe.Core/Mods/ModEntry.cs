@@ -5,7 +5,8 @@ namespace Ceobe.Core.Mods;
 
 /// <summary>
 /// 已安装 mod 的记录（存于 instance.json 的 mods[]）。
-/// key 与 Java 版逐字节一致，**不得改名**（闸门 B：Java 写的 instance.json 必须能被 C# 读出 mod 清单）。
+/// key 与 Java 版字段级一致，**不得改名**（闸门 B：Java 写的 instance.json 必须能被 C# 读出 mod 清单；
+/// 改名不会报错，只会静默读回空清单——这类丢数据只能靠 WireCompatibilityTest 挡）。
 /// </summary>
 public sealed class ModEntry
 {

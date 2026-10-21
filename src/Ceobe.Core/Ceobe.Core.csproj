@@ -5,4 +5,10 @@
     <RootNamespace>Ceobe.Core</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- 等价 Java 的「同包测试可见 package-private」：协议解析、ctl 读写等实现细节
+         保持 internal，仅对测试工程开放，避免为了测试污染 core 的公共 API。 -->
+    <InternalsVisibleTo Include="Ceobe.Core.Tests" />
+  </ItemGroup>
+
 </Project>

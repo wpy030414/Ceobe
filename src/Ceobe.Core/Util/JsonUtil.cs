@@ -5,8 +5,12 @@ using Ceobe.Core.Util;
 namespace Ceobe.Core.Util;
 
 /// <summary>
-/// JSON 读写：配置与 Java 版 Jackson 的输出**字节级兼容**（同一 instance.json / settings.json
+/// JSON 读写：配置与 Java 版 Jackson 的输出**字段级兼容**（同一 instance.json / settings.json
 /// 必须能被两个实现互相读写，见 docs/MIGRATION.md 闸门 B）。
+///
+/// 实测差异（2026-10-21）：Jackson 美化输出为 `"k" : v`（冒号前有空格），
+/// System.Text.Json 为 `"k": v`。故两侧**不做字节比较**，只对齐字段名、日期格式与 null 省略策略；
+/// 闸门 B 的双跑 diff 应逐字段比对，而不是 `diff` 原文。
 ///
 /// 对齐点：
 /// - 缩进输出（Jackson INDENT_OUTPUT）

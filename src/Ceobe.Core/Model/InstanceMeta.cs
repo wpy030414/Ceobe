@@ -6,7 +6,9 @@ namespace Ceobe.Core.Model;
 
 /// <summary>
 /// 实例持久化元数据（instance.json）。
-/// JSON key 与 Java 版 Jackson 输出逐字节一致（闸门 B 要求两实现互读写），**不得改名**。
+/// JSON key 与 Java 版 Jackson 输出**字段级**一致（两侧都要能读写同一份文件，闸门 B）。注意缩进形态不同：
+/// Jackson 是 "k" : v、System.Text.Json 是 "k": v，故不追求字节相同，只保证字段名/日期格式/null 省略对齐。/
+/// 因此属性名**不得改名**（改名会让另一侧静默读回默认值）。
 /// </summary>
 public sealed class InstanceMeta
 {
