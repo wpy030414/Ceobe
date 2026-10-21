@@ -2,8 +2,8 @@
 
 > **当前形态**：C# / .NET 10 + WinUI 3，**Windows 专属**（ADR-019）。
 > 迁移施工图与进度见 `docs/MIGRATION.md`；技术决策见 `docs/DECISIONS.md`。
-> **Java 版（`ceobe-core/`、`ceobe-cli/`、`ceobe-gui/`、`pom.xml`）自 2026-10-21 起功能冻结、只修 bug**，
-> 不参与构建，保留作语义参考与 hotfix 回打基线；基线 tag `pre-csharp-migration`。
+> **Java 版已于 2026-10-21 全部移除**——迁移完成即退役，仅存于基线 tag `pre-csharp-migration`
+> （需要考古或决定「要不要把 hotfix 回打旧版」时从 tag 取）。
 
 ceobe 是本机 Minecraft 服务器多实例管理器：下载服务端 jar（vanilla/paper/fabric/neoforge/purpur）、可视化编辑 server.properties、Modrinth 装模与整合包导入、CF/Pinggy/Tailscale 穿透、进程生命周期管理。GUI 与 CLI 共享同一套域核心。
 
@@ -70,7 +70,7 @@ dotnet publish src/Ceobe.Cli/Ceobe.Cli.csproj -c Release -r win-x64 --self-conta
 - `src/Ceobe.App/` — WinUI 3 壳：XAML 视图、转换器、接线
 - `src/Ceobe.Cli/` — System.CommandLine 无头入口
 - `tests/` — `Ceobe.Core.Tests`（域核心 + 闸门 A/B）、`Ceobe.App.ViewModels.Tests`（闸门 C）
-- `tools/wiregen/` — 闸门 B 的真值 fixture 生成器（真实 Jackson + 真实 Java 模型类）
+- `tools/wiregen/` — 闸门 B 的真值 fixture 生成器（真实 Jackson + 真实 Java 模型类）；Java 源码已移除，重跑前需从 tag `pre-csharp-migration` 取出对应模型
 - `docs/PRD.md` — 产品需求；`docs/ARCHITECTURE.md` — 结构与外部契约；`docs/DECISIONS.md` — ADR；`docs/specs/` — 模块规格；`docs/MIGRATION.md` — 迁移施工图与进度
-- `ceobe-core/`、`ceobe-cli/`、`ceobe-gui/`、`pom.xml` — **冻结的 Java 实现**，只作语义参考，不参与构建
+- 已退役的 Java 实现不在工作树中：需要对照时从 tag `pre-csharp-migration` 取
 - `.github/workflows/windows.yml` — CI：Windows 编译 + 测试；推 `v*` 标签时打包发布 Release

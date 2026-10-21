@@ -13,7 +13,7 @@
 | 阶段二 GUI | 完成 | 七个页签齐全；ViewModel 209 个测试全绿；UI Automation 实测七页逐个切换不崩溃 |
 | 闸门 C（UI 回归） | 按约定口径达成 | 重心在 ViewModel 单测 + UIA 断言；像素基线按本文档既定方案放弃 |
 | 阶段三 文档 / CI | 完成 | ARCHITECTURE / PRD / specs 改写为 C# 事实；ADR-001/002/008/016/017/018 标注取代；CI 收敛为 `windows-latest` |
-| 阶段三 Java 归档 | **待训练员确认** | 见下 |
+| 阶段三 Java 移除 | 完成 | `ceobe-core/` `ceobe-cli/` `ceobe-gui/` `pom.xml` 已从工作树删除；历史与 tag `pre-csharp-migration` 保留 |
 | 端到端真机验收 | 完成（穿透公网侧未验） | 见「端到端验收记录」 |
 
 ## 端到端验收记录（2026-10-21 真机实测）
@@ -28,9 +28,9 @@
 | GUI 停止 | ✅ | `.state` = `STOPPED`，日志有 `Stopping server` / `Saving worlds`，`java.exe` 归零 |
 | GUI 加白名单 | ✅ | 正版 UUID 与 `api.mojang.com` 直接核对一致（离线公式结果不同，确认走的是正版分支） |
 | 服务端接受名单文件 | ✅（修复后） | 修复前启动即抛 `JsonSyntaxException`；修复后 `Done (0.475s)` 零异常 |
-| GUI 开 Pinggy 通道 | ⚠️ 仅验证守卫 | 服务端未运行时正确拒绝：「玩家通道需在服务端就绪后开启」；公网侧可达性仍**未实测** |
+| 穿透通道（Pinggy） | ⚠️ 部分验证 | 守卫路径正确（未运行时拒绝开启）；手工执行同一条 ssh 命令可拿到 `tcp://…` 地址（约 50 秒），据此定位并修掉两个真 bug；修完连续重试触发 Pinggy 限流，自动化复验未完成 |
 
-这次端到端抓到并修掉三个单测覆盖不到的真 bug（提交 `bc1b07c`、`d530e96`）：
+这次端到端抓到并修掉五个单测覆盖不到的真 bug（提交 `bc1b07c`、`d530e96`、`f1a01df`、`8c1ac61`、`198994a`）：
 
 1. **进度回调跨线程改 UI**：Core 的 `IProgressSink` 不做 marshal，下载线程直接写绑定属性 →
    WinUI 抛 `0x8001010E` 并卡死界面。新增 `UiThread` 统一回投。
@@ -39,14 +39,20 @@
 3. **名单文件格式臆断**：写成 `{"version","profileList"}`，真实服务端当 JSON 数组解析直接抛异常，
    整份白名单被当成空——界面显示「已写入」，玩家一个都进不来。已改为裸数组，
    键名修正为 `bypassesPlayerLimit`（复数 s），由原版服务端亲自写出的文件确认。
+4. **解构建静默跳过 GUI**：`Ceobe.App` 只声明 x64 而解默认 Any CPU，
+   `dotnet build ceobe.slnx` 成功但 GUI 产物没更新——排查时会一直跑旧二进制。
+5. **启动路径两处硬伤**：冷缓存把 Java 兜底版本（21）当硬性要求，误杀可用的 JDK 25；
+   监督进程在 `Start` 之前开控制通道，`ceobe start -d` 一启动就死。
+
+穿透侧另修两处（`198994a`）：就绪超时 45 秒短于 Pinggy 实际分配时间（45～60 秒），
+以及 ssh 的 stdin 被子进程继承成 EOF、连上即断会话。
 
 > 教训：这三处都通过了单元测试。单测验证的是「我们的假设内部自洽」，
 > 端到端验证的是「假设与真实服务端一致」——两者不可互相替代。
 
-> **关于删除 Java 源码**：ADR-019 与本文原先写的是「删除 `ceobe-core/`、`ceobe-cli/`、`ceobe-gui/`、`pom.xml`」。
-> 但训练员选定的节奏是「渐进三阶段，Java 冻结只修 bug」，且**待决事项 4**（整改项 1～5 的 hotfix 是否回打 Java 版）
-> 尚未拍板。因此本轮**不执行删除**：Java 实现保留在原处，作为语义参考与回打基线。
-> 待训练员明确「Java 永久退役」后再归档/删除；基线 tag `pre-csharp-migration` 始终可回溯。
+> **关于 Java 源码**：迁移验收完成后，`ceobe-core/`、`ceobe-cli/`、`ceobe-gui/`、`pom.xml`
+> 已从工作树**全部移除**（训练员 2026-10-21 决定）。Git 历史与基线 tag `pre-csharp-migration`
+> 完整保留，需要考古或回打 hotfix 时从该 tag 取。
 
 ## 目标形态
 
@@ -128,7 +134,7 @@ Java 版靠 `-Dceobe.snapshot=<png> [-Dceobe.snapshot.tab=配置]` 启动即导�
 
 - `AGENTS.md` / `README.md` / `docs/ARCHITECTURE.md` / `docs/specs/*` 全面改写到 C# 事实；ADR-001（Maven）、ADR-002（JavaFX）、ADR-016（跨平台打包）、ADR-017 的 jpackage 段、ADR-018 的 jpackage 成因，标记为「已被 ADR-019 取代/部分失效」。
 - CI：三平台矩阵 → 单一 `windows-latest`，产出 `.exe`（MSIX 或裸自包含待定，见待决项）。
-- Java 源码归档/删除：**待训练员确认**（理由见文首「当前进度」后的说明）；基线 tag `pre-csharp-migration` 保留作考古入口。
+- Java 源码：已从工作树移除，不参与任何构建；历史与基线 tag `pre-csharp-migration` 保留作考古入口。
 
 ## 训练员反馈整改项（2026-10-21）
 

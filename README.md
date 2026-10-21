@@ -38,8 +38,7 @@ ceobe/
 ├── src/Ceobe.Cli/             无头 CLI（System.CommandLine）
 ├── tests/                     Core 与 ViewModel 两套测试
 ├── tools/wiregen/             与 Java 对读用的真值 fixture 生成器
-├── docs/                      PRD / ARCHITECTURE / DECISIONS / specs / MIGRATION
-└── ceobe-core/ ceobe-cli/ ceobe-gui/ pom.xml   ← 冻结的 Java 实现，仅作语义参考，不参与构建
+└── docs/                      PRD / ARCHITECTURE / DECISIONS / specs / MIGRATION
 ```
 
 - 依赖方向单向：`App → App.ViewModels → Core`，`Cli → Core`；`Core` 不感知 UI（保证无头环境可跑）。

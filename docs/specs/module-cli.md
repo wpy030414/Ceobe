@@ -1,7 +1,7 @@
 # Spec — 无头 CLI（Ceobe.Cli）
 
 > **实现现状（2026-10-21）**：`src/Ceobe.Cli`，System.CommandLine 2.0.0-beta5，产物 `ceobe.exe`（自包含单文件）。
-> Java 版 `ceobe-cli/`（picocli）已功能冻结，仅作语义参考。
+> Java 版（picocli）已随迁移退役，源码仅存于 tag `pre-csharp-migration`。
 
 ## 要构建什么
 

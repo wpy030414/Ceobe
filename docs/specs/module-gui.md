@@ -1,7 +1,7 @@
 # Spec — WinUI 3 GUI（Ceobe.App）
 
 > **实现现状（2026-10-21）**：`src/Ceobe.App`（XAML 视图 + 接线）+ `src/Ceobe.App.ViewModels`（全部状态与逻辑）。
-> JavaFX 版 `ceobe-gui/` 已功能冻结，仅作语义参考；迁移决策见 ADR-019。
+> JavaFX 版已随迁移退役，源码仅存于 tag `pre-csharp-migration`；迁移决策见 ADR-019。
 
 ## 要构建什么
 
