@@ -70,21 +70,28 @@ public sealed class TunnelManager : IInstanceTunnels
 
     // —— IInstanceTunnels ——
 
-    IReadOnlyList<(string Kind, string? Url, DateTimeOffset? ExpiresAt)> IInstanceTunnels.ActiveOf(
-        string instanceName) =>
+    IReadOnlyList<(string Kind, TunnelReport Report)> IInstanceTunnels.ActiveOf(string instanceName) =>
         ActiveSessions(instanceName)
-            .Select(s => (s.Kind.Id(), s.PublicUrl, s.ExpiresAt))
+            .Select(s => (s.Kind.Id(), ToReport(s)))
             .ToList();
 
-    async Task<(string? Url, DateTimeOffset? ExpiresAt)> IInstanceTunnels.UpAsync(
+    async Task<(string Kind, TunnelReport Report)> IInstanceTunnels.UpAsync(
         string instanceName, string kindId, CancellationToken ct)
     {
-        var s = await UpAsync(instanceName, TunnelKindInfo.FromId(kindId), ct).ConfigureAwait(false);
-        return (s.PublicUrl, s.ExpiresAt);
+        var kind = TunnelKindInfo.FromId(kindId);
+        var s = await UpAsync(instanceName, kind, ct).ConfigureAwait(false);
+        return (kind.Id(), ToReport(s));
     }
 
     void IInstanceTunnels.Down(string instanceName, string kindId) =>
         Down(instanceName, TunnelKindInfo.FromId(kindId));
+
+    /// <summary>
+    /// 把富会话压平成可过协议的报告。整改项 1(b) 的探测结论经此传出监督进程——
+    /// 少了这一步，MC ping 自检的结果只能烂在内存里，界面与 CLI 都看不到。
+    /// </summary>
+    private static TunnelReport ToReport(TunnelSession s) =>
+        new(s.PublicUrl, s.ExpiresAt, s.Verified, s.Diagnostic);
 
     // —— 主流程 ——
 

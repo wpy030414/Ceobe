@@ -169,13 +169,52 @@ public static class InstanceControl
 
     public static List<string> Logs(string instanceDir, int tail) => Call(instanceDir, "LOGS " + tail);
 
-    /// <summary>开启隧道，返回 [公网地址, 有效期]（第二项可能为 "-"）；建链慢，用长超时。</summary>
+    /// <summary>开启隧道，返回 [公网地址, 有效期, 报告行]；建链慢，用长超时。</summary>
     public static List<string> TunnelUp(string instanceDir, string kindId) =>
         Call(instanceDir, "TUNNEL UP " + kindId, LongTimeout);
+
+    /// <summary>
+    /// 开启隧道并解析出**类型化报告**（含整改项 1(b) 的探测结论）。
+    /// CLI/GUI 应当用这个而不是自己拆 <see cref="TunnelUp"/> 的裸行——
+    /// 协议是竖线分隔的，诊断文本里可能含任意字符，解析逻辑必须只存在一处。
+    /// </summary>
+    public static TunnelReport TunnelUpReport(string instanceDir, string kindId)
+    {
+        var lines = TunnelUp(instanceDir, kindId);
+        // 写出侧顺序：url、expiresAt、报告行（见 ControlServer.DispatchTunnel）
+        return lines.Count >= 3
+            ? TunnelReport.FromLine(lines[2])
+            : new TunnelReport(
+                lines.Count > 0 ? Nullable(lines[0]) : null,
+                lines.Count > 1 ? ParseExpires(Nullable(lines[1])) : null,
+                null, null);
+    }
 
     public static void TunnelDown(string instanceDir, string kindId) =>
         Call(instanceDir, "TUNNEL DOWN " + kindId);
 
-    /// <summary>活动通道列表，每项形如 <c>kind|url|expiresAt</c>。</summary>
+    /// <summary>活动通道列表（裸行，每项形如 <c>kind|url|expiresAt|verified|diagnostic</c>）。</summary>
     public static List<string> TunnelStatus(string instanceDir) => Call(instanceDir, "TUNNEL STATUS");
+
+    /// <summary>活动通道的类型化报告。</summary>
+    public static List<(string Kind, TunnelReport Report)> TunnelStatusReports(string instanceDir)
+    {
+        var outList = new List<(string, TunnelReport)>();
+        foreach (var line in TunnelStatus(instanceDir))
+        {
+            var sep = line.IndexOf('|');
+            if (sep < 0) continue;
+            outList.Add((line[..sep], TunnelReport.FromLine(line[(sep + 1)..])));
+        }
+        return outList;
+    }
+
+    private static string? Nullable(string s) => s is "-" or "" ? null : s;
+
+    private static DateTimeOffset? ParseExpires(string? raw)
+    {
+        if (raw is null) return null;
+        return DateTimeOffset.TryParse(raw, System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.RoundtripKind, out var dto) ? dto : null;
+    }
 }

@@ -156,8 +156,9 @@ public class TunnelManagerTest
         var view = x.View.ActiveOf("alpha");
         var item = Assert.Single(view);
         Assert.Equal("lan", item.Kind);
-        Assert.Equal(url, item.Url);
-        Assert.Null(item.ExpiresAt); // 不过期通道
+        // ActiveOf 现在返回 (Kind, Report)：报告里才带 Url/ExpiresAt/Verified/Diagnostic
+        Assert.Equal(url, item.Report.Url);
+        Assert.Null(item.Report.ExpiresAt); // 不过期通道
     }
 
     [Fact(DisplayName = "硬约束5：PINGGY/LAN/TAILSCALE 指向 meta.Port；CLOUDFLARE 指向 webConsolePort")]
