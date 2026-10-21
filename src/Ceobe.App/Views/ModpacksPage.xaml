@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Ceobe.App.Views.ModpacksPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:Ceobe.App.ViewModels">
+
+    <!--
+      整合包页（整改项 4 的另一半）。训练员原话「整合包下载我没看懂怎么用」，
+      所以本页把两条路径并排写死：①装到当前实例 ②按整合包新建一个实例。
+      后者才是整合包的正确用法——包自带 MC 版本与加载器要求，新建实例才能自动匹配，
+      用户不必自己判断该选 Fabric 还是 NeoForge。
+    -->
+    <Grid Padding="20" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="整合包" FontSize="18" FontWeight="SemiBold" />
+
+        <Grid Grid.Row="1" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBox Grid.Column="0" PlaceholderText="搜索 Modrinth 整合包…"
+                     Text="{x:Bind Vm.Query, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     KeyDown="OnSearchKeyDown" />
+            <CheckBox Grid.Column="1" Content="仅显示适配本实例" VerticalAlignment="Center"
+                      IsChecked="{x:Bind Vm.OnlyCompatible, Mode=TwoWay}" />
+            <Button Grid.Column="2" Content="搜索" Click="OnSearch"
+                    IsEnabled="{x:Bind NotBusy, Mode=OneWay}"
+                    Style="{StaticResource AccentButtonStyle}" />
+        </Grid>
+
+        <ListView Grid.Row="2" ItemsSource="{x:Bind Vm.Results, Mode=OneWay}"
+                  SelectedItem="{x:Bind Vm.Selected, Mode=TwoWay}" SelectionMode="Single">
+            <ListView.HeaderTemplate>
+                <DataTemplate>
+                    <Grid Padding="0,4" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" /><ColumnDefinition Width="140" />
+                            <ColumnDefinition Width="120" /><ColumnDefinition Width="80" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="名称" FontWeight="SemiBold" />
+                        <TextBlock Grid.Column="1" Text="标识" FontWeight="SemiBold" />
+                        <TextBlock Grid.Column="2" Text="作者" FontWeight="SemiBold" />
+                        <TextBlock Grid.Column="3" Text="下载" FontWeight="SemiBold" />
+                    </Grid>
+                </DataTemplate>
+            </ListView.HeaderTemplate>
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="vm:ModpackRow">
+                    <Grid ColumnSpacing="12" Padding="0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" /><ColumnDefinition Width="140" />
+                            <ColumnDefinition Width="120" /><ColumnDefinition Width="80" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="{x:Bind Title}" />
+                            <TextBlock Text="{x:Bind Categories}" FontSize="11"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="{x:Bind Slug}" FontSize="11" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="{x:Bind Author}" FontSize="11" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="3" Text="{x:Bind DownloadsLabel}" FontSize="11" VerticalAlignment="Center" />
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+        <Border Grid.Row="3" Padding="12" CornerRadius="6"
+                Background="{ThemeResource LayerFillColorDefaultBrush}">
+            <StackPanel Spacing="10">
+                <TextBlock Text="怎么装？两条路，选一条" FontWeight="SemiBold" />
+
+                <Grid ColumnSpacing="18">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- ① 装到本实例 -->
+                    <StackPanel Grid.Column="0" Spacing="6">
+                        <TextBlock Text="① 装到当前实例" FontWeight="SemiBold" FontSize="13" />
+                        <TextBlock Text="要求本实例的 MC 版本与加载器和整合包完全一致，否则会拦下并说清差异。"
+                                   FontSize="11" TextWrapping="Wrap"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Text="{x:Bind Vm.UnsupportedHint, Mode=OneWay}" FontSize="11" TextWrapping="Wrap"
+                                   Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                   Visibility="{x:Bind ShowUnsupported, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
+                        <TextBlock Text="{x:Bind Vm.InstallHereBlockedHint, Mode=OneWay}" FontSize="11" TextWrapping="Wrap"
+                                   Foreground="{ThemeResource SystemFillColorCautionBrush}" />
+                        <Button Content="装到本实例" Click="OnInstallHere"
+                                IsEnabled="{x:Bind Vm.CanInstallHere, Mode=OneWay}" />
+                    </StackPanel>
+
+                    <!-- ② 新建并装 -->
+                    <StackPanel Grid.Column="1" Spacing="6">
+                        <TextBlock Text="② 按整合包新建一个实例" FontWeight="SemiBold" FontSize="13" />
+                        <TextBlock Text="版本与加载器由整合包索引决定，你不用自己选。"
+                                   FontSize="11" TextWrapping="Wrap"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBox Header="新实例名" PlaceholderText="默认取整合包标识"
+                                 Text="{x:Bind Vm.NewName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <NumberBox Header="内存 (MB)" Value="{x:Bind NewMemoryMbDouble, Mode=TwoWay}"
+                                   Minimum="1024" Maximum="32768" SmallChange="512"
+                                   SpinButtonPlacementMode="Inline" />
+                        <Button Content="新建并安装" Click="OnCreateAndInstall"
+                                IsEnabled="{x:Bind Vm.CanCreateInstall, Mode=OneWay}" />
+                    </StackPanel>
+                </Grid>
+
+                <ProgressBar Value="{x:Bind Vm.Progress, Mode=OneWay}" Maximum="1"
+                             IsIndeterminate="{x:Bind ProgressIndeterminate, Mode=OneWay}" />
+                <TextBlock Text="{x:Bind Vm.StatusText, Mode=OneWay}" TextWrapping="Wrap" FontSize="12"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

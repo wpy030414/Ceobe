@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Ceobe.App.Views.TunnelPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:Ceobe.App.ViewModels">
+
+    <!--
+      穿透页（整改项 1：训练员原话「PinggyTCP只有本地连接正常」）。
+
+      这一页的产品核心不是「开关」，而是**把结论说清楚**：
+      每条通道除了地址，还必须有「已实测可达 / 无法验证 / 未探测」三态之一，
+      并且 server-ip 绑定冲突要在开启之前就红字警告——那正是「本地能连、外部连不上」
+      最常见、也最容易被误判成「Pinggy 坏了」的原因。
+    -->
+    <Grid Padding="20" RowSpacing="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="穿透" FontSize="18" FontWeight="SemiBold" />
+
+        <!-- server-ip 绑定冲突：开启通道之前就警告，而不是等玩家连不上再排查 -->
+        <InfoBar Grid.Row="1" Severity="Warning" IsClosable="False"
+                 IsOpen="{x:Bind HasBindingWarning, Mode=OneWay}"
+                 Title="server-ip 与穿透通道冲突"
+                 Message="{x:Bind Vm.BindingWarning, Mode=OneWay}" />
+
+        <InfoBar Grid.Row="2" Severity="Error" IsClosable="False"
+                 IsOpen="{x:Bind Vm.HasError, Mode=OneWay}"
+                 Title="操作未完成"
+                 Message="{x:Bind Vm.StatusText, Mode=OneWay}" />
+
+        <ScrollViewer Grid.Row="3">
+            <ItemsControl ItemsSource="{x:Bind Vm.Cards, Mode=OneWay}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:TunnelCard">
+                        <Border BorderThickness="1"
+                                BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                                CornerRadius="6" Padding="12" Margin="0,0,0,10">
+                            <StackPanel Spacing="7">
+                                <Grid>
+                                    <TextBlock Text="{x:Bind Label}" FontWeight="SemiBold"
+                                               HorizontalAlignment="Left" />
+                                    <TextBlock Text="{x:Bind StateLabel, Mode=OneWay}" FontSize="12"
+                                               HorizontalAlignment="Right" VerticalAlignment="Center"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </Grid>
+
+                                <!-- 地址：单行截断，右侧复制 -->
+                                <Border Padding="8,6" CornerRadius="4"
+                                        Background="{ThemeResource ControlFillColorDefaultBrush}">
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{x:Bind Address, Mode=OneWay}"
+                                                   FontFamily="Consolas" FontSize="12"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center" />
+                                        <Button Grid.Column="1" Content="复制"
+                                                Tag="{x:Bind Address, Mode=OneWay}" Click="OnCopy" />
+                                    </Grid>
+                                </Border>
+
+                                <!-- 三态结论 + 说明 -->
+                                <StackPanel Spacing="3">
+                                    <TextBlock Text="{x:Bind VerdictLabel, Mode=OneWay}"
+                                               FontSize="12" FontWeight="SemiBold"
+                                               Foreground="{x:Bind Verified, Mode=OneWay, Converter={StaticResource VerdictToBrush}}" />
+                                    <TextBlock Text="{x:Bind Note, Mode=OneWay}" FontSize="11"
+                                               TextWrapping="Wrap"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Text="地址已轮换，请重新分享给朋友（他们存的旧地址已失效）。"
+                                               FontSize="11" TextWrapping="Wrap"
+                                               Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                               Visibility="{x:Bind AddressRotated, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
+                                </StackPanel>
+
+                                <Expander Header="诊断详情" HorizontalAlignment="Stretch">
+                                    <TextBlock Text="{x:Bind Diagnostic, Mode=OneWay}" FontSize="11"
+                                               FontFamily="Consolas" TextWrapping="Wrap" />
+                                </Expander>
+
+                                <Button Content="{x:Bind ToggleLabel, Mode=OneWay}"
+                                        Tag="{x:Bind Kind}" Click="OnToggle"
+                                        IsEnabled="{x:Bind CanToggle, Mode=OneWay}"
+                                        HorizontalAlignment="Left" />
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

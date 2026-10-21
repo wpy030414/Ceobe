@@ -6,10 +6,12 @@
     xmlns:views="using:Ceobe.App.Views">
 
     <!--
-      实例页签容器。对齐 Java 版 MainView 的 TabPane。
-      先只接「控制台」一页打通 VM↔XAML 管线并验证非打包 WinUI 3 能真启动；
-      其余页签（服务器配置/游戏配置/Mod/整合包/玩家/穿透）随后逐个接入，
-      避免一次性盲写多页 XAML 再撞一片难以定位的 WMC 错误。
+      实例页签容器。对齐 Java 版 MainView 的 TabPane，七页齐全：
+      控制台 / 服务器配置 / 游戏配置 / Mod / 整合包 / 玩家 / 穿透。
+      每页都是「无参构造 + Load(vm)」：XAML 以 x:Name 声明，VM 由 code-behind 注入，
+      业务全在 ViewModels（闸门 C：可无窗口单测）。
+
+      页签顺序即使用频率：先看日志，再改配置，最后才是导入与联机。
     -->
     <TabView x:Name="Tabs" IsAddTabButtonVisible="False">
         <TabViewItem Header="控制台" IsClosable="False">
@@ -20,6 +22,18 @@
         </TabViewItem>
         <TabViewItem Header="游戏配置" IsClosable="False">
             <views:GameConfigPage x:Name="GameTab" />
+        </TabViewItem>
+        <TabViewItem Header="Mod" IsClosable="False">
+            <views:ModsPage x:Name="ModsTab" />
+        </TabViewItem>
+        <TabViewItem Header="整合包" IsClosable="False">
+            <views:ModpacksPage x:Name="ModpacksTab" />
+        </TabViewItem>
+        <TabViewItem Header="玩家" IsClosable="False">
+            <views:PlayersPage x:Name="PlayersTab" />
+        </TabViewItem>
+        <TabViewItem Header="穿透" IsClosable="False">
+            <views:TunnelPage x:Name="TunnelTab" />
         </TabViewItem>
     </TabView>
 </UserControl>

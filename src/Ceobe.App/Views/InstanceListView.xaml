@@ -19,7 +19,9 @@
               SelectionMode="Single" Padding="8,0,8,8">
         <ListView.ItemTemplate>
             <DataTemplate x:DataType="vm:InstanceRow">
-                <Grid Padding="4,6" RowSpacing="2">
+                <Grid Padding="4,6" RowSpacing="2"
+                      AutomationProperties.Name="{x:Bind DisplayName, Mode=OneWay}"
+                      AutomationProperties.HelpText="{x:Bind Detail, Mode=OneWay}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />

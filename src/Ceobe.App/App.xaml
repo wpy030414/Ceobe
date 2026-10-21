@@ -12,6 +12,7 @@
             <!-- 全局转换器：XAML 里以 StaticResource 引用，故必须在此注册 -->
             <converters:LiveToBrushConverter x:Key="LiveToBrush" />
             <converters:BoolToVisibilityConverter x:Key="BoolToVis" />
+            <converters:VerdictToBrushConverter x:Key="VerdictToBrush" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>
