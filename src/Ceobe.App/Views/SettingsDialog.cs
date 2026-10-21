@@ -70,7 +70,13 @@ public sealed class SettingsDialog : ContentDialog
             Header = "深色主题",
             IsOn = _vm.IsDark(),
         };
-        themeToggle.Toggled += (_, _) => _vm.Theme = themeToggle.IsOn ? "dark" : "light";
+        themeToggle.Toggled += (_, _) =>
+        {
+            _vm.Theme = themeToggle.IsOn ? "dark" : "light";
+            // 即时预览：改完立刻能看出效果，不必先保存再关窗。
+            // XamlRoot.Content 就是窗口根元素（ContentDialog 自己没有主题域）。
+            if (XamlRoot?.Content is FrameworkElement root) ThemeApplier.Apply(root, _vm.Theme);
+        };
 
         var whitelistToggle = new ToggleSwitch
         {

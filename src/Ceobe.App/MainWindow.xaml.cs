@@ -132,6 +132,9 @@ public sealed partial class MainWindow : Window
     {
         var dialog = new SettingsDialog(_manager) { XamlRoot = ContentHost.XamlRoot };
         await dialog.ShowAsync();
+        // 设置对话框里的主题开关是即时预览；用户如果点了取消，这里把落盘值重新贴回来，
+        // 避免「预览改了、没保存、界面却一直是深色」的错觉。
+        ThemeApplier.Apply(this, Core.Store.AppSettings.Load().Theme);
         // 数据目录可能已搬走，重新扫描实例列表
         VmList.Refresh();
     }

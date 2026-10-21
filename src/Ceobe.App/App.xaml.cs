@@ -30,11 +30,16 @@ public partial class App : Application
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         // 应用设置里的数据目录（整改项 3）必须在任何实例操作之前生效
-        Core.Store.AppSettings.Load().Apply();
+        var settings = Core.Store.AppSettings.Load();
+        settings.Apply();
 
         try
         {
             _window = new MainWindow();
+            // 主题必须在这里应用：Application.RequestedTheme 只在启动前可设，
+            // 而窗口构造完成后才知道根元素是谁。不读 settings.Theme 的话，
+            // 用户在设置里勾了深色，重启回来还是浅色。
+            ThemeApplier.Apply(_window, settings.Theme);
             _window.Activate();
         }
         catch (Exception e)
