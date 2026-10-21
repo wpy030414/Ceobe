@@ -1,5 +1,9 @@
 # AGENTS.md
 
+> **迁移中（2026-10-21）**：本项目已决策用 **C# / .NET 10 + WinUI 3** 重构，范围收缩为 Windows 专属。
+> 见 `docs/DECISIONS.md` ADR-019 与 **`docs/MIGRATION.md`**（施工图：模块映射、七条不得重写的硬契约、阶段闸门、训练员反馈整改项）。
+> **Java 代码（本仓库现存部分）自此刻功能冻结、只修 bug**；基线 tag `pre-csharp-migration`。新功能与新改动一律进 C# 侧，改动前先读 `docs/MIGRATION.md`。
+
 ceobe 是 Java 25 编写的 Minecraft 服务器编排系统（Maven 多模块：core 域逻辑 / cli 无头 / gui JavaFX）。本文档帮助 Agent 快速定位项目。
 
 ## 概述
