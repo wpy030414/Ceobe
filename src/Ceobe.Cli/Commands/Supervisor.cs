@@ -1,9 +1,8 @@
+using Ceobe.Core.Composition;
 using Ceobe.Core.Event;
 using Ceobe.Core.Model;
 using Ceobe.Core.Runtime;
-using Ceobe.Core.Tunnel;
 using Ceobe.Core.Util;
-using Ceobe.Core.WebConsole;
 
 namespace Ceobe.Cli.Commands;
 
@@ -47,15 +46,20 @@ public static class Supervisor
             }
         };
 
-        // 隧道依赖 IInstanceHost=manager，必须后建；控制通道再把两者一起接上（避免 runtime↔tunnel 循环依赖）
-        var tunnels = new Core.Tunnel.TunnelManager(manager);
+        // 装配走 Core 的 composition root：GUI 进程本身也是监督进程，
+        // 两边必须用同一套接线逻辑，否则「CLI 起得来 GUI 起不来」这类偏差查不出来。
+        // 隧道依赖 IInstanceHost=manager 故内部后建；控制通道再把两者一起接上
+        // （避免 runtime ↔ tunnel 循环依赖，见 InstanceManager.OpenControl）。
+        var (tunnels, web) = CeobeComposition.StartAppServices(manager);
         await using var control = manager.OpenControl(name, tunnels);
-        await using var web = new WebConsole(manager, 0);
-        tunnels.WebConsolePort(web.Port);
+        await using var _web = web;
 
         if (foreground)
         {
-            Console.WriteLine($"[ceobe] Web 控制台: {web.BaseUrl}");
+            // Web 控制台可能因端口被占而起不来（StartAppServices 返回 null），不能盲解引用
+            Console.WriteLine(web is null
+                ? "[ceobe] Web 控制台未能启动（端口被占？）；不影响实例运行"
+                : $"[ceobe] Web 控制台: {web.BaseUrl}");
         }
 
         // 进程退出前优雅停止服务端：否则关掉终端会留下孤儿 MC 进程继续占端口

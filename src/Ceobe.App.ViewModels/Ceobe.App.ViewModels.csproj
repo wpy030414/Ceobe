@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    GUI 的 ViewModel 层，**刻意不含任何 WinUI/XAML 引用**。
+
+    为什么单独一个工程：闸门 C（docs/MIGRATION.md「UI 回归」）把 UI 回归重心放在 ViewModel 层，
+    而 Ceobe.App 是 net10.0-windows10.0.19041.0 的 WinExe——net10.0 的测试工程无法引用它。
+    把 ViewModel 拆成 net10.0 类库，测试工程就能在无窗口环境跑全部界面逻辑。
+    这也是 Java 版 -Dceobe.snapshot 那类像素级手段在 WinUI 3 上没有等价物之后的替代方案。
+  -->
+  <PropertyGroup>
+    <RootNamespace>Ceobe.App.ViewModels</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Ceobe.Core\Ceobe.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 只用 MVVM 源生成器（ObservableObject/RelayCommand），不用任何 UI 框架包 -->
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+
+</Project>

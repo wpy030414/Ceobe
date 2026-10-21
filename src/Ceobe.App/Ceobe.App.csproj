@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- WinUI 3 桌面端（等价 Java 的 ceobe-gui）。Windows 专属，ADR-019。 -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>Ceobe.App</RootNamespace>
+    <AssemblyName>Ceobe</AssemblyName>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <!-- 非打包分发：不生成 MSIX，直接跑 exe（免旁加载与证书） -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>false</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <!-- WinUI 的 XAML 编译器对可空注解不敏感，逐个修收益低；先关掉避免噪音 -->
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ceobe.Core\Ceobe.Core.csproj" />
+    <!-- ViewModel 拆成独立 net10.0 工程：测试工程要能引用它（闸门 C） -->
+    <ProjectReference Include="..\Ceobe.App.ViewModels\Ceobe.App.ViewModels.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 版本必须由 NuGet 实测确认，不要凭印象写（猜错就是 NU1102/NU1605）。
+         实测 2026-10-21：WindowsAppSDK 2.5.1、CommunityToolkit.Mvvm 8.4.2、
+         SettingsControls 8.2.251219。
+         注意 WindowsAppSDK 传递依赖 Microsoft.Windows.SDK.BuildTools >= 10.0.26100.4654，
+         显式引用更低版本会触发 NU1605 包降级错误，故不要写死它。 -->
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
+    <!-- MVVM 源生成器：闸门 C 的 UI 回归重心在 ViewModel 层（不引用 WinUI 类型，可无窗口单测） -->
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+
+</Project>
