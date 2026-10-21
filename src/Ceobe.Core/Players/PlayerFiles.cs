@@ -351,7 +351,12 @@ public static class PlayerFiles
         return outList;
     }
 
-    internal static string NowStamp() =>
+    /// <summary>
+    /// 当前时刻的 MC 时间戳格式（UTC，偏移 <c>+0000</c>）。
+    /// public 是因为 GUI 的「玩家」页签要新建封禁条目（写 created 字段），
+    /// 而它住在另一个程序集——不给 public 就只能让界面层自己拼时间格式，两处必然漂移。
+    /// </summary>
+    public static string NowStamp() =>
         // 手工拼 +0000：见 StampPattern 注释，.NET 没有对应 Java "Z" 的格式说明符
         DateTime.UtcNow.ToString(StampPattern, Inv) + " +0000";
 
