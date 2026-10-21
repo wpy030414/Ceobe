@@ -77,7 +77,7 @@ public static class ModpackCommands
         cmd.SetAction(async (pr, ct) =>
         {
             var pv = await new ModrinthClient()
-                .ResolvePack(pr.GetValue(pack), pr.GetValue(version), pr.GetValue(loader), ct)
+                .ResolvePack(pr.RequiredTrimmed(pack), pr.GetValue(version), pr.GetValue(loader), ct)
                 .ConfigureAwait(false);
             if (Output.Json)
             {
@@ -108,14 +108,14 @@ public static class ModpackCommands
         { instance, pack, version };
         cmd.SetAction(async (pr, ct) =>
         {
-            var inst = pr.GetValue(instance);
+            var inst = pr.RequiredTrimmed(instance);
             var manager = CoreWiring.NewManager();
             var status = manager.Require(inst);
             if (status.State.IsLive())
             {
                 throw CeobeException.Of("实例 {0} 正在运行，请先停止再装整合包", inst);
             }
-            var zip = await DownloadPackAsync(pr.GetValue(pack), pr.GetValue(version),
+            var zip = await DownloadPackAsync(pr.RequiredTrimmed(pack), pr.GetValue(version),
                 status.Meta.ServerType.LoaderId(), ct).ConfigureAwait(false);
             var idx = MrpackInstaller.ReadIndex(zip);
             CheckCompat(status, idx);
@@ -155,8 +155,8 @@ public static class ModpackCommands
         { name, pack, mem, port, jvm, javaHome };
         cmd.SetAction(async (pr, ct) =>
         {
-            var n = pr.GetValue(name);
-            var zip = await DownloadPackAsync(pr.GetValue(pack), null, null, ct).ConfigureAwait(false);
+            var n = pr.RequiredTrimmed(name);
+            var zip = await DownloadPackAsync(pr.RequiredTrimmed(pack), null, null, ct).ConfigureAwait(false);
             var idx = MrpackInstaller.ReadIndex(zip);
             if (idx.McVersion is null)
             {

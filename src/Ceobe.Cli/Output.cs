@@ -73,13 +73,13 @@ public static class Output
         if (!Json) Console.WriteLine(message);
     }
 
-    public static void Info(string fmt, params object[] args)
+    public static void Info(string fmt, params object?[] args)
     {
         if (!Json) Console.WriteLine(string.Format(CultureInfo.InvariantCulture, fmt, args));
     }
 
     /// <summary>非致命提醒（json 模式下静默）。</summary>
-    public static void Warn(string fmt, params object[] args)
+    public static void Warn(string fmt, params object?[] args)
     {
         if (!Json) Console.Error.WriteLine("警告: " + string.Format(CultureInfo.InvariantCulture, fmt, args));
     }

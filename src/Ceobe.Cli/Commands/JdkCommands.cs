@@ -97,7 +97,7 @@ public static class JdkCommands
         var cmd = new Command("required", "查询某游戏版本所需的 Java 主版本") { version };
         cmd.SetAction(async (pr, ct) =>
         {
-            var v = pr.GetValue(version);
+            var v = pr.RequiredTrimmed(version);
             var req = await JavaRequirement.RequiredMajorAsync(v, ct).ConfigureAwait(false);
             if (Output.Json) Output.JsonValue(Output.Map("version", v, "requiredJava", req));
             else Output.Info("{0} 需要 Java {1}", v, req);
@@ -115,7 +115,7 @@ public static class JdkCommands
         var cmd = new Command("use", "把某实例的 Java 指向自管 JDK（按主版本）") { instance, major };
         cmd.SetAction(pr =>
         {
-            var n = pr.GetValue(instance);
+            var n = pr.RequiredTrimmed(instance);
             var m = pr.GetValue(major);
             var manager = CoreWiring.NewManager();
             if (manager.Require(n).State.IsLive())

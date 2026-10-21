@@ -46,7 +46,13 @@ public static class TunnelKindInfo
     };
 
     /// <summary>id → 枚举（忽略大小写）；未知 id 抛业务异常。</summary>
-    public static TunnelKind FromId(string id)
+    /// <summary>
+    /// id → 枚举（忽略大小写）；未知 id 或 null 抛业务异常。
+    /// 签名刻意收 <c>string?</c>：调用方常从 <c>--kind</c> 这类可空选项取值，
+    /// 而 null 的语义就是「未指定通道」，应当得到与拼错 id 同样的可诊断报错，
+    /// 而不是 NullReferenceException（原实现体内已用 <c>id?.</c> 判空，签名却声明非空）。
+    /// </summary>
+    public static TunnelKind FromId(string? id)
     {
         switch (id?.ToLowerInvariant())
         {

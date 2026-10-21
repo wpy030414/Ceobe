@@ -37,7 +37,7 @@ public static class ModCommands
         var cmd = new Command("search", "搜索适配该实例的模组") { instance, query, limit };
         cmd.SetAction(async (pr, ct) =>
         {
-            var inst = pr.GetValue(instance);
+            var inst = pr.RequiredTrimmed(instance);
             var q = pr.GetValue(query) ?? "";
             var manager = CoreWiring.NewManager();
             var status = manager.Require(inst);
@@ -87,8 +87,8 @@ public static class ModCommands
         cmd.Aliases.Add("add");
         cmd.SetAction(async (pr, ct) =>
         {
-            var inst = pr.GetValue(instance);
-            var proj = pr.GetValue(project);
+            var inst = pr.RequiredTrimmed(instance);
+            var proj = pr.RequiredTrimmed(project);
             var manager = CoreWiring.NewManager();
             var status = manager.Require(inst);
             var type = status.Meta.ServerType;
@@ -103,11 +103,10 @@ public static class ModCommands
                 .ConfigureAwait(false);
             CliParse.ProgressDone();
 
-            // 写回实例元数据（对齐 Java：同名文件旧记录被替换）
-            var meta = status.Meta;
-            meta.Mods.RemoveAll(m => m.FileName == entry.FileName);
-            meta.Mods.Add(entry);
-            WriteMeta(dir, meta);
+            // 写回实例元数据：走 Core 的 AppendMods（同名文件替换旧记录）。
+            // 不再在此处手工 RemoveAll+Add+WriteMeta——整改项 4 的 GUI 一键导入也要写 mods 清单，
+            // 两处各写一份必然漂移（典型症状：CLI 装的 mod 在 GUI 列表里少一条）。
+            manager.AppendMods(inst, [entry]);
 
             if (Output.Json)
             {
@@ -136,8 +135,8 @@ public static class ModCommands
         cmd.Aliases.Add("remove");
         cmd.SetAction(async (pr, ct) =>
         {
-            var inst = pr.GetValue(instance);
-            var tgt = pr.GetValue(target);
+            var inst = pr.RequiredTrimmed(instance);
+            var tgt = pr.RequiredTrimmed(target);
             var manager = CoreWiring.NewManager();
             var status = manager.Require(inst);
             var meta = status.Meta;
@@ -146,8 +145,8 @@ public static class ModCommands
                 ?? throw CeobeException.Of("实例中未找到模组: {0}", tgt);
             var dir = manager.Dir(inst);
             await new ModrinthClient().UninstallAsync(dir, match, ct).ConfigureAwait(false);
-            meta.Mods.Remove(match);
-            WriteMeta(dir, meta);
+            // 走 Core 的 RemoveMods，与 GUI 卸载共用同一套写回逻辑
+            manager.RemoveMods(inst, m => m.FileName == match.FileName);
             Output.Info("已卸载 {0}（{1}）", match.Title, match.FileName);
             return 0;
         });
@@ -163,7 +162,7 @@ public static class ModCommands
         cmd.Aliases.Add("list");
         cmd.SetAction(pr =>
         {
-            var inst = pr.GetValue(instance);
+            var inst = pr.RequiredTrimmed(instance);
             var manager = CoreWiring.NewManager();
             var status = manager.Require(inst);
             var dir = manager.Dir(inst);
@@ -189,19 +188,5 @@ public static class ModCommands
             return 0;
         });
         return cmd;
-    }
-
-    /// <summary>模组清单写回 instance.json（字段级兼容 Java，JsonUtil 统一 camelCase/null 省略）。</summary>
-    private static void WriteMeta(string dir, InstanceMeta meta)
-    {
-        try
-        {
-            File.WriteAllText(Path.Combine(dir, "instance.json"), JsonUtil.Write(meta),
-                new System.Text.UTF8Encoding(false));
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-            throw new CeobeException("写入实例元数据失败: " + e.Message, e);
-        }
     }
 }

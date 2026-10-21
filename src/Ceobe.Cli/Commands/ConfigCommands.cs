@@ -35,8 +35,8 @@ public static class ConfigCommands
         var cmd = new Command("get", "读取单个配置项") { instance, key };
         cmd.SetAction(pr =>
         {
-            var inst = pr.GetValue(instance);
-            var k = pr.GetValue(key);
+            var inst = pr.RequiredTrimmed(instance);
+            var k = pr.RequiredTrimmed(key);
             var props = Load(inst);
             var value = props.Get(k);
             if (value is null)
@@ -68,9 +68,9 @@ public static class ConfigCommands
         var cmd = new Command("set", "修改配置项（服务器运行时需重启生效）") { instance, key, value };
         cmd.SetAction(pr =>
         {
-            var inst = pr.GetValue(instance);
-            var k = pr.GetValue(key);
-            var v = pr.GetValue(value);
+            var inst = pr.RequiredTrimmed(instance);
+            var k = pr.RequiredTrimmed(key);
+            var v = pr.RequiredTrimmed(value);
             var props = Load(inst);
             // 校验失败时 Core 的 Set 直接抛带 schema 中文原因的 CeobeException
             // （如「视距（区块） 需在 3-32 之间」），满足整改项 5 对报错可读性的要求。
@@ -92,7 +92,7 @@ public static class ConfigCommands
         var cmd = new Command("ls", "列出配置项（按 schema 分组）") { instance, group };
         cmd.SetAction(pr =>
         {
-            var inst = pr.GetValue(instance);
+            var inst = pr.RequiredTrimmed(instance);
             var grp = pr.GetValue(group);
             var props = Load(inst);
             var entries = new List<(PropKey Key, string Value)>();

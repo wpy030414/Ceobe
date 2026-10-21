@@ -7,8 +7,14 @@ public class CeobeException : Exception
 
     public CeobeException(string message, Exception cause) : base(message, cause) { }
 
-    /// <summary>不变文化格式化（对齐 Java 的 formatted，避免受当前区域设置影响）。</summary>
-    public static CeobeException Of(string fmt, params object[] args) =>
+    /// <summary>
+    /// 不变文化格式化（对齐 Java 的 formatted，避免受当前区域设置影响）。
+    /// 参数刻意声明为可空：调用方常把「可能为 null 的值」直接塞进消息
+    /// （如 ServerType.FromLoaderId(null) 要报出「不支持 null 加载器」），
+    /// 而 string.Format 本就支持 null 参数并输出空串。若声明成非空，
+    /// 每个这类调用点都会冒 CS8604，把真正的可空性 bug 埋进噪音。
+    /// </summary>
+    public static CeobeException Of(string fmt, params object?[] args) =>
         new(string.Format(System.Globalization.CultureInfo.InvariantCulture, fmt, args));
 }
 

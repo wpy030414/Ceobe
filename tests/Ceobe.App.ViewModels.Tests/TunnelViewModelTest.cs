@@ -232,7 +232,8 @@ public class TunnelViewModelTest : IDisposable
         card.Apply(new TunnelReport("tcp://h:1", null, false, diag));
 
         Assert.Equal(diag, card.Diagnostic);
-        Assert.True(card.Diagnostic.Length > 20, "诊断应含可据以排查的细节");
+        var shown = Assert.IsType<string>(card.Diagnostic);   // 显式收窄可空，再断言长度
+        Assert.True(shown.Length > 20, "诊断应含可据以排查的细节");
     }
 
     // ========== 地址轮换 ==========

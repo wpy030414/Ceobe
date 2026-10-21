@@ -106,7 +106,7 @@ public static class InstanceCommands
             var manager = CoreWiring.NewManager();
             var localPort = CliParse.ResolvePort(pr.GetValue(port), manager);
             // 版本号未知时用占位值构造一次 spec，只为触发名字/内存/端口的本地校验
-            new InstanceSpec(pr.GetValue(name), serverType, "0", pr.GetValue(loader),
+            new InstanceSpec(pr.RequiredTrimmed(name), serverType, "0", pr.GetValue(loader),
                 CliParse.Memory(pr.GetValue(mem)!), pr.GetValue(jvm), localPort, pr.GetValue(javaHome))
                 .Validate();
 
@@ -121,7 +121,7 @@ public static class InstanceCommands
             }
 
             var spec = new InstanceSpec(
-                pr.GetValue(name),
+                pr.RequiredTrimmed(name),
                 serverType,
                 gameVersion,
                 pr.GetValue(loader),
@@ -140,7 +140,7 @@ public static class InstanceCommands
                     "name", meta.Name, "type", meta.ServerType.ToString(),
                     "version", meta.GameVersion, "loader", meta.LoaderVersion,
                     "port", meta.Port, "memoryMb", meta.MemoryMb,
-                    "dir", manager.Dir(pr.GetValue(name))));
+                    "dir", manager.Dir(pr.RequiredTrimmed(name))));
             }
             else
             {
@@ -170,7 +170,7 @@ public static class InstanceCommands
         var cmd = new Command("start", "启动实例（默认前台；-d 后台监督进程）") { name, detach };
         cmd.SetAction(async (pr, ct) =>
         {
-            var n = pr.GetValue(name);
+            var n = pr.RequiredTrimmed(name);
             var manager = CoreWiring.NewManager();
             var status = manager.Require(n);
 
@@ -298,7 +298,7 @@ public static class InstanceCommands
         var cmd = new Command("stop", "优雅停止实例") { name, force };
         cmd.SetAction(async (pr, ct) =>
         {
-            var n = pr.GetValue(name);
+            var n = pr.RequiredTrimmed(name);
             var manager = CoreWiring.NewManager();
             var status = manager.Require(n);
             if (!status.State.IsLive())
@@ -340,7 +340,7 @@ public static class InstanceCommands
         var cmd = new Command("restart", "重启实例（后台监督进程）") { name };
         cmd.SetAction(async (pr, ct) =>
         {
-            var n = pr.GetValue(name);
+            var n = pr.RequiredTrimmed(name);
             var manager = CoreWiring.NewManager();
             manager.Require(n);
             var dir = manager.Dir(n);
@@ -375,7 +375,7 @@ public static class InstanceCommands
         cmd.Aliases.Add("delete");
         cmd.SetAction(pr =>
         {
-            var n = pr.GetValue(name);
+            var n = pr.RequiredTrimmed(name);
             var p = pr.GetValue(purge);
             CoreWiring.NewManager().Remove(n, p);
             Output.Info("实例 {0} 已删除{1}", n, p ? "（含数据）" : "（世界数据保留在目录中）");
@@ -396,7 +396,7 @@ public static class InstanceCommands
         var cmd = new Command("logs", "查看实例日志（-f 跟随）") { name, follow, tail };
         cmd.SetAction(async (pr, ct) =>
         {
-            var n = pr.GetValue(name);
+            var n = pr.RequiredTrimmed(name);
             var manager = CoreWiring.NewManager();
             manager.Require(n);
             var dir = manager.Dir(n);
@@ -468,7 +468,7 @@ public static class InstanceCommands
         var cmd = new Command("exec", "向实例控制台发送命令") { name, command };
         cmd.SetAction(pr =>
         {
-            var n = pr.GetValue(name);
+            var n = pr.RequiredTrimmed(name);
             var manager = CoreWiring.NewManager();
             manager.Require(n);
             var dir = manager.Dir(n);
@@ -499,10 +499,18 @@ public static class InstanceCommands
         var newName = new Option<string?>("--name") { Description = "重命名实例" };
         var mem = new Option<string?>("--mem") { Description = "内存上限，如 4G" };
         var port = new Option<string?>("--port") { Description = "端口或 auto" };
-        var jvm = new Option<string?>("--jvm") { Description = "附加 JVM 参数（传空串可清空）" };
+        // 「传空串可清空」必须写成 --jvm ""（空格分隔），不能写 --jvm=：
+        // System.CommandLine beta5 把等号后空值判为「选项缺少所需参数」，而 picocli 接受。
+        // 这里不能把 Arity 放宽成 ZeroOrOne 来兼容等号形式——实测那样 --jvm= 与 --jvm
+        // 都会解析成 null，而 null 在本命令的语义是「不改动该项」，与空串「清空」必须区分
+        // （否则 --mem 4G 会顺手把 jvmArgs 清掉）。取舍：保住语义，牺牲一种写法，并在帮助里说明。
+        var jvm = new Option<string?>("--jvm")
+        {
+            Description = "附加 JVM 参数；传空串清空（须写成 --jvm \"\"，不支持 --jvm=）",
+        };
         var authlib = new Option<string?>("--authlib")
         {
-            Description = "authlib-injector Yggdrasil 地址（传空串关闭）",
+            Description = "authlib-injector Yggdrasil 地址；传空串关闭（须写成 --authlib \"\"）",
         };
 
         var cmd = new Command("update", "修改实例设置（名称/内存/端口/JVM 参数/authlib-injector）")
@@ -511,7 +519,7 @@ public static class InstanceCommands
         };
         cmd.SetAction(pr =>
         {
-            var n = pr.GetValue(name);
+            var n = pr.RequiredTrimmed(name);
             var manager = CoreWiring.NewManager();
             manager.Require(n);
 
@@ -564,7 +572,7 @@ public static class InstanceCommands
         var cmd = new Command("supervise", "监督进程入口（内部使用）") { name };
         // 不在 help 里显示：它只由 start -d 自己拉起
         cmd.Hidden = true;
-        cmd.SetAction(async (pr, ct) => await Supervisor.RunAsync(pr.GetValue(name), foreground: false, ct)
+        cmd.SetAction(async (pr, ct) => await Supervisor.RunAsync(pr.RequiredTrimmed(name), foreground: false, ct)
             .ConfigureAwait(false));
         return cmd;
     }

@@ -483,6 +483,45 @@ public sealed partial class InstanceManager : IInstanceHost
         return new ControlServer(p, Dir(name), name, tunnels);
     }
 
+    // —— Mod 清单写回 ——
+
+    /// <summary>
+    /// 把 mod 记录写入 instance.json（同文件名视为同一 mod，替换旧记录）。
+    ///
+    /// 为什么必须在 Core：这套逻辑原先只存在于 CLI 的 <c>ModCommands</c>，
+    /// 而整改项 4 的一键导入（GUI）也要写 mods 清单。两处各写一份必然漂移——
+    /// 典型症状是 CLI 装的 mod 在 GUI 列表里少一条，或反之。故收敛到此，两个入口共用。
+    /// </summary>
+    /// <returns>实际写入的条目数（全部重名时为 0）。</returns>
+    public int AppendMods(string name, IReadOnlyList<Mods.ModEntry> entries)
+    {
+        if (entries.Count == 0) return 0;
+        var dir = Dir(name);
+        var meta = ReadMeta(dir);
+        var written = 0;
+        foreach (var entry in entries)
+        {
+            if (string.IsNullOrEmpty(entry.FileName)) continue;
+            // 同名文件 = 同一个 mod 的新版本，替换而非追加（对齐 Java 与 CLI 语义）
+            meta.Mods.RemoveAll(m => m.FileName == entry.FileName);
+            meta.Mods.Add(entry);
+            written++;
+        }
+        if (written == 0) return 0;   // 全是空文件名，不必写盘
+        SaveMeta(dir, meta);
+        return written;
+    }
+
+    /// <summary>按谓词移除 mod 记录（如按文件名或项目标识），返回移除条数。</summary>
+    public int RemoveMods(string name, Predicate<Mods.ModEntry> predicate)
+    {
+        var dir = Dir(name);
+        var meta = ReadMeta(dir);
+        var removed = meta.Mods.RemoveAll(predicate);
+        if (removed > 0) SaveMeta(dir, meta);
+        return removed;
+    }
+
     // —— IInstanceHost ——
 
     /// <summary>记录/刷新某通道的公网地址并广播（Pinggy 续期后会再次调用）。</summary>

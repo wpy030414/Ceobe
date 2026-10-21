@@ -40,7 +40,7 @@ public static class TunnelCommands
         var cmd = new Command("up", "开启通道（pinggy=玩家连接，cloudflare=Web 控制台）") { instance, kind };
         cmd.SetAction(pr =>
         {
-            var inst = pr.GetValue(instance);
+            var inst = pr.RequiredTrimmed(instance);
             var manager = CoreWiring.NewManager();
             var status = manager.Require(inst);
             if (!status.State.IsLive())
@@ -137,7 +137,7 @@ public static class TunnelCommands
         var cmd = new Command("down", "关闭通道") { instance, kind };
         cmd.SetAction(pr =>
         {
-            var inst = pr.GetValue(instance);
+            var inst = pr.RequiredTrimmed(instance);
             var k = pr.GetValue(kind);
             var manager = CoreWiring.NewManager();
             manager.Require(inst);
@@ -178,7 +178,7 @@ public static class TunnelCommands
         var cmd = new Command("status", "查看通道状态与地址") { instance };
         cmd.SetAction(pr =>
         {
-            var inst = pr.GetValue(instance);
+            var inst = pr.RequiredTrimmed(instance);
             var manager = CoreWiring.NewManager();
             var status = manager.Require(inst);
             var dir = manager.Dir(inst);
