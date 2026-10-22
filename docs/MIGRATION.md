@@ -132,6 +132,8 @@ Java 版靠 `-Dceobe.snapshot=<png> [-Dceobe.snapshot.tab=配置]` 启动即导�
 
 结论：像素级回归不追求覆盖率，验收重心放在 ViewModel 层；这一条与 ADR-019「后果」中记录的倒退风险一致。
 
+**2026-10-22 客户端编排（服务端/客户端共用外壳）**：侧栏改为一个 `NavigationView` 承载两种行，实测连续踩了三个 WinUI 原生坑（`MenuItemsSource` 代码赋值、绑定集合 `Clear()`、`DataTemplateSelector` 切换行类型，均无托管栈），最终形态是「一个内联 `MenuItemTemplate` + `INavRow` 契约 + `NavRowMirror` 逐项增删」。三条禁区的成因与复现结论已写进 `AGENTS.md`「已知易错点」，改侧栏前先读那一条。
+
 ### 阶段三：文档、CI 与归档
 
 - `AGENTS.md` / `README.md` / `docs/ARCHITECTURE.md` / `docs/specs/*` 全面改写到 C# 事实；ADR-001（Maven）、ADR-002（JavaFX）、ADR-016（跨平台打包）、ADR-017 的 jpackage 段、ADR-018 的 jpackage 成因，标记为「已被 ADR-019 取代/部分失效」。

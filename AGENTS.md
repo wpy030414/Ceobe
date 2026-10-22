@@ -61,6 +61,7 @@ dotnet wix build -arch x64 -d MsiVersion=26.10.22 -d PayloadDir=<上面的 app-f
 
 - `Ceobe.App` 发布必须同时开 `SelfContained` **和** `WindowsAppSDKSelfContained`：前者带 .NET 运行时，后者带 WinUI 原生部分（`Microsoft.ui.xaml.dll`、`Ceobe.pri`）。只开前者在开发机上能跑，在用户机上开窗即崩。
 - 非打包 WinUI 的 `FileOpenPicker` 需要 HWND，`UserControl` 拿不到 → 导入一律走**拖放 + 手填路径**。
+- **`NavigationView.MenuItemsSource` 有三条原生禁区**（2026-10-22 实测，崩溃均发生在原生回调里，事件日志只有 `0xc000027b`/`0xc0000005`，没有托管栈）：① 从代码赋值 `MenuItemsSource` → 崩；② 对绑定集合调 `Clear()`（发出 `Reset`）→ 容器整表重建时崩；③ 用 `MenuItemTemplateSelector` 时行类型在模式间切换 → 容器回收时 AV，选择器返回 `null` 还会抛 `Null encountered as data template`（`E_INVALIDARG`）。可行组合只有一种：**XAML 里一个内联 `MenuItemTemplate` + 行类型收敛到 `INavRow` + 集合逐项增删**（见 `Controls/NavRowMirror.cs`）。
 - `Window` 不是 `FrameworkElement`：转换器 / 主题 / 某些 x:Bind 需要把内容放进 `UserControl`，主题切换要设 `Window.Content` 的 `RequestedTheme`。
 - `System.CommandLine` 必须设 `EnableDefaultExceptionHandler = false`，否则退出码契约失效。
 - XAML 的 `x:Bind` 在 `DataTemplate` 里默认 `OneTime`：会变的属性必须显式 `Mode=OneWay`。
