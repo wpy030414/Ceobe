@@ -100,11 +100,11 @@ public sealed class ClientMeta
     /// <summary>上次退出方式：normal / crashed / unknown。</summary>
     public string? LastExit { get; set; }
 
-    /// <summary>侧栏第二行：版本 + 加载器，一眼认出是哪个实例。</summary>
+    /// <summary>导航副标题的固定前缀：版本类型 · 版本号（客户端无端口）。</summary>
     [JsonIgnore]
     public string DetailLine => Loader == ClientLoader.VANILLA
-        ? $"{GameVersion} · 原版"
-        : $"{GameVersion} · {Loader.ToString().ToLowerInvariant()} {LoaderVersion}";
+        ? $"原版 · {GameVersion}"
+        : $"{Loader.ToString().ToLowerInvariant()} · {GameVersion}";
 }
 
 /// <summary>

@@ -219,8 +219,12 @@ public partial class InstanceRow : ObservableObject, INavRow
     /// <summary>导航行契约 <see cref="INavRow"/> 的状态点投影（服务端四态本身）。</summary>
     public InstanceState DotState => State;
 
-    /// <summary>侧栏第二行：类型 + 版本 + 端口 · 状态文字。状态不能只靠颜色传达。</summary>
+    /// <summary>侧栏第二行：版本类型 · 版本号 · 端口 · 状态文字（状态不能只靠颜色传达）。</summary>
     public string DetailLine => string.IsNullOrEmpty(StateLabel) ? Detail : $"{Detail} · {StateLabel}";
+
+    /// <summary>导航副标题的固定前缀：版本类型 · 版本号 · 端口（服务端专属）。</summary>
+    private static string DetailOf(InstanceMeta meta) =>
+        $"{meta.ServerType.ToString().ToLowerInvariant()} · {meta.GameVersion} · {meta.Port}";
 
     partial void OnStateChanged(InstanceState value)
     {
@@ -239,7 +243,7 @@ public partial class InstanceRow : ObservableObject, INavRow
         State = s.State,
         StateLabel = s.State.ZhLabel(),
         // 侧栏第二行：类型 + 版本 + 端口，一眼能认出是哪个服
-        Detail = $"{s.Meta.ServerType} {s.Meta.GameVersion} · :{s.Meta.Port}",
+        Detail = DetailOf(s.Meta),
     };
 
     /// <summary>把扫描到的最新状态写回现有行（保留对象身份与选中态）。</summary>
@@ -248,7 +252,7 @@ public partial class InstanceRow : ObservableObject, INavRow
         DisplayName = s.Meta.Name;
         State = s.State;
         StateLabel = s.State.ZhLabel();
-        Detail = $"{s.Meta.ServerType} {s.Meta.GameVersion} · :{s.Meta.Port}";
+        Detail = DetailOf(s.Meta);
     }
 
     /// <summary>UIA 在没有显式 AutomationProperties.Name 时会退回 ToString，别让读屏器读出类型名。</summary>

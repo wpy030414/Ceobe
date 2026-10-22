@@ -96,8 +96,8 @@ public class InstanceListViewModelTest : IDisposable
             // Core 的 List() 已按名排序，ViewModel 不得再打乱
             Assert.Equal("alpha", vm.Rows[0].Name);
             Assert.Equal("zeta", vm.Rows[1].Name);
-            Assert.Equal("FABRIC 26.3 · :25565", vm.Rows[0].Detail);
-            Assert.Equal("PAPER 26.3 · :25567", vm.Rows[1].Detail);
+            Assert.Equal("fabric · 26.3 · 25565", vm.Rows[0].Detail);
+            Assert.Equal("paper · 26.3 · 25567", vm.Rows[1].Detail);
             Assert.Equal("已停止", vm.Rows[0].StateLabel);
         }
         finally
@@ -169,7 +169,7 @@ public class InstanceListViewModelTest : IDisposable
             RaiseStateChanged(manager, "live", InstanceState.RUNNING);
 
             Assert.Equal("1 / 1 个实例运行中", vm.StatusText);
-            Assert.Equal("PAPER 26.3 · :25565 · 运行中", vm.Rows[0].DetailLine);
+            Assert.Equal("paper · 26.3 · 25565 · 运行中", vm.Rows[0].DetailLine);
         }
         finally
         {
