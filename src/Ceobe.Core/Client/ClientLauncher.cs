@@ -44,7 +44,7 @@ public sealed record LaunchPlan(
 /// </summary>
 public static class ClientLauncher
 {
-    public const string LauncherName = "ceobe";
+    public const string LauncherName = "Ceobe";
 
     public static LaunchPlan Build(ClientMeta meta, ClientAccount account,
         string? serverAddress = null, ClientSettings? settings = null)
@@ -68,6 +68,8 @@ public static class ClientLauncher
 
         var natives = ClientStore.NativesDir(meta.Name);
         Directory.CreateDirectory(natives);
+        // 26.3 起 natives 在子目录（/java）；旧实例在这里自愈
+        ClientInstaller.EnsureNatives(meta, version);
 
         var classpath = version.Libraries
             .Where(l => !l.IsNative)
@@ -144,7 +146,7 @@ public static class ClientLauncher
             ["assets_index_name"] = version.AssetsIndex ?? "legacy",
             ["auth_uuid"] = account.EffectiveUuid,
             ["auth_access_token"] = string.IsNullOrWhiteSpace(account.AccessToken) ? "0" : account.AccessToken!,
-            ["clientid"] = "ceobe",
+            ["clientid"] = "Ceobe",
             ["auth_xuid"] = "",
             ["user_type"] = account.Kind == AccountKind.MICROSOFT ? "msa" : "legacy",
             ["version_type"] = version.Type,

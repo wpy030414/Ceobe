@@ -103,6 +103,14 @@ public static class ClientVersion
         state.Apply(root, isBase: true);
         return state.Libraries;
     }
+    /// <summary>单独解析 jvm 参数（安装时决定 natives 的子目录布局）。</summary>
+    public static IReadOnlyList<string> ParseJvmArgs(JsonElement root)
+    {
+        var state = new MergeState();
+        state.Apply(root, isBase: true);
+        return state.JvmArgs;
+    }
+
 
     /// <summary>加载器 profile 的版本 id，与安装时写盘用的 id 必须一致。</summary>
     public static string LoaderVersionId(ClientMeta meta) => meta.Loader switch
@@ -337,4 +345,55 @@ public static class ClientVersion
             : $"{artifact}-{version}-{cls}.{ext}";
         return $"{group}/{artifact}/{version}/{file}";
     }
+    /// <summary>路径分隔符（Windows 的 \ 与 URL 风格的 /）。</summary>
+    private static readonly char[] PathSeps = ['/', System.IO.Path.DirectorySeparatorChar];
+
+    /// <summary>
+    /// 新版版本 JSON（26.3 起）把系统 native 放进 <c>${natives_directory}/java</c>，
+    /// 并把 jna/lwjgl/netty 的临时目录也挂在其下。这里从 jvm 参数里收集这些子目录名；
+    /// 老版本直接指向 ${natives_directory} 本身，返回空列表（拍平到根即可）。
+    /// </summary>
+    public static IReadOnlyList<string> NativeSubdirs(IReadOnlyList<string> jvmArgs)
+    {
+        const string token = "${natives_directory}";
+        var result = new List<string>();
+        foreach (var arg in jvmArgs)
+        {
+            var start = 0;
+            while ((start = arg.IndexOf(token, start, StringComparison.Ordinal)) >= 0)
+            {
+                var rest = arg[(start + token.Length)..];
+                var end = rest.IndexOf(';');
+                var segment = (end >= 0 ? rest[..end] : rest).Trim(PathSeps);
+                if (segment.Length > 0
+                    && !segment.Contains("${", StringComparison.Ordinal)
+                    && !result.Contains(segment, StringComparer.OrdinalIgnoreCase))
+                {
+                    result.Add(segment.Replace('/', System.IO.Path.DirectorySeparatorChar));
+                }
+                if (end < 0) break;
+                start += token.Length + end + 1;
+            }
+        }
+        return result;
+    }
+
+    /// <summary>java.library.path 对应的子目录；null = 直接使用 natives 根目录（老版本）。</summary>
+    public static string? NativeLibrarySubdir(IReadOnlyList<string> jvmArgs)
+    {
+        const string prefix = "-Djava.library.path=";
+        const string token = "${natives_directory}";
+        foreach (var arg in jvmArgs)
+        {
+            if (!arg.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+            // 多路径（; 分隔）时只看第一段：ceobe 只放一个 natives 目录
+            var first = arg[prefix.Length..].Split(';')[0];
+            var idx = first.IndexOf(token, StringComparison.Ordinal);
+            if (idx < 0) continue;
+            var suffix = first[(idx + token.Length)..].Trim(PathSeps);
+            return suffix.Length == 0 ? null : suffix.Replace('/', System.IO.Path.DirectorySeparatorChar);
+        }
+        return null;
+    }
+
 }

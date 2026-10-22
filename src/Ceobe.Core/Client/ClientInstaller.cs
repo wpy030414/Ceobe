@@ -73,7 +73,7 @@ public static class ClientInstaller
         await EnsureLibrariesAsync(libraries, sink, ct).ConfigureAwait(false);
 
         // 4) natives（旧版本才把 natives 独立列出来；1.19+ 走 lwjgl 的 natives classifier）
-        ExtractNatives(meta, libraries, sink, ct);
+        ExtractNatives(meta, libraries, ClientVersion.ParseJvmArgs(root), sink, ct);
 
         // 5) assets
         await EnsureAssetsAsync(root, sink, ct).ConfigureAwait(false);
@@ -132,14 +132,48 @@ public static class ClientInstaller
         }).ConfigureAwait(false);
     }
 
-    /// <summary>natives 解压到实例目录。只取非 META-INF 的条目，并拍平到根——java.library.path 不认子目录。</summary>
+    /// <summary>
+    /// natives 解压。目标目录由版本 JSON 决定：老版本拍平到 natives 根目录，
+    /// 26.3 起是 <c>natives/java</c> 这类子目录（见 jvm 参数里的 java.library.path）。
+    /// </summary>
     private static void ExtractNatives(ClientMeta meta, IReadOnlyList<LibrarySpec> libraries,
+        IReadOnlyList<string> jvmArgs, IProgressSink sink, CancellationToken ct)
+    {
+        var root = ClientStore.NativesDir(meta.Name);
+        foreach (var sub in ClientVersion.NativeSubdirs(jvmArgs))
+        {
+            Directory.CreateDirectory(Path.Combine(root, sub));
+        }
+        var subdir = ClientVersion.NativeLibrarySubdir(jvmArgs);
+        var targetDir = subdir is null ? root : Path.Combine(root, subdir);
+        Directory.CreateDirectory(targetDir);
+        ExtractNativeJars(libraries, targetDir, sink, ct);
+    }
+
+    /// <summary>
+    /// 启动前自愈：按版本声明的布局确认 natives 就位，缺失时从库 jar 里补解压。
+    /// 这样修复前装好的实例（natives 被拍平）不必用户手动「修复游戏文件」。
+    /// </summary>
+    internal static void EnsureNatives(ClientMeta meta, ResolvedVersion version)
+    {
+        var root = ClientStore.NativesDir(meta.Name);
+        foreach (var sub in ClientVersion.NativeSubdirs(version.JvmArgs))
+        {
+            Directory.CreateDirectory(Path.Combine(root, sub));
+        }
+        var subdir = ClientVersion.NativeLibrarySubdir(version.JvmArgs);
+        var targetDir = subdir is null ? root : Path.Combine(root, subdir);
+        Directory.CreateDirectory(targetDir);
+        if (Directory.EnumerateFiles(targetDir, "*.dll").Any()) return;
+        ExtractNativeJars(version.Libraries, targetDir, NullProgress.Instance, CancellationToken.None);
+    }
+
+    private static void ExtractNativeJars(IEnumerable<LibrarySpec> libraries, string targetDir,
         IProgressSink sink, CancellationToken ct)
     {
         var natives = libraries.Where(l => l.IsNative).ToList();
         if (natives.Count == 0) return;
 
-        var targetDir = ClientStore.NativesDir(meta.Name);
         sink.Update("解压 natives", 0, natives.Count);
         var done = 0;
         foreach (var lib in natives)
