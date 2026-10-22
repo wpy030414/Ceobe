@@ -14,21 +14,6 @@
       · PageBackground 是 Mica 不可用时的纯色回退层，Mica 可用时在 code-behind 隐藏。
     -->
     <Grid x:Name="RootGrid" Background="Transparent">
-        <Grid.Resources>
-            <ResourceDictionary>
-                <!--
-                  侧栏行模板。放在 Grid.Resources 而不是 App.xaml：
-                  模板从 App.Resources 取会在 NavigationView 处理集合变更时原生崩溃
-                  （0xC0000005，实测内联模板正常、App.Resources 模板必崩）。
-                -->
-                <DataTemplate x:Key="ServerRowTemplate" x:DataType="vm:InstanceRow">
-                    <controls:InstanceListItem Row="{x:Bind}" HorizontalAlignment="Stretch" />
-                </DataTemplate>
-                <DataTemplate x:Key="ClientRowTemplate" x:DataType="vm:ClientRow">
-                    <controls:ClientListItem Row="{x:Bind}" HorizontalAlignment="Stretch" />
-                </DataTemplate>
-            </ResourceDictionary>
-        </Grid.Resources>
 
         <Grid x:Name="PageBackground"
               Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" />
@@ -98,10 +83,16 @@
                     </Grid>
                 </NavigationView.PaneHeader>
 
-                <NavigationView.MenuItemTemplateSelector>
-                    <controls:InstanceRowTemplateSelector />
-                </NavigationView.MenuItemTemplateSelector>
-
+                <NavigationView.MenuItemTemplate>
+                    <!--
+                      单一内联模板：NavigationView 只有这一种行模板，服务端行与客户端行
+                      通过 INavRow 契约共用。不要改成 DataTemplateSelector —— 集合里换类型时
+                      容器回收会命中 WinUI 原生层，直接 AV（0xC0000005，无托管栈）。
+                    -->
+                    <DataTemplate x:DataType="vm:INavRow">
+                        <controls:NavListItem Row="{x:Bind}" HorizontalAlignment="Stretch" />
+                    </DataTemplate>
+                </NavigationView.MenuItemTemplate>
                 <NavigationView.MenuItemContainerStyle>
                     <Style TargetType="NavigationViewItem">
                         <Setter Property="Margin" Value="8,3,8,3" />

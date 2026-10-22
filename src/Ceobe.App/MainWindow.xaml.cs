@@ -275,6 +275,7 @@ public sealed partial class MainWindow : Window
     /// 切换模式：只换左栏数据源、底部动作与右侧工作区，窗口与导航结构不动。
     /// 切换前先解绑离开的工作区（它持有事件订阅与轮询计时器）。
     /// </summary>
+
     private void SetMode(ShellMode mode)
     {
         if (!_shellInitialized) return;
@@ -286,7 +287,8 @@ public sealed partial class MainWindow : Window
         _clientWorkspace?.Detach();
         _clientWorkspace = null;
 
-        // 只换集合内容，不碰 Nav.MenuItemsSource（代码赋值那条路会崩）。
+        // 只换集合内容，不碰 Nav.MenuItemsSource（代码赋值那条路会崩），
+        // 也不要在集合上调用 Clear()（Reset 会走容器整表重建，实测同样崩）。
         _navMirror.Attach(
             client ? (System.Collections.Specialized.INotifyCollectionChanged)VmClientList.Rows : VmList.Rows,
             client ? VmClientList.Rows.Cast<object>() : VmList.Rows.Cast<object>());

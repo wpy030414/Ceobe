@@ -123,8 +123,8 @@ public partial class ClientListViewModel : ObservableObject
 }
 
 /// <summary>侧栏一行的可绑定投影。字段与 <see cref="InstanceRow"/> 保持同样的语义，
-/// 这样 <c>InstanceListItem</c> 那类模板的心智不用重学。</summary>
-public partial class ClientRow : ObservableObject
+/// 这样 <c>NavListItem</c> 的模板心智不用重学。</summary>
+public partial class ClientRow : ObservableObject, INavRow
 {
     public ClientRow(string name) => Name = name;
 

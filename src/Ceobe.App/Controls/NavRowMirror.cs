@@ -15,6 +15,11 @@ namespace Ceobe.App.Controls;
 /// 差量更新（Insert / Move / Remove），全量重填会让 NavigationView 整个重建
 /// 导航项，丢掉滚动位置与高亮。增量镜像让两侧共用同一个集合时，
 /// 行的增删改排序都能原样透传。
+///
+/// 另一条实测约束：**不要对这个集合调用 <c>Clear()</c>**。它发出
+/// <c>Reset</c>，NavigationView 会尝试重建全部容器；在集合里有项（尤其是
+/// 正在被 <c>SelectedItem</c> 指着）时切模式，实测直接 AV（0xC0000005）。
+/// 一律逐项 <c>RemoveAt</c> —— 与 VM 差量刷新同一条路径，已验证安全。
 /// </summary>
 public sealed class NavRowMirror
 {
@@ -41,15 +46,24 @@ public sealed class NavRowMirror
         _source = source;
         _source.CollectionChanged += OnSourceChanged;
 
-        _target.Clear();
+        ClearTarget();
         foreach (var row in rows) _target.Add(row);
     }
 
     /// <summary>与来源重新对齐（不换来源）。</summary>
     public void Resync(IEnumerable<object> rows)
     {
-        _target.Clear();
+        ClearTarget();
         foreach (var row in rows) _target.Add(row);
+    }
+
+    /// <summary>
+    /// 逐项移除而不是 <c>Clear()</c>：后者发出 <c>Reset</c>，NavigationView 会走
+    /// 整表重建路径，在切换模式时命中原生层的悬空容器（0xC0000005）。
+    /// </summary>
+    private void ClearTarget()
+    {
+        for (var i = _target.Count - 1; i >= 0; i--) _target.RemoveAt(i);
     }
 
     private void OnSourceChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -106,7 +120,7 @@ public sealed class NavRowMirror
                 // Reset 没有携带具体项，退回全量重填。
                 if (sender is System.Collections.IEnumerable enumerable)
                 {
-                    _target.Clear();
+                    ClearTarget();
                     foreach (var item in enumerable) _target.Add(item);
                 }
                 break;

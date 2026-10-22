@@ -190,7 +190,7 @@ public partial class InstanceListViewModel : ObservableObject
 /// 用 <see cref="ObservableObject"/> 而非 record：状态变化时要能就地更新而不重建整行
 /// （重建会让 ListView/NavigationView 丢失选中态与滚动位置）。
 /// </summary>
-public partial class InstanceRow : ObservableObject
+public partial class InstanceRow : ObservableObject, INavRow
 {
     /// <summary>
     /// 用构造器而非 <c>required</c>：WinUI 的 x:Bind 会为 <c>x:DataType</c> 生成类型元数据，
@@ -216,12 +216,16 @@ public partial class InstanceRow : ObservableObject
     /// <summary>运行中才显示 PID（对齐旧版 ps 的 isLive 判断）。</summary>
     public bool IsLive => State.IsLive();
 
+    /// <summary>导航行契约 <see cref="INavRow"/> 的状态点投影（服务端四态本身）。</summary>
+    public InstanceState DotState => State;
+
     /// <summary>侧栏第二行：类型 + 版本 + 端口 · 状态文字。状态不能只靠颜色传达。</summary>
     public string DetailLine => string.IsNullOrEmpty(StateLabel) ? Detail : $"{Detail} · {StateLabel}";
 
     partial void OnStateChanged(InstanceState value)
     {
         OnPropertyChanged(nameof(IsLive));
+        OnPropertyChanged(nameof(DotState));
         OnPropertyChanged(nameof(DetailLine));
     }
 

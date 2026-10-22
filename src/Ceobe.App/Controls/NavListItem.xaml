@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <UserControl
-    x:Class="Ceobe.App.Controls.ClientListItem"
+    x:Class="Ceobe.App.Controls.NavListItem"
     HorizontalAlignment="Stretch"
     HorizontalContentAlignment="Stretch"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -8,12 +8,15 @@
     xmlns:controls="using:Ceobe.App.Controls">
 
     <!--
-      客户端实例的导航行。与 InstanceListItem 同构（两行文字 + 右上角状态点），
-      差异只在第二行内容：客户端显示「1.20.1 · fabric 0.15.11 · 运行中」。
-      抽成独立控件而不是复用 InstanceListItem，是因为后者的 Row 类型是服务端的 InstanceRow，
-      两种行没有继承关系，硬合并只会让 x:Bind 的类型元数据打架。
+       NavigationView 侧栏的一行（服务端实例与客户端实例共用）。
+       抽成 UserControl 有两个原因：
+       1) Window 不是 FrameworkElement，带 Converter 的 x:Bind 不能直接放进 Window 的 DataTemplate；
+       2) 容器会被回收复用，Row 变化时通过 DP 回调强制刷新全部 x:Bind。
+
+       行类型用 INavRow 而不是具体行类：NavigationView 只能有一个内联模板，
+       而 DataTemplateSelector 会触发原生层 AV（见 INavRow 注释）。
     -->
-    <Grid Padding="10,10" MinHeight="58" RowSpacing="3"
+    <Grid x:Name="Root" Padding="10,10" MinHeight="58" RowSpacing="3"
           AutomationProperties.Name="{x:Bind Row.DisplayName, Mode=OneWay}"
           AutomationProperties.HelpText="{x:Bind Row.DetailLine, Mode=OneWay}">
         <Grid.RowDefinitions>
@@ -29,6 +32,11 @@
                    Style="{StaticResource CeobeCaptionSecondaryStyle}"
                    TextTrimming="CharacterEllipsis" Margin="0,0,24,0" />
 
+        <!--
+          指示灯贴右上角：距离右边距与上边距都等于容器的 10px 内边距。
+          容器（NavigationViewItem）的 Padding 已在 MainWindow 的容器样式里置 0，
+          所以这里的 10 就是相对整个 Item 的背景边距。
+        -->
         <controls:StatusDot Grid.RowSpan="2"
                             HorizontalAlignment="Right" VerticalAlignment="Top"
                             Margin="0,1,-20,0"
