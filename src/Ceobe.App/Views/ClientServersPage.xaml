@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Ceobe.App.Views.ClientServersPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:Ceobe.App.ViewModels">
+
+    <!--
+      服务器（设计稿 04）。这一页的独有价值是「Ceobe 服务端 ↔ 客户端」的接缝：
+      穿透地址自动出现、一键带 server 参数起游戏、版本不匹配时按钮降级而不是让用户去撞。
+    -->
+    <Grid Padding="24,8,24,24" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" Spacing="2">
+                <TextBlock Text="服务器" Style="{StaticResource CeobeSectionTitleStyle}" />
+                <TextBlock Text="{x:Bind Vm.StatusLine, Mode=OneWay}"
+                           Style="{StaticResource CeobeCaptionSecondaryStyle}" />
+            </StackPanel>
+            <Button Grid.Column="1" Content="刷新状态" Click="OnRefresh" />
+            <Button Grid.Column="2" Content="写入 servers.dat" Click="OnSync" />
+        </Grid>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{x:Bind Vm.Servers, Mode=OneWay}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ClientServerRow">
+                        <Border Style="{StaticResource CeobeCardStyle}" Margin="0,0,0,8">
+                            <StackPanel Spacing="8">
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                                CornerRadius="{ThemeResource ControlCornerRadius}" Padding="7,2"
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="{x:Bind Kind}"
+                                                       Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                                                       FontSize="10" />
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="{x:Bind StatusLabel}"
+                                               VerticalAlignment="Center"
+                                               Style="{StaticResource CeobeCaptionSecondaryStyle}" />
+                                </Grid>
+
+                                <TextBlock Text="{x:Bind Address}" FontFamily="{StaticResource CeobeMonoFont}"
+                                           Style="{StaticResource CeobeSecondaryTextStyle}"
+                                           TextTrimming="CharacterEllipsis" />
+
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{x:Bind MetaLine}"
+                                               Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    <Button Grid.Column="1" Content="{x:Bind JoinLabel}" Tag="{x:Bind}"
+                                            Click="OnJoin"
+                                            Style="{StaticResource AccentButtonStyle}"
+                                            IsEnabled="{x:Bind CanJoin}"
+                                            AutomationProperties.Name="{x:Bind JoinLabel}" />
+                                </Grid>
+
+                                <TextBlock Text="{x:Bind WarningLine}"
+                                           Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                           TextWrapping="Wrap"
+                                           Visibility="{x:Bind VersionMatches, Mode=OneWay, Converter={StaticResource InverseBoolToVis}}" />
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <TextBlock Grid.Row="2" Text="地址取自服务端实例的穿透通道（Pinggy / Cloudflare），没有穿透时用本机回环；加入时会直接带 --server 启动，跳过主菜单。"
+                   Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                   TextWrapping="Wrap" />
+    </Grid>
+</UserControl>

@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Ceobe.App.Views.ClientSettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:Ceobe.App.ViewModels">
+
+    <!--
+      设置（设计稿 08）。全局层与实例层分开放，卡片标题直接写明作用域——
+      「这个参数改完全都生效还是只对这个实例生效」是用户最容易搞错的一件事。
+    -->
+    <ScrollViewer Padding="24,8,24,24" VerticalScrollBarVisibility="Auto">
+        <Grid ColumnSpacing="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- ===== 左：账户 + Java（全局） ===== -->
+            <StackPanel Grid.Column="0" Spacing="12">
+
+                <Border Style="{StaticResource CeobeCardStyle}">
+                    <StackPanel Spacing="10">
+                        <Grid>
+                            <TextBlock Text="账户" Style="{StaticResource CeobeSectionTitleStyle}" />
+                            <TextBlock Text="全局 · 所有客户端实例共用" HorizontalAlignment="Right"
+                                       VerticalAlignment="Center"
+                                       Style="{StaticResource CeobeCaptionSecondaryStyle}" />
+                        </Grid>
+
+                        <ListView ItemsSource="{x:Bind Vm.Accounts, Mode=OneWay}"
+                                  SelectionMode="None"
+                                  ItemContainerStyle="{StaticResource CeobeTableRowStyle}"
+                                  MaxHeight="220">
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ClientAccountRow">
+                                    <Grid ColumnSpacing="8" Height="48">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="1">
+                                            <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" />
+                                            <TextBlock Text="{x:Bind Sub}"
+                                                       Style="{StaticResource CeobeCaptionSecondaryStyle}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"
+                                                    VerticalAlignment="Center">
+                                            <TextBlock Text="{x:Bind Badge}"
+                                                       Style="{StaticResource CeobeCaptionSecondaryStyle}" />
+                                            <Button Content="使用" Tag="{x:Bind}" Click="OnUseAccount"
+                                                    MinWidth="0" Padding="10,3" FontSize="11"
+                                                    AutomationProperties.Name="切换到此账户" />
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" PlaceholderText="离线账户名（服务端 online-mode=false 时可用）"
+                                     Text="{x:Bind Vm.NewAccountName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     AutomationProperties.Name="新离线账户名" />
+                            <Button Grid.Column="1" Content="添加离线账户" Click="OnAddAccount" />
+                        </Grid>
+
+                        <TextBlock Text="微软账户的设备码登录尚未接入：需要注册 Azure 客户端 ID，属于独立工作量。当前可用的是离线身份与第三方鉴权。"
+                                   Style="{StaticResource CeobeCaptionSecondaryStyle}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource CeobeCardStyle}">
+                    <StackPanel Spacing="10">
+                        <Grid>
+                            <TextBlock Text="Java 运行时" Style="{StaticResource CeobeSectionTitleStyle}" />
+                            <TextBlock Text="全局 · 按版本 JSON 自动匹配" HorizontalAlignment="Right"
+                                       VerticalAlignment="Center"
+                                       Style="{StaticResource CeobeCaptionSecondaryStyle}" />
+                        </Grid>
+
+                        <Grid Height="28" ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="90" />
+                                <ColumnDefinition Width="120" />
+                                <ColumnDefinition Width="70" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="运行时" Style="{StaticResource CeobeTableHeaderCellStyle}" />
+                            <TextBlock Grid.Column="1" Text="来源" Style="{StaticResource CeobeTableHeaderCellStyle}" />
+                            <TextBlock Grid.Column="2" Text="适用版本" Style="{StaticResource CeobeTableHeaderCellStyle}" />
+                            <TextBlock Grid.Column="3" Text="状态" Style="{StaticResource CeobeTableHeaderCellStyle}" />
+                        </Grid>
+
+                        <ListView ItemsSource="{x:Bind Vm.Javas, Mode=OneWay}"
+                                  SelectionMode="None" MaxHeight="240"
+                                  ItemContainerStyle="{StaticResource CeobeTableRowStyle}">
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ClientJavaRow">
+                                    <Grid ColumnSpacing="8" Height="40">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="90" />
+                                            <ColumnDefinition Width="120" />
+                                            <ColumnDefinition Width="70" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{x:Bind Title}" VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="1" Text="{x:Bind Source}" VerticalAlignment="Center"
+                                                   Style="{StaticResource CeobeCaptionSecondaryStyle}" />
+                                        <TextBlock Grid.Column="2" Text="{x:Bind Range}" VerticalAlignment="Center"
+                                                   Style="{StaticResource CeobeCaptionSecondaryStyle}" />
+                                        <TextBlock Grid.Column="3" Text="{x:Bind Status}" VerticalAlignment="Center"
+                                                   Style="{StaticResource CeobeCaptionSecondaryStyle}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+
+                        <TextBlock Text="「适用版本」是参考区间；权威来源永远是所选版本的版本 JSON（javaVersion.majorVersion）。"
+                                   Style="{StaticResource CeobeCaptionSecondaryStyle}" TextWrapping="Wrap" />
+                        <TextBlock Text="安装 JDK：在服务端页面用 `ceobe jdk install &lt;主版本&gt;`，客户端会复用同一批自管 JDK。"
+                                   Style="{StaticResource CeobeCaptionSecondaryStyle}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- ===== 右：实例参数 + 镜像（局部/全局） ===== -->
+            <StackPanel Grid.Column="1" Spacing="12">
+
+                <Border Style="{StaticResource CeobeCardStyle}">
+                    <StackPanel Spacing="10">
+                        <Grid>
+                            <TextBlock Text="本实例参数" Style="{StaticResource CeobeSectionTitleStyle}" />
+                            <TextBlock Text="只对该实例生效" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                       Style="{StaticResource CeobeCaptionSecondaryStyle}" />
+                        </Grid>
+
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Header="玩家名（本实例覆盖）"
+                                     Text="{x:Bind Vm.PlayerName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <NumberBox Grid.Column="1" Header="内存 MB" Minimum="512" Maximum="32768"
+                                       SmallChange="512" LargeChange="1024"
+                                       Value="{x:Bind Vm.MemoryValue, Mode=TwoWay}"
+                                       Width="150" AutomationProperties.Name="内存上限" />
+                        </Grid>
+
+                        <ComboBox Header="配对的服务端" HorizontalAlignment="Stretch"
+                                  ItemsSource="{x:Bind Vm.ServerChoices, Mode=OneWay}"
+                                  SelectedItem="{x:Bind Vm.SelectedServer, Mode=TwoWay}"
+                                  AutomationProperties.Name="配对的服务端" />
+
+                        <TextBox Header="附加 JVM 参数（实例）" AcceptsReturn="True" TextWrapping="Wrap"
+                                 Height="64"
+                                 Text="{x:Bind Vm.JvmArgs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBox Header="附加游戏参数（如 --width 1920 --height 1080）"
+                                 Text="{x:Bind Vm.GameArgs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBox Header="全局默认 JVM 参数"
+                                 Text="{x:Bind Vm.GlobalJvmArgs, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="保存" Click="OnSave" Style="{StaticResource AccentButtonStyle}" />
+                            <TextBlock Text="{x:Bind Vm.StatusMessage, Mode=OneWay}" VerticalAlignment="Center"
+                                       Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                                       TextTrimming="CharacterEllipsis" MaxWidth="320" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource CeobeCardStyle}">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="下载源与镜像" Style="{StaticResource CeobeSectionTitleStyle}" />
+                        <TextBlock Text="{x:Bind Vm.MirrorText, Mode=OneWay}"
+                                   Style="{StaticResource CeobeSecondaryTextStyle}" TextWrapping="Wrap" />
+                        <TextBlock Text="镜像由 HttpUtil → Mirrors 统一改写，失败自动回退官方源；设置 CEOBE_MIRROR=off 可全部关闭。"
+                                   Style="{StaticResource CeobeCaptionSecondaryStyle}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

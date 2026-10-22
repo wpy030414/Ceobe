@@ -14,6 +14,22 @@
       · PageBackground 是 Mica 不可用时的纯色回退层，Mica 可用时在 code-behind 隐藏。
     -->
     <Grid x:Name="RootGrid" Background="Transparent">
+        <Grid.Resources>
+            <ResourceDictionary>
+                <!--
+                  侧栏行模板。放在 Grid.Resources 而不是 App.xaml：
+                  模板从 App.Resources 取会在 NavigationView 处理集合变更时原生崩溃
+                  （0xC0000005，实测内联模板正常、App.Resources 模板必崩）。
+                -->
+                <DataTemplate x:Key="ServerRowTemplate" x:DataType="vm:InstanceRow">
+                    <controls:InstanceListItem Row="{x:Bind}" HorizontalAlignment="Stretch" />
+                </DataTemplate>
+                <DataTemplate x:Key="ClientRowTemplate" x:DataType="vm:ClientRow">
+                    <controls:ClientListItem Row="{x:Bind}" HorizontalAlignment="Stretch" />
+                </DataTemplate>
+            </ResourceDictionary>
+        </Grid.Resources>
+
         <Grid x:Name="PageBackground"
               Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" />
 
@@ -42,8 +58,7 @@
                             IsSettingsVisible="False"
                             IsBackButtonVisible="Collapsed"
                             Background="Transparent"
-                            MenuItemsSource="{x:Bind VmList.Rows, Mode=OneWay}"
-                            SelectedItem="{x:Bind VmList.SelectedRow, Mode=OneWay}"
+                            MenuItemsSource="{x:Bind NavRows, Mode=OneWay}"
                             SelectionChanged="OnNavSelectionChanged"
                             AutomationProperties.AutomationId="InstanceNav"
                             AutomationProperties.Name="实例导航">
@@ -56,12 +71,13 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- 顶部模式 tab bar：客户端暂未实现，先禁用 -->
+                        <!-- 顶部模式 tab bar：服务端与客户端共用同一套外壳，只换左栏语义与工作区 -->
                         <SelectorBar Grid.Column="0" x:Name="SidebarModeBar"
-                                     AutomationProperties.Name="工作模式">
+                                     SelectionChanged="OnModeChanged"
+                                     AutomationProperties.Name="工作模式"
+                                     AutomationProperties.AutomationId="SidebarModeBar">
                             <SelectorBarItem Text="服务端" Tag="server" />
-                            <SelectorBarItem Text="客户端" Tag="client" IsEnabled="False"
-                                             ToolTipService.ToolTip="即将推出" />
+                            <SelectorBarItem Text="客户端" Tag="client" />
                         </SelectorBar>
 
                         <ToggleButton Grid.Column="1"
@@ -82,6 +98,10 @@
                     </Grid>
                 </NavigationView.PaneHeader>
 
+                <NavigationView.MenuItemTemplateSelector>
+                    <controls:InstanceRowTemplateSelector />
+                </NavigationView.MenuItemTemplateSelector>
+
                 <NavigationView.MenuItemContainerStyle>
                     <Style TargetType="NavigationViewItem">
                         <Setter Property="Margin" Value="8,3,8,3" />
@@ -90,12 +110,6 @@
                         <Setter Property="CornerRadius" Value="{ThemeResource ControlCornerRadius}" />
                     </Style>
                 </NavigationView.MenuItemContainerStyle>
-
-                <NavigationView.MenuItemTemplate>
-                    <DataTemplate x:DataType="vm:InstanceRow">
-                        <controls:InstanceListItem Row="{x:Bind}" HorizontalAlignment="Stretch" />
-                    </DataTemplate>
-                </NavigationView.MenuItemTemplate>
 
                 <!--
                   PaneFooter 而不是 FooterMenuItems：
@@ -110,7 +124,7 @@
                                 AutomationProperties.AutomationId="NewInstanceButton">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <SymbolIcon Symbol="Add" />
-                                <TextBlock Text="新建实例" />
+                                <TextBlock x:Name="CreateButtonText" Text="新建实例" />
                             </StackPanel>
                         </Button>
                         <Button Click="OnSettingsClick"
@@ -140,7 +154,7 @@
                     <Border Grid.Row="1" Padding="24,8"
                             BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
                             BorderThickness="0,1,0,0">
-                        <TextBlock Text="{x:Bind VmList.StatusText, Mode=OneWay}"
+                        <TextBlock x:Name="StatusText"
                                    Style="{StaticResource CeobeCaptionSecondaryStyle}"
                                    AutomationProperties.LiveSetting="Polite" />
                     </Border>

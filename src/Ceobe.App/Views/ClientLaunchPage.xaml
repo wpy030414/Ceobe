@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Ceobe.App.Views.ClientLaunchPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:Ceobe.App.ViewModels">
+
+    <!--
+      启动页（设计稿 01）。一屏只允许一个 Accent 按钮：启动游戏。
+      其余动作（修复、删除、强制结束）都降级为文字链或溢出菜单里的二次确认。
+    -->
+    <Grid Padding="24,8,24,24" ColumnSpacing="16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="340" />
+        </Grid.ColumnDefinitions>
+
+        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="12">
+
+                <!-- 诊断横幅：启动前就知道会崩，比进游戏黑屏再翻日志有用 -->
+                <InfoBar IsOpen="{x:Bind Vm.IsBannerError, Mode=OneWay}"
+                         Severity="Error"
+                         Title="{x:Bind Vm.BannerTitle, Mode=OneWay}"
+                         Message="{x:Bind Vm.BannerDetail, Mode=OneWay}"
+                         IsClosable="False">
+                    <InfoBar.ActionButton>
+                        <Button Content="{x:Bind Vm.BannerAction, Mode=OneWay}" Click="OnRepair" />
+                    </InfoBar.ActionButton>
+                </InfoBar>
+
+                <InfoBar IsOpen="{x:Bind Vm.IsBannerWarning, Mode=OneWay}"
+                         Severity="Warning"
+                         Title="{x:Bind Vm.BannerTitle, Mode=OneWay}"
+                         Message="{x:Bind Vm.BannerDetail, Mode=OneWay}"
+                         IsClosable="False" />
+
+                <!-- ===== 版本装配 + 启动 ===== -->
+                <Border Style="{StaticResource CeobeCardStyle}">
+                    <StackPanel Spacing="16">
+
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Spacing="5">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="{x:Bind Vm.VersionTitle, Mode=OneWay}"
+                                               Style="{StaticResource CeobeSectionTitleStyle}"
+                                               FontSize="17" VerticalAlignment="Center" />
+                                    <Border Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                            CornerRadius="{ThemeResource ControlCornerRadius}"
+                                            Padding="8,3" VerticalAlignment="Center">
+                                        <TextBlock Text="{x:Bind Vm.LoaderChip, Mode=OneWay}"
+                                                   FontSize="11" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                                    </Border>
+                                </StackPanel>
+                                <TextBlock Text="{x:Bind Vm.SummaryLine, Mode=OneWay}"
+                                           Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Spacing="3" HorizontalAlignment="Right">
+                                <TextBlock Text="内存分配" Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                                           HorizontalAlignment="Right" />
+                                <TextBlock Text="{x:Bind Vm.MemoryLabel, Mode=OneWay}"
+                                           FontFamily="{StaticResource CeobeMonoFont}"
+                                           HorizontalAlignment="Right" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- 内存：滑块即时写回 client.json（这是实例级参数，改完通常马上启动验证） -->
+                        <StackPanel Spacing="4">
+                            <Slider Minimum="1024" Maximum="16384" StepFrequency="512"
+                                    Value="{x:Bind Vm.MemoryValue, Mode=TwoWay}"
+                                    ValueChanged="OnMemoryChanged"
+                                    AutomationProperties.Name="内存分配" />
+                            <TextBlock Text="整合包建议 4096 MB 以上；分配过多反而会拖慢系统。"
+                                       Style="{StaticResource CeobeCaptionSecondaryStyle}" />
+                        </StackPanel>
+
+                        <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                        <!-- 账户 + 唯一的启动按钮 -->
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind Vm.AccountName, Mode=OneWay}"
+                                           FontWeight="SemiBold" />
+                                <TextBlock Text="{x:Bind Vm.AccountSub, Mode=OneWay}"
+                                           Style="{StaticResource CeobeCaptionSecondaryStyle}" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Spacing="6" HorizontalAlignment="Right">
+                                <Button Content="{x:Bind Vm.PrimaryActionLabel, Mode=OneWay}"
+                                        Click="OnLaunch"
+                                        Style="{StaticResource AccentButtonStyle}"
+                                        MinWidth="150" Height="44"
+                                        IsEnabled="{x:Bind Vm.CanLaunch, Mode=OneWay}"
+                                        AutomationProperties.Name="{x:Bind Vm.PrimaryActionLabel, Mode=OneWay}" />
+                                <TextBlock Text="{x:Bind Vm.LaunchHint, Mode=OneWay}"
+                                           Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                                           HorizontalAlignment="Right"
+                                           TextTrimming="CharacterEllipsis" MaxWidth="280" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- 装配/修复进度：必须带阶段文字，转圈不提供信息 -->
+                        <StackPanel Spacing="6"
+                                    Visibility="{x:Bind Vm.HasProgress, Mode=OneWay, Converter={StaticResource BoolToVis}}">
+                            <ProgressBar Value="{x:Bind Vm.ProgressValue, Mode=OneWay}"
+                                         Maximum="100" Height="4" />
+                            <TextBlock Text="{x:Bind Vm.ProgressText, Mode=OneWay}"
+                                       Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                                       TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ===== 最近存档 / 运行环境 ===== -->
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Style="{StaticResource CeobeCardStyle}">
+                        <StackPanel Spacing="10">
+                            <Grid>
+                                <TextBlock Text="最近存档" Style="{StaticResource CeobeSectionTitleStyle}" />
+                                <TextBlock Text="按最后游玩时间" HorizontalAlignment="Right"
+                                           Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                            <ItemsControl ItemsSource="{x:Bind Vm.RecentSaves, Mode=OneWay}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ClientSaveRow">
+                                        <Grid Height="40" ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="1">
+                                                <TextBlock Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{x:Bind GameMode}"
+                                                           Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="1" Text="{x:Bind Date}"
+                                                       Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                                                       VerticalAlignment="Center" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="没有存档记录"
+                                       Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                                       Visibility="{x:Bind Vm.NoSaves, Mode=OneWay, Converter={StaticResource BoolToVis}}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="1" Style="{StaticResource CeobeCardStyle}">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="运行环境" Style="{StaticResource CeobeSectionTitleStyle}" />
+                            <Grid Height="40" ColumnSpacing="8">
+                                <TextBlock Text="Java 运行时" Style="{StaticResource CeobeBodyStyle}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Text="{x:Bind Vm.JavaLine, Mode=OneWay}"
+                                           HorizontalAlignment="Right" VerticalAlignment="Center"
+                                           FontFamily="{StaticResource CeobeMonoFont}" />
+                            </Grid>
+                            <Grid Height="40">
+                                <TextBlock Text="状态" Style="{StaticResource CeobeBodyStyle}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Text="{x:Bind Vm.StatusLine, Mode=OneWay}"
+                                           HorizontalAlignment="Right" VerticalAlignment="Center"
+                                           Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                                           TextTrimming="CharacterEllipsis" MaxWidth="180" />
+                            </Grid>
+                            <Button Content="修复游戏文件" Click="OnRepair"
+                                    HorizontalAlignment="Left"
+                                    IsEnabled="{x:Bind Vm.CanLaunch, Mode=OneWay}" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ===== 右栏：服务器 + 上次会话 ===== -->
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="12">
+                <Border Style="{StaticResource CeobeCardStyle}">
+                    <StackPanel Spacing="8">
+                        <Grid>
+                            <TextBlock Text="我的服务器" Style="{StaticResource CeobeSectionTitleStyle}" />
+                            <TextBlock Text="来自 Ceobe 服务端"
+                                       HorizontalAlignment="Right" VerticalAlignment="Center"
+                                       Style="{StaticResource CeobeCaptionSecondaryStyle}" />
+                        </Grid>
+                        <ItemsControl ItemsSource="{x:Bind Vm.Servers, Mode=OneWay}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ClientServerShortcut">
+                                    <Border Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                            CornerRadius="{ThemeResource ControlCornerRadius}"
+                                            Padding="10" Margin="0,0,0,6">
+                                        <Grid ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Spacing="2">
+                                                <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{x:Bind Address}"
+                                                           FontFamily="{StaticResource CeobeMonoFont}"
+                                                           Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="1" Text="{x:Bind Tag}"
+                                                       Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                                                       VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="地址取自服务端实例的穿透通道，启动时会写入 servers.dat。"
+                                   Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource CeobeCardStyle}">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="上次会话" Style="{StaticResource CeobeSectionTitleStyle}" />
+                        <TextBlock Text="{x:Bind Vm.LastSessionLabel, Mode=OneWay}"
+                                   Style="{StaticResource CeobeSecondaryTextStyle}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="{x:Bind Vm.LastExitLabel, Mode=OneWay}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Ceobe.App.Views.ClientPacksPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:Ceobe.App.ViewModels">
+
+    <!--
+      资源包与光影（设计稿 07）。三条规则体现在结构里：
+      · 拖放区在列表上方（导入是第一动作）；
+      · 状态胶囊本身就是开关（没有 checkbox + 保存按钮）；
+      · 只有已启用项才有上/下移动（顺序即优先级，停用的项没有优先级可言）。
+    -->
+    <Grid Padding="24,8,24,24" ColumnSpacing="16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="420" />
+        </Grid.ColumnDefinitions>
+
+        <!-- ===== 资源包 / 数据包 ===== -->
+        <Border Grid.Column="0" Style="{StaticResource CeobeCardStyle}">
+            <Grid RowSpacing="12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="资源包与数据包"
+                               Style="{StaticResource CeobeSectionTitleStyle}" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Content="从文件导入" Click="OnImportPack"
+                            Style="{StaticResource AccentButtonStyle}" />
+                    <Button Grid.Column="2" Content="打开文件夹" Click="OnOpenPacksFolder" />
+                </Grid>
+
+                <!-- 虚线拖放区：非打包 WinUI 拿不到 FileOpenPicker，拖放是主路径 -->
+                <Border Grid.Row="1" Height="64"
+                        Background="{ThemeResource LayerFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="{ThemeResource OverlayCornerRadius}"
+                        AllowDrop="True" DragOver="OnPackDragOver" Drop="OnPackDrop">
+                    <StackPanel Orientation="Horizontal" Spacing="8"
+                                HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE896;" FontSize="16"
+                                  Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Text="把 .zip 拖到这里导入 · 自动识别资源包 / 数据包"
+                                   Style="{StaticResource CeobeCaptionSecondaryStyle}" />
+                    </StackPanel>
+                </Border>
+
+                <ListView Grid.Row="2" ItemsSource="{x:Bind Vm.Packs, Mode=OneWay}"
+                          SelectedItem="{x:Bind Vm.SelectedPack, Mode=TwoWay}"
+                          SelectionMode="Single"
+                          ItemContainerStyle="{StaticResource CeobeTableRowStyle}"
+                          AutomationProperties.Name="资源包列表">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ClientPackRow">
+                            <Grid ColumnSpacing="10" Height="44">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <FontIcon Grid.Column="0" Glyph="&#xE700;" FontSize="13"
+                                          Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                          VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                                    <TextBlock Text="{x:Bind DisplayName}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{x:Bind FileName}"
+                                               Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                                               TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2"
+                                            VerticalAlignment="Center">
+                                    <Button Content="&#xE70E;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                            Tag="{x:Bind}" Click="OnMoveUp" Padding="6,2" MinWidth="0"
+                                            ToolTipService.ToolTip="提高优先级"
+                                            AutomationProperties.Name="提高优先级" />
+                                    <Button Content="&#xE70D;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                            Tag="{x:Bind}" Click="OnMoveDown" Padding="6,2" MinWidth="0"
+                                            ToolTipService.ToolTip="降低优先级"
+                                            AutomationProperties.Name="降低优先级" />
+                                </StackPanel>
+
+                                <Button Grid.Column="3" Content="{x:Bind StateLabel}" Tag="{x:Bind}"
+                                        Click="OnTogglePack" MinWidth="0" Padding="10,3" FontSize="11"
+                                        AutomationProperties.Name="{x:Bind StateLabel}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+
+                <StackPanel Grid.Row="3" Spacing="4">
+                    <TextBlock Text="{x:Bind Vm.PackNote, Mode=OneWay}"
+                               Style="{StaticResource CeobeCaptionSecondaryStyle}" TextWrapping="Wrap" />
+                    <TextBlock Text="{x:Bind Vm.Error, Mode=OneWay}"
+                               Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ===== 光影 ===== -->
+        <Border Grid.Column="1" Style="{StaticResource CeobeCardStyle}">
+            <Grid RowSpacing="12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="光影包"
+                               Style="{StaticResource CeobeSectionTitleStyle}" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Content="导入" Click="OnImportShader" />
+                </Grid>
+
+                <Border Grid.Row="1" Height="52"
+                        Background="{ThemeResource LayerFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="{ThemeResource OverlayCornerRadius}"
+                        AllowDrop="True" DragOver="OnShaderDragOver" Drop="OnShaderDrop">
+                    <TextBlock Text="把光影 .zip 拖到这里"
+                               Style="{StaticResource CeobeCaptionSecondaryStyle}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+
+                <ListView Grid.Row="2" ItemsSource="{x:Bind Vm.Shaders, Mode=OneWay}"
+                          SelectionMode="None"
+                          ItemContainerStyle="{StaticResource CeobeTableRowStyle}"
+                          AutomationProperties.Name="光影包列表">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ClientShaderRow">
+                            <Grid ColumnSpacing="10" Height="44">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="1">
+                                    <TextBlock Text="{x:Bind DisplayName}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{x:Bind SizeLabel}"
+                                               Style="{StaticResource CeobeCaptionSecondaryStyle}" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="{x:Bind StateLabel}" Tag="{x:Bind}"
+                                        Click="OnToggleShader" MinWidth="0" Padding="10,3" FontSize="11"
+                                        AutomationProperties.Name="{x:Bind StateLabel}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+
+                <TextBlock Grid.Row="3" Text="{x:Bind Vm.ShaderNote, Mode=OneWay}"
+                           Style="{StaticResource CeobeCaptionSecondaryStyle}" TextWrapping="Wrap" />
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
