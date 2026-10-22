@@ -40,7 +40,7 @@
    整份白名单被当成空——界面显示「已写入」，玩家一个都进不来。已改为裸数组，
    键名修正为 `bypassesPlayerLimit`（复数 s），由原版服务端亲自写出的文件确认。
 4. **解构建静默跳过 GUI**：`Ceobe.App` 只声明 x64 而解默认 Any CPU，
-   `dotnet build ceobe.slnx` 成功但 GUI 产物没更新——排查时会一直跑旧二进制。
+   `dotnet build Ceobe.slnx` 成功但 GUI 产物没更新——排查时会一直跑旧二进制。
 5. **启动路径两处硬伤**：冷缓存把 Java 兜底版本（21）当硬性要求，误杀可用的 JDK 25；
    监督进程在 `Start` 之前开控制通道，`ceobe start -d` 一启动就死。
 
@@ -64,7 +64,7 @@ ceobe.sln
 └─ tests/Ceobe.Core.Tests/  net10.0            xUnit
 ```
 
-命名空间根 `Ceobe`，替代 `im.xrl.ceobe`；产物名 `ceobe.exe` / `ceobe-cli.exe` 保持小写用户可见。
+命名空间根 `Ceobe`，替代 `im.xrl.ceobe`；产物名统一为 `Ceobe.exe`（GUI 与 CLI 同名，分处 `dist/app` 与 `dist/cli`）。
 
 ## 依赖对位
 
@@ -183,6 +183,18 @@ Java 版靠 `-Dceobe.snapshot=<png> [-Dceobe.snapshot.tab=配置]` 启动即导�
 - 三级结构：**常用**（≤12 项，够开服即用）/ **分类**（左侧导航 + 搜索，按 key 名与中文标签模糊匹配）/ **原始**（全量 key-value 表给高级用户）。
 - 复合控件：4 个 `resource-pack*` 键合并为「资源包」面板（URL + 提示 + 强制开关 + sha1 自动计算）；`initial-enabled-packs`/`initial-disabled-packs` 逗号字符串改为数据包多选列表。
 - `PropKey` 新增元数据 `requiresRestart`：区分「改完需重启」（`server-port`/`motd`/`white-list`）与「可热生效/`reload`」（`max-players`/`pvp`/`difficulty`），界面与日志共用这一标记，避免用户改了没反应。
+
+## 训练员反馈整改项（2026-10-22）
+
+| # | 问题 | 处理 |
+|---|------|------|
+| 1 | 侧栏「新建实例」与主内容「启动」文案随 tab 变化 | 文案固定，功能仍按模式分派 |
+| 2 | 关掉 GUI 后已开的服务端/客户端无法再控制 | 服务端改为 GUI 派生独立监督进程（`Ceobe.exe --supervise`，ADR-007 落地）；客户端落 `client.pid`，GUI 启动时按 pid + 启动时间认领，可停止 |
+| 3 | 资源下载太慢 | `HttpUtil` 新增 Range 分片下载（≥8MiB 走 4 连接，合并后统一校验），配合既有文件级并发 |
+| 4 | 侧栏副标题格式不统一 | 统一为「版本类型 · 版本号 · 端口（仅服务端）· 状态」 |
+| 5 | 各 tab 顶部不对齐 | 12 个页面统一加同一款页头（`CeobeSectionTitleStyle`，24,8 边距），内容统一下移一行 |
+| 6 | 客户端无法启动 | 26.3 起版本 JSON 把 natives 放在 `/java`；安装与启动都按该布局解压，旧实例启动时自愈 |
+| 7 | 项目名大小写 | `Product`=Ceobe、CLI 产物 `Ceobe.exe`、MSI `Ceobe.msi`、`Ceobe.wxs`/`Ceobe.slnx`/`Ceobe.ico` 与仓库链接统一 |
 
 ## 待决事项（需训练员拍板）
 
