@@ -68,7 +68,7 @@
 
 - [ ] ViewModel 层单测覆盖全部分支（当前 **224** 个用例全绿）。
 - [ ] 全量测试（Core + ViewModel）**485** 个用例全绿。
-- [ ] 构建 + 测试 + 发布全绿（CI `windows-latest`），发布产物包含 `Microsoft.ui.xaml.dll`、`Ceobe.pri`、`CommunityToolkit.WinUI.Controls.SettingsControls.dll` 与 `Assets/ceobe.ico`（本 SDK 版本页面 XAML 已合并进 `Ceobe.pri`，发布目录无独立 `.xbf`）。
+- [ ] 构建 + 测试 + 发布全绿（CI `windows-latest`），发布产物包含 `Microsoft.ui.xaml.dll`、`Ceobe.pri`、`CommunityToolkit.WinUI.Controls.SettingsControls.dll` 与 `Assets/Ceobe.ico`（本 SDK 版本页面 XAML 已合并进 `Ceobe.pri`，发布目录无独立 `.xbf`）。
 - [ ] 本地交互式 UIA smoke（`tools/ui-smoke/Invoke-UiSmoke.ps1`）通过：七个分区齐全、日志区高度 > 100、可见按钮均有 UIA Name、设置/新建对话框可开关、浅色/深色中心亮度符合预期。
 - [ ] 深色主题下正文可读（不得出现白字白底）；`ContentDialog` 与应用同主题。
 

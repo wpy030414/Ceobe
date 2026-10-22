@@ -42,7 +42,7 @@ public sealed class CloudflareQuickTunnel : ITunnelProvider
 
         session.Verified = null; // HTTP 通道不做 MC 探测：未验证 ≠ 失败
         session.Diagnostic = null;
-        logSink("[ceobe] Cloudflare 隧道就绪: " + session.PublicUrl);
+        logSink("[Ceobe] Cloudflare 隧道就绪: " + session.PublicUrl);
         return session;
     }
 

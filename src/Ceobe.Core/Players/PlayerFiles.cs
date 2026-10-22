@@ -165,7 +165,7 @@ public static class PlayerFiles
                 ["uuid"] = e.Uuid,
                 ["name"] = e.Name,
                 ["created"] = created,
-                ["source"] = string.IsNullOrEmpty(e.Source) ? "ceobe" : e.Source,
+                ["source"] = string.IsNullOrEmpty(e.Source) ? "Ceobe" : e.Source,
                 ["expires"] = expires,
             });
         }
@@ -183,7 +183,7 @@ public static class PlayerFiles
             {
                 ["ip"] = e.Ip,
                 ["created"] = created,
-                ["source"] = string.IsNullOrEmpty(e.Source) ? "ceobe" : e.Source,
+                ["source"] = string.IsNullOrEmpty(e.Source) ? "Ceobe" : e.Source,
                 ["expires"] = expires,
             });
         }

@@ -20,7 +20,7 @@ public static class ConfigCommands
         };
         cmd.SetAction(_ =>
         {
-            Output.Info("用法: ceobe config <get|set|ls> <实例> …");
+            Output.Info("用法: Ceobe config <get|set|ls> <实例> …");
             return 0;
         });
         return cmd;

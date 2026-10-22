@@ -14,7 +14,7 @@ public interface IInstanceEvent
     string Instance { get; }
 }
 
-/// <summary>服务端日志行（含 ceobe 自身注入的 <c>[ceobe]</c> / <c>$</c> 前缀行）。</summary>
+/// <summary>服务端日志行（含 ceobe 自身注入的 <c>[Ceobe]</c> / <c>$</c> 前缀行）。</summary>
 public sealed record InstanceLog(string Instance, string Line) : IInstanceEvent;
 
 /// <summary>状态机推进；进程退出时携带退出码。</summary>

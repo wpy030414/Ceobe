@@ -11,7 +11,7 @@ namespace Ceobe.Core.Util;
 /// </summary>
 public static class HttpUtil
 {
-    public const string UserAgent = "ceobe/26.10 (https://github.com/wpy030414/ceobe)";
+    public const string UserAgent = "Ceobe/26.10 (https://github.com/wpy030414/Ceobe)";
 
     /// <summary>单次下载的空闲超时：超过此时长无新字节即中断（用于镜像挂起时回退）。</summary>
     private static readonly TimeSpan IdleTimeout = TimeSpan.FromSeconds(20);

@@ -78,7 +78,7 @@ public static class MiscCommands
             var rows = new List<string[]>();
             var ok = true;
 
-            // —— JDK：C# 版 ceobe 本体不是 JVM（ADR-019），「当前运行期 Java」一档不存在；
+            // —— JDK：C# 版 Ceobe 本体不是 JVM（ADR-019），「当前运行期 Java」一档不存在；
             //    真正要检的是「能不能给 MC 服务端找到带启动器的 JDK」。宿主 JAVA_HOME 与自管 JDK 分两行。
             var hostEnv = JavaEnv.HostJavaHomeEnv();
             string hostDetail;
@@ -87,13 +87,13 @@ public static class MiscCommands
             if (hostEnv is null)
             {
                 hostDetail = "未设置 JAVA_HOME";
-                hostStatus = "未找到：`ceobe jdk install 21` 安装自管 JDK，或设置 JAVA_HOME 指向完整 JDK";
+                hostStatus = "未找到：`Ceobe jdk install 21` 安装自管 JDK，或设置 JAVA_HOME 指向完整 JDK";
             }
             else if (!JavaEnv.HasLauncher(hostEnv))
             {
                 // ADR-018 的坑：JAVA_HOME 指到「像 JDK 却没有 bin/java.exe」的残破目录
                 hostDetail = $"{hostEnv}（缺 bin/{JavaEnv.JavaExe}，残破目录不可用）";
-                hostStatus = $"不可用：请换完整 JDK，或 `ceobe jdk install 21`";
+                hostStatus = $"不可用：请换完整 JDK，或 `Ceobe jdk install 21`";
             }
             else
             {
@@ -111,7 +111,7 @@ public static class MiscCommands
             if (managed.Count == 0 && broken.Count == 0)
             {
                 managedDetail = "无";
-                managedStatus = "未找到：`ceobe jdk install <主版本>`（如 21）一键安装";
+                managedStatus = "未找到：`Ceobe jdk install <主版本>`（如 21）一键安装";
             }
             else
             {
@@ -123,7 +123,7 @@ public static class MiscCommands
                     ? (broken.Count > 0
                         ? $"OK；残破目录建议删除后重装：{string.Join("、", broken)}"
                         : "OK")
-                    : $"不可用：全部目录缺启动器（ADR-018），删除后 `ceobe jdk install 21` 重装";
+                    : $"不可用：全部目录缺启动器（ADR-018），删除后 `Ceobe jdk install 21` 重装";
             }
             rows.Add(["自管 JDK（~/.ceobe/jdk）", managedDetail, managedStatus]);
             var jdkUsable = hostUsable || managed.Count > 0;
@@ -147,7 +147,7 @@ public static class MiscCommands
 
             var home = CeobeHome.Root();
             var writable = IsHomeWritable(home);
-            rows.Add(["ceobe 主目录", home, writable ? "OK" : "不可写：检查目录权限，或用 settings.json 的 homePath 改址"]);
+            rows.Add(["Ceobe 主目录", home, writable ? "OK" : "不可写：检查目录权限，或用 settings.json 的 homePath 改址"]);
             ok &= writable;
 
             // 整改项 3 的 Windows 专属雷：数据目录落在 OneDrive 下会被高频写爆云盘

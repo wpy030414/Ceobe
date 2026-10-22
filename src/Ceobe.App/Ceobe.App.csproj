@@ -7,7 +7,7 @@
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>Ceobe.App</RootNamespace>
     <AssemblyName>Ceobe</AssemblyName>
-    <ApplicationIcon>Assets\ceobe.ico</ApplicationIcon>
+    <ApplicationIcon>Assets\Ceobe.ico</ApplicationIcon>
     <Platforms>x64</Platforms>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
     <UseWinUI>true</UseWinUI>
@@ -33,7 +33,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="Assets\ceobe.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Ceobe.ico" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

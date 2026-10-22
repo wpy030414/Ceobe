@@ -4,7 +4,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <RootNamespace>Ceobe.Cli</RootNamespace>
-    <AssemblyName>ceobe</AssemblyName>
+    <AssemblyName>Ceobe</AssemblyName>
     <InvariantGlobalization>false</InvariantGlobalization>
     <!-- 自包含单文件分发（Windows 专属，ADR-019 已放弃跨平台） -->
     <SelfContained>true</SelfContained>

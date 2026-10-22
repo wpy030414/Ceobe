@@ -24,7 +24,7 @@ public sealed class LanDirect : ITunnelProvider
         var addrs = LocalAddresses();
         if (addrs.Count == 0) throw new InvalidOperationException(UnavailableReason);
         var primary = addrs[0] + ":" + localPort;
-        logSink("[ceobe] 局域网地址: " + string.Join("、", addrs));
+        logSink("[Ceobe] 局域网地址: " + string.Join("、", addrs));
         var session = new TunnelSession(Kind, instance, localPort, primary, null);
 
         // 自ping：打自己第一个 LAN 地址。能收到 status JSON 说明服务端确实在监听（且 server-ip 兼容该地址）。
@@ -34,7 +34,7 @@ public sealed class LanDirect : ITunnelProvider
         session.Diagnostic = probe.Verified
             ? "已验证：本机 MC 在该地址应答 status"
             : $"无法验证（服务端可能未就绪、绑定了其它地址或禁用了 status）：{probe.Reason}";
-        logSink("[ceobe] 局域网自检：" + session.Diagnostic);
+        logSink("[Ceobe] 局域网自检：" + session.Diagnostic);
         return session;
     }
 

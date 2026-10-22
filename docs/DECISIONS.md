@@ -2,7 +2,7 @@
 
 ## ADR-001：构建系统用 Maven（弃 Gradle）
 
-> **状态：已被 ADR-019 取代（2026-10-21）。** 现役构建为 .NET SDK / MSBuild（`ceobe.slnx`）；Maven 仅存在于归档的 Java 版中，不参与构建。保留本条作决策考古。
+> **状态：已被 ADR-019 取代（2026-10-21）。** 现役构建为 .NET SDK / MSBuild（`Ceobe.slnx`）；Maven 仅存在于归档的 Java 版中，不参与构建。保留本条作决策考古。
 - 日期：2026-10-15
 - 状态：已采纳
 - 背景：仓库原有项目为 Maven；本机未预装任何构建工具。
@@ -88,7 +88,7 @@
 
 ## ADR-008：包名与 Maven 坐标 = `im.xrl.ceobe.*` / `im.xrl:ceobe-*`
 
-> **状态：已被 ADR-019 取代（2026-10-21）。** C# 侧命名空间根为 `Ceobe`，工程名 `Ceobe.Core` / `Ceobe.Cli` / `Ceobe.App` / `Ceobe.App.ViewModels`，用户可见产物名仍为小写 `ceobe.exe`。
+> **状态：已被 ADR-019 取代（2026-10-21）。** C# 侧命名空间根为 `Ceobe`，工程名 `Ceobe.Core` / `Ceobe.Cli` / `Ceobe.App` / `Ceobe.App.ViewModels`，用户可见产物名统一为 `Ceobe.exe`（2026-10-22 训练员要求，覆盖本条的历史结论）。
 - 日期：2026-10-15
 - 状态：已采纳
 - 背景：初始骨架使用 `im.xrl.ceobe` 作为临时命名空间；项目所有者要求改为自有域名反写。

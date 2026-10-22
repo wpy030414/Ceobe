@@ -8,7 +8,7 @@ using Ceobe.Cli.Commands;
 namespace Ceobe.Cli;
 
 /// <summary>
-/// ceobe CLI 根命令（docker 风格子命令）。等价 Java 版 <c>ceobe-cli/CeobeCli</c>。
+/// Ceobe CLI 根命令（docker 风格子命令）。等价 Java 版 <c>ceobe-cli/CeobeCli</c>。
 ///
 /// 退出码约定（对齐 Java 版 executionExceptionHandler，并区分用法错误）：
 /// <list type="number">
@@ -89,7 +89,7 @@ public static class Program
 
     private static RootCommand BuildRoot()
     {
-        var root = new RootCommand("ceobe — Minecraft 服务器编排系统（无头模式）")
+        var root = new RootCommand("Ceobe — Minecraft 服务器编排系统（无头模式）")
         {
             FormatOption,
         };

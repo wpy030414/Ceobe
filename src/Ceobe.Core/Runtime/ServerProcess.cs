@@ -67,11 +67,11 @@ public sealed partial class ServerProcess
         string? authlib = null;
         if (!string.IsNullOrWhiteSpace(_meta.AuthlibInjectorUrl))
         {
-            AppendLog("[ceobe] 准备 authlib-injector（三方授权）…");
+            AppendLog("[Ceobe] 准备 authlib-injector（三方授权）…");
             // 对齐 Java 版：此处在启动路径上同步等待下载完成
             authlib = AuthlibInjector.EnsureAsync(NullProgress.Instance)
                 .GetAwaiter().GetResult();
-            AppendLog($"[ceobe] 已启用 authlib-injector: {_meta.AuthlibInjectorUrl}");
+            AppendLog($"[Ceobe] 已启用 authlib-injector: {_meta.AuthlibInjectorUrl}");
         }
 
         var cmd = BuildCommand(authlib);
@@ -252,7 +252,7 @@ public sealed partial class ServerProcess
         {
             if (!p.WaitForExit((int)grace.TotalMilliseconds))
             {
-                AppendLog("[ceobe] 优雅停止超时，强制结束进程");
+                AppendLog("[Ceobe] 优雅停止超时，强制结束进程");
                 try { p.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
                 try { p.WaitForExit(10_000); } catch (Exception) { }
             }

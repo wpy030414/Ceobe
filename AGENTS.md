@@ -18,8 +18,8 @@ ceobe 是本机 Minecraft 服务器多实例管理器：下载服务端 jar（va
 
 ```powershell
 # 若 dotnet 未在 PATH（本机装在 %LOCALAPPDATA%\Microsoft\dotnet）
-& "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" build ceobe.slnx -c Debug
-& "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" test  ceobe.slnx -c Debug
+& "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" build Ceobe.slnx -c Debug
+& "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" test  Ceobe.slnx -c Debug
 # GUI 不在解构建范围内，必须显式编（原因见「已知易错点」）
 dotnet build src/Ceobe.App/Ceobe.App.csproj -c Debug
 
@@ -32,7 +32,7 @@ dotnet publish src/Ceobe.Cli/Ceobe.Cli.csproj -c Release -r win-x64 --self-conta
 
 # MSI（负载 = win11 档；per-user 装到 %LOCALAPPDATA%\Programs\ceobe，不触发 UAC）
 dotnet tool restore
-dotnet wix build -arch x64 -d MsiVersion=26.10.22 -d PayloadDir=<上面的 app-fd 绝对路径> -o ceobe.msi tools/installer/ceobe.wxs
+dotnet wix build -arch x64 -d MsiVersion=26.10.22 -d PayloadDir=<上面的 app-fd 绝对路径> -o Ceobe.msi tools/installer/Ceobe.wxs
 ```
 
 - **网络用例默认排除**（`Trait("Category","network")`，在 `Ceobe.Core.Tests.csproj` 里用 `VSTestTestCaseFilter` 落实）：它们会真实下载服务端 jar，几分钟起步。需要时显式加 filter `Category=network`。
@@ -41,7 +41,7 @@ dotnet wix build -arch x64 -d MsiVersion=26.10.22 -d PayloadDir=<上面的 app-f
 ### 约定
 
 - 版本号 CalVer `YY.MM.DD-HH`，**`Directory.Build.props` 的 `<Version>` 是唯一权威**，CI 只读不写。该值必须是点分四段（`26.10.21.01`）——NuGet 按 SemVer2 拒绝数字前导零的 prerelease 标识，且错误会被 MSBuild 吞成 `MSB4181`。
-- 命名空间根 `Ceobe`；用户可见产物名保持小写 `ceobe.exe`。
+- 命名空间根 `Ceobe`；用户可见产物名统一为 `Ceobe.exe`（GUI 与 CLI 同名，分处 dist/app 与 dist/cli）。
 - **所有下载（开发期与运行期）一律优先国内镜像**：运行期经 `core/Util/Mirrors` 改写 URL（Mojang → BMCLAPI、Fabric meta → BMCLAPI、Modrinth CDN → mcimirror、Temurin → 清华），失败自动回退上游。新增第三方源前先确认镜像可用。
 - 所有对外 HTTP 请求必须带 User-Agent（Modrinth 硬要求）。
 - git commit 遵循 Conventional Commits：type/scope 用英文，描述用简体中文；subject ≤72 字符；body 分点。**训练员指定本仓库提交不需要 GPG 签名**（已设 repo-local `commit.gpgsign=false`）。
@@ -67,7 +67,7 @@ dotnet wix build -arch x64 -d MsiVersion=26.10.22 -d PayloadDir=<上面的 app-f
 - XAML 的 `x:Bind` 在 `DataTemplate` 里默认 `OneTime`：会变的属性必须显式 `Mode=OneWay`。
 - **构建/发布前先关掉正在运行的 `Ceobe.exe`**：它锁住输出目录里的 DLL，MSBuild 要么报 `MSB3027`，
   要么在某些增量路径下跳过复制却仍显示成功——于是你跑的还是旧二进制，端到端会得出错误结论（实测踩过）。
-- **GUI 产物有两条路径，别拿错**：`ceobe.slnx` 已把 `Ceobe.App` 映射到 x64，解构建会输出到
+- **GUI 产物有两条路径，别拿错**：`Ceobe.slnx` 已把 `Ceobe.App` 映射到 x64，解构建会输出到
   `bin/x64/Release/...`；显式 `dotnet build src/Ceobe.App/Ceobe.App.csproj` 输出到 `bin/Release/...`。
   端到端验证/发布前先确认你运行的是哪一个（发布请用 `dotnet publish ... -o dist/app`，不要手动拼 bin 路径）。
   CI 仍单列 GUI 构建步骤作为护栏。
@@ -103,7 +103,7 @@ dotnet wix build -arch x64 -d MsiVersion=26.10.22 -d PayloadDir=<上面的 app-f
 - `tests/` — `Ceobe.Core.Tests`（域核心 + 闸门 A/B）、`Ceobe.App.ViewModels.Tests`（闸门 C）
 - `tools/wiregen/` — 闸门 B 的真值 fixture 生成器（真实 Jackson + 真实 Java 模型类）；Java 源码已移除，重跑前需从 tag `pre-csharp-migration` 取出对应模型
 - `tools/ui-smoke/` — 本地交互式 UIA 冒烟（不跑 CI）：导航/分区/日志高度/可访问名/对话框/浅色深色亮度
-- `tools/installer/ceobe.wxs` — MSI 定义（WiX v6）；版本经 `dotnet-tools.json` 锁定，CI 用 `dotnet tool restore` 取
+- `tools/installer/Ceobe.wxs` — MSI 定义（WiX v6）；版本经 `dotnet-tools.json` 锁定，CI 用 `dotnet tool restore` 取
 - `docs/PRD.md` — 产品需求；`docs/ARCHITECTURE.md` — 结构与外部契约；`docs/DECISIONS.md` — ADR；`docs/specs/` — 模块规格；`docs/MIGRATION.md` — 迁移施工图与进度
 - 已退役的 Java 实现不在工作树中：需要对照时从 tag `pre-csharp-migration` 取
 - `.github/workflows/windows.yml` — CI：**不跑测试**，只编译 + 闸门 C + 两档产物 + MSI + 完整性校验；

@@ -1,28 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  ceobe GUI 安装包（WiX v6）。
+  Ceobe GUI 安装包（WiX v6）。
 
   负载：CI 产出的「不带 SDK」（框架依赖）发布目录，即
         dist/app-fd（79M / 60 文件）。
-  安装位置：%LOCALAPPDATA%\Programs\ceobe —— per-user，不触发 UAC。
+  安装位置：%LOCALAPPDATA%\Programs\Ceobe —— per-user，不触发 UAC。
   前置条件：目标机需自备 .NET 10 运行时与 Windows App Runtime 2.5.x；
             缺失时 .NET apphost 与 WinAppSDK bootstrapper 各自弹框并给出下载链接。
 
   构建（版本由 Directory.Build.props 派生，见 .github/workflows/windows.yml）：
     dotnet tool restore
-    dotnet wix build -arch x64 -d MsiVersion=26.10.22 -d PayloadDir=<绝对路径> -o ceobe.msi tools/installer/ceobe.wxs
+    dotnet wix build -arch x64 -d MsiVersion=26.10.22 -d PayloadDir=<绝对路径> -o Ceobe.msi tools/installer/Ceobe.wxs
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
-  <Package Name="ceobe"
+  <Package Name="Ceobe"
            Manufacturer="xrl"
            Version="$(var.MsiVersion)"
            UpgradeCode="7C2E4A51-9B3D-4F8A-9E21-5D6B1A0C3E77"
            Scope="perUser">
 
-    <SummaryInformation Description="ceobe - Minecraft 服务器多实例管理器" Manufacturer="xrl" />
+    <SummaryInformation Description="Ceobe - Minecraft 服务器多实例管理器" Manufacturer="xrl" />
 
     <!-- 同 UpgradeCode 的新版本自动卸旧装新；降级安装直接拒绝 -->
-    <MajorUpgrade DowngradeErrorMessage="已安装更新版本的 ceobe，请先在「应用和功能」中卸载。" />
+    <MajorUpgrade DowngradeErrorMessage="已安装更新版本的 Ceobe，请先在「应用和功能」中卸载。" />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
     <Property Id="ARPPRODUCTICON" Value="CeobeIcon" />
@@ -33,14 +33,14 @@
 
     <StandardDirectory Id="LocalAppDataFolder">
       <Directory Id="ProgramsFolder" Name="Programs">
-        <Directory Id="INSTALLFOLDER" Name="ceobe" />
+        <Directory Id="INSTALLFOLDER" Name="Ceobe" />
       </Directory>
     </StandardDirectory>
 
     <StandardDirectory Id="ProgramMenuFolder">
-      <Directory Id="AppMenuFolder" Name="ceobe">
+      <Directory Id="AppMenuFolder" Name="Ceobe">
         <Component Id="StartMenuShortcut" Guid="*">
-          <Shortcut Id="AppShortcut" Name="ceobe"
+          <Shortcut Id="AppShortcut" Name="Ceobe"
                     Description="Minecraft 服务器多实例管理器"
                     Target="[INSTALLFOLDER]Ceobe.exe"
                     WorkingDirectory="INSTALLFOLDER"
@@ -51,7 +51,7 @@
       </Directory>
     </StandardDirectory>
 
-    <Feature Id="Main" Title="ceobe" Level="1">
+    <Feature Id="Main" Title="Ceobe" Level="1">
       <ComponentGroupRef Id="ProductFiles" />
       <ComponentRef Id="StartMenuShortcut" />
     </Feature>

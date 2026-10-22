@@ -20,7 +20,7 @@ public static class ModCommands
         };
         cmd.SetAction(_ =>
         {
-            Output.Info("用法: ceobe mod <search|install|ls|rm> …");
+            Output.Info("用法: Ceobe mod <search|install|ls|rm> …");
             return 0;
         });
         return cmd;
@@ -71,7 +71,7 @@ public static class ModCommands
                 string.Join(",", h.Categories.Take(3)),
             }).ToList();
             Output.Table(["标识", "名称", "作者", "下载量", "分类"], rows);
-            Output.Info("安装: ceobe mod install {0} <标识>", inst);
+            Output.Info("安装: Ceobe mod install {0} <标识>", inst);
             return 0;
         });
         return cmd;

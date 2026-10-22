@@ -1,6 +1,6 @@
 # Spec — 无头 CLI（Ceobe.Cli）
 
-> **实现现状（2026-10-21）**：`src/Ceobe.Cli`，System.CommandLine 2.0.0-beta5，产物 `ceobe.exe`（自包含单文件）。
+> **实现现状（2026-10-21）**：`src/Ceobe.Cli`，System.CommandLine 2.0.0-beta5，产物 `Ceobe.exe`（自包含单文件）。
 > Java 版（picocli）已随迁移退役，源码仅存于 tag `pre-csharp-migration`。
 
 ## 要构建什么
@@ -9,17 +9,17 @@
 
 ## 行为
 
-- **命令树**（全部为顶层命令 + 子命令组，`ceobe <cmd> --help` 可查）：
-  - `ceobe ps [-a]` — 实例列表（默认仅运行中，`-a` 含已停止；`--format json`）
-  - `ceobe create|new <name> --type paper|vanilla|fabric|purpur|neoforge --version <v> [--loader <lv>] [--mem 4G] [--port 25565] [--jvm "args"] [--java-home <dir>]`
-  - `ceobe start [--detach] <name>` / `stop` / `restart` / `rm [--purge] <name>`
-  - `ceobe logs [-f] [--tail N] [--limit N] <name>`
-  - `ceobe exec <name> <cmd...>` — 服务端控制台命令
-  - `ceobe config get <name> <key>` / `config set <name> <k> <v>` / `config ls <name> [--group <g>]`
-  - `ceobe mod search|install|rm|ls <name> …`
-  - `ceobe modpack search|info|install <name> <pack> | new <pack> --name <n> …`
-  - `ceobe tunnel up|down|status <name> [--kind pinggy|cloudflare|tailscale|lan]`
-  - `ceobe jdk list|install <n>|required <mcver>|use <name> <n>`
+- **命令树**（全部为顶层命令 + 子命令组，`Ceobe <cmd> --help` 可查）：
+  - `Ceobe ps [-a]` — 实例列表（默认仅运行中，`-a` 含已停止；`--format json`）
+  - `Ceobe create|new <name> --type paper|vanilla|fabric|purpur|neoforge --version <v> [--loader <lv>] [--mem 4G] [--port 25565] [--jvm "args"] [--java-home <dir>]`
+  - `Ceobe start [--detach] <name>` / `stop` / `restart` / `rm [--purge] <name>`
+  - `Ceobe logs [-f] [--tail N] [--limit N] <name>`
+  - `Ceobe exec <name> <cmd...>` — 服务端控制台命令
+  - `Ceobe config get <name> <key>` / `config set <name> <k> <v>` / `config ls <name> [--group <g>]`
+  - `Ceobe mod search|install|rm|ls <name> …`
+  - `Ceobe modpack search|info|install <name> <pack> | new <pack> --name <n> …`
+  - `Ceobe tunnel up|down|status <name> [--kind pinggy|cloudflare|tailscale|lan]`
+  - `Ceobe jdk list|install <n>|required <mcver>|use <name> <n>`
   - `ceobe versions --type <t>` — 可用版本
   - `ceobe doctor` — 环境自检；`ceobe web [--port N]` — 无头 Web 控制台
   - `ceobe update <name> [--name] [--mem] [--port] [--jvm] [--authlib]` — 修改实例设置

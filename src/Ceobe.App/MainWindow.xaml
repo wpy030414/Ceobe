@@ -30,7 +30,7 @@
                       IsPaneToggleButtonVisible="False"
                       Background="Transparent">
                 <TitleBar.IconSource>
-                    <ImageIconSource ImageSource="ms-appx:///Assets/ceobe.ico" />
+                    <ImageIconSource ImageSource="ms-appx:///Assets/Ceobe.ico" />
                 </TitleBar.IconSource>
             </TitleBar>
 

@@ -1,11 +1,11 @@
-# ceobe
+# Ceobe
 
 本机 Minecraft 服务器编排系统：多实例创建/启动/停止、版本与加载器选配、配置可视化、Mod 与整合包导入、玩家名单、内网穿透。**Windows 桌面 GUI（WinUI 3）+ docker 风格无头 CLI** 双形态，共享同一套域核心。
 
 ## 这是什么？
 
 - 定位：单机玩家的「私人服主面板」——在本机一键开多个 MC 服务器，让朋友通过公网地址直连。
-- 解决的核心问题：开一个 mod 服要手动下载 jar、改 properties、装 mod、配穿透、记命令行——ceobe 把这条链路压缩为 GUI 几步或 CLI 一行。
+- 解决的核心问题：开一个 mod 服要手动下载 jar、改 properties、装 mod、配穿透、记命令行——Ceobe 把这条链路压缩为 GUI 几步或 CLI 一行。
 
 ## 为什么存在？
 
@@ -15,18 +15,18 @@
 ## 如何安装和运行？
 
 - 前置要求：**Windows 10 1809+ / 11**，无需安装 .NET（发布产物自包含）。可选：`cloudflared` 在 PATH（Web 控制台穿透）、系统 `ssh` 客户端（Pinggy 玩家通道）。
-- 各实例所需的 Java 由 ceobe 按游戏版本自动探测——缺失时提醒，并可 `ceobe jdk install <主版本>` 按平台一键安装（Adoptium + 清华镜像），创建时自动选用。
+- 各实例所需的 Java 由 Ceobe 按游戏版本自动探测——缺失时提醒，并可 `Ceobe jdk install <主版本>` 按平台一键安装（Adoptium + 清华镜像），创建时自动选用。
 - 构建：
 
   ```powershell
-  dotnet build ceobe.slnx -c Release
-  dotnet test  ceobe.slnx -c Release
+  dotnet build Ceobe.slnx -c Release
+  dotnet test  Ceobe.slnx -c Release
 
   dotnet publish src/Ceobe.App/Ceobe.App.csproj -c Release -r win-x64 --self-contained true -o dist/app
   dotnet publish src/Ceobe.Cli/Ceobe.Cli.csproj -c Release -r win-x64 --self-contained true -o dist/cli
   ```
 
-- 运行：`dist/app/Ceobe.exe`（GUI）或 `dist/cli/ceobe.exe <命令>`（无头 CLI）。
+- 运行：`dist/app/Ceobe.exe`（GUI）或 `dist/cli/Ceobe.exe <命令>`（无头 CLI）。
 
 ## GUI（WinUI 3 / Fluent 2）
 
@@ -44,7 +44,7 @@
 ## 仓库结构
 
 ```
-ceobe/
+Ceobe/
 ├── src/Ceobe.Core/            域核心：实例 / 进程 / provider / 配置 / Mod / 玩家 / 穿透（无 UI 依赖）
 ├── src/Ceobe.App.ViewModels/  全部界面状态与逻辑（零 WinUI 引用，可无窗口单测）
 ├── src/Ceobe.App/             WinUI 3 界面（XAML + 转换器 + 接线）
@@ -60,10 +60,10 @@ ceobe/
 ## 快速上手（CLI，docker 风格）
 
 ```powershell
-$J = "dist/cli/ceobe.exe"
+$J = "dist/cli/Ceobe.exe"
 
 & $J doctor                                  # 环境自检（JDK / cloudflared / ssh / 目录）
-& $J jdk list                                # 运行期 Java 与 ceobe 自管 JDK
+& $J jdk list                                # 运行期 Java 与 Ceobe 自管 JDK
 & $J jdk install 17                          # 某版本需要时一键装（清华镜像）
 & $J create smp --type paper --version 26.3 --mem 4G --port 25565   # 端口需排他；--port auto 自动选空
 & $J start -d smp                            # 后台启动（独立监督进程，可跨终端管理）
@@ -110,7 +110,7 @@ $J = "dist/cli/ceobe.exe"
 
 - 版本号 = **CalVer `YY.MM.DD-HH`**，`Directory.Build.props` 的 `<Version>` 是唯一权威，CI 只读不写。
 - 该值写作**点分四段** `26.10.21.01`：NuGet 按 SemVer2 拒绝数字前导零的 prerelease 标识（`26.10.21-01` 会失败），展示形态由 `YY.MM.DD-HH` 派生。
-- 发布：推 `v*` 标签 → CI 打包 `ceobe-gui-v*.zip` 与 `ceobe-cli-v*.zip` 并创建 Release。
+- 发布：推 `v*` 标签 → CI 打包 `Ceobe-gui-v*.zip` 与 `Ceobe-cli-v*.zip` 并创建 Release。
 
 ## 打包与发布（CI）
 
@@ -122,8 +122,8 @@ $J = "dist/cli/ceobe.exe"
 ## 验收与测试
 
 ```powershell
-dotnet test ceobe.slnx                       # 全量（网络用例默认排除）
-dotnet test ceobe.slnx --filter "Category=network"   # 真实下载服务端并跑完整生命周期（慢，受网络影响）
+dotnet test Ceobe.slnx                       # 全量（网络用例默认排除）
+dotnet test Ceobe.slnx --filter "Category=network"   # 真实下载服务端并跑完整生命周期（慢，受网络影响）
 ```
 
 ## 当前状态

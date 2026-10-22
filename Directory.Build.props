@@ -13,7 +13,7 @@
   <PropertyGroup>
     <Version>26.10.22</Version>
     <Authors>xrl</Authors>
-    <Product>ceobe</Product>
+    <Product>Ceobe</Product>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

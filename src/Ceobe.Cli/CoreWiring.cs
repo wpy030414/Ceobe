@@ -26,7 +26,7 @@ public static class CoreWiring
         {
             if (stage == _lastStage) return;
             _lastStage = stage;
-            Output.Info("[ceobe] {0}", stage);
+            Output.Info("[Ceobe] {0}", stage);
         }
     }
 

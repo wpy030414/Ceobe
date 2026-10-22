@@ -201,7 +201,7 @@ public sealed class TunnelManager : IInstanceTunnels
             //  这是 Java 原实现的既有行为，保持一致。重试不设上限，与 Java 相同。）
             try
             {
-                _host.TunnelLog(instance, "[ceobe] Pinggy 续期失败（" + e.Message + "），30 秒后重试");
+                _host.TunnelLog(instance, "[Ceobe] Pinggy 续期失败（" + e.Message + "），30 秒后重试");
             }
             catch (Exception)
             {

@@ -24,7 +24,7 @@ public static class ParseResultExtensions
 
     /// <summary>
     /// 取必填位置参数的值并去掉首尾空白。
-    /// CLI 输入常被 shell 或粘贴带上空格（如 <c>ceobe rm " alpha "</c>），
+    /// CLI 输入常被 shell 或粘贴带上空格（如 <c>Ceobe rm " alpha "</c>），
     /// 而实例名规则是 <c>[a-z0-9_-]{1,32}</c>，带空白会校验失败并报出令人困惑的错误。
     /// </summary>
     public static string RequiredTrimmed(this ParseResult pr, Argument<string> argument) =>

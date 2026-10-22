@@ -75,8 +75,8 @@ public sealed class PinggyTunnel : ITunnelProvider
         session.Diagnostic = probe.Verified
             ? $"已验证：从公网侧 {probe.Json?[..Math.Min(120, probe.Json.Length)]}…"
             : $"无法验证（不代表通道坏了，可能是公网防火墙/频率限制）：{probe.Reason}";
-        logSink($"[ceobe] Pinggy 公网侧探测：{session.Diagnostic}");
-        logSink($"[ceobe] Pinggy 通道就绪: {session.PublicUrl}（约 55 分钟后自动续期）");
+        logSink($"[Ceobe] Pinggy 公网侧探测：{session.Diagnostic}");
+        logSink($"[Ceobe] Pinggy 通道就绪: {session.PublicUrl}（约 55 分钟后自动续期）");
         return session;
     }
 

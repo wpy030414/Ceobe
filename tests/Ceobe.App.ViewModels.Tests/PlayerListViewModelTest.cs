@@ -81,7 +81,7 @@ public class PlayerListViewModelTest : IDisposable
             new(OfflinePlayerUuid.Compute("alex"), "alex"),
         ]);
         PlayerFiles.WriteOps(_dir, [new(OfflinePlayerUuid.Compute("steve"), "steve", 4, false)]);
-        PlayerFiles.WriteBannedIps(_dir, [new("1.2.3.4", PlayerFiles.NowStamp(), "ceobe", "forever")]);
+        PlayerFiles.WriteBannedIps(_dir, [new("1.2.3.4", PlayerFiles.NowStamp(), "Ceobe", "forever")]);
 
         var vm = NewVm();
         Assert.Equal(2, vm.Whitelist.Count);
@@ -357,7 +357,7 @@ public class PlayerListViewModelTest : IDisposable
         Assert.Equal("griefer", ban.Name);
         Assert.Equal("forever", ban.Expires);
         Assert.NotEqual("", ban.Uuid);
-        Assert.Equal("ceobe", ban.Source);
+        Assert.Equal("Ceobe", ban.Source);
     }
 
     [Fact(DisplayName = "封禁 IP 去重")]

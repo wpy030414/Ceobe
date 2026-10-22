@@ -474,7 +474,7 @@ public partial class PlayerListViewModel : ObservableObject
 
         var list = PlayerFiles.ReadBannedPlayers(_dir);
         list.RemoveAll(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
-        list.Add(new PlayerFiles.BanEntry(uuid, name, PlayerFiles.NowStamp(), "ceobe", "forever"));
+        list.Add(new PlayerFiles.BanEntry(uuid, name, PlayerFiles.NowStamp(), "Ceobe", "forever"));
         PlayerFiles.WriteBannedPlayers(_dir, list);
 
         NewPlayerName = "";
@@ -521,7 +521,7 @@ public partial class PlayerListViewModel : ObservableObject
         }
         var list = PlayerFiles.ReadBannedIps(_dir);
         list.RemoveAll(e => e.Ip == ip);
-        list.Add(new PlayerFiles.IpBanEntry(ip, PlayerFiles.NowStamp(), "ceobe", "forever"));
+        list.Add(new PlayerFiles.IpBanEntry(ip, PlayerFiles.NowStamp(), "Ceobe", "forever"));
         PlayerFiles.WriteBannedIps(_dir, list);
         NewIp = "";
         ReloadRows();

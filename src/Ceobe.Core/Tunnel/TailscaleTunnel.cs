@@ -64,8 +64,8 @@ public sealed partial class TailscaleTunnel : ITunnelProvider
             session.Diagnostic = "无法验证：" + e.Message;
         }
 
-        logSink($"[ceobe] Tailscale 组网地址: {ip}:{localPort}（{session.Diagnostic}）");
-        logSink("[ceobe] 提示：朋友需先装 tailscale 并加入同一 tailnet，然后在 MC 多player服务器里填上面地址");
+        logSink($"[Ceobe] Tailscale 组网地址: {ip}:{localPort}（{session.Diagnostic}）");
+        logSink("[Ceobe] 提示：朋友需先装 tailscale 并加入同一 tailnet，然后在 MC 多player服务器里填上面地址");
         return Task.FromResult(session);
     }
 

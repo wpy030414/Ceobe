@@ -19,7 +19,7 @@ public static class ModpackCommands
         };
         cmd.SetAction(_ =>
         {
-            Output.Info("用法: ceobe modpack <search|info|install|new> …");
+            Output.Info("用法: Ceobe modpack <search|info|install|new> …");
             return 0;
         });
         return cmd;
@@ -59,7 +59,7 @@ public static class ModpackCommands
                 string.Join(",", h.Categories.Take(3)),
             }).ToList();
             Output.Table(["标识", "名称", "作者", "下载量", "分类"], rows);
-            Output.Info("一键创建: ceobe modpack new <名称> <标识>");
+            Output.Info("一键创建: Ceobe modpack new <名称> <标识>");
             return 0;
         });
         return cmd;
@@ -186,7 +186,7 @@ public static class ModpackCommands
             {
                 Output.Info("已创建实例 {0}（{1} {2} / {3}），并安装整合包「{4}」（{5} 个文件）",
                     n, type, idx.McVersion, idx.Loader, r.Name, r.Files);
-                Output.Info("启动: ceobe start {0}", n);
+                Output.Info("启动: Ceobe start {0}", n);
             }
             return 0;
         });

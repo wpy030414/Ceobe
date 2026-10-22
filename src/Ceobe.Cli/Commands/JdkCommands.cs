@@ -9,7 +9,7 @@ namespace Ceobe.Cli.Commands;
 /// <summary>
 /// JDK 自检与一键安装命令族。逐条对齐 Java 版 <c>ceobe-cli/JdkCommands</c>。
 ///
-/// ADR-019 差异：Java 版 list 首行显示「当前运行期 Java」（ceobe 自己跑在 JVM 上），
+/// ADR-019 差异：Java 版 list 首行显示「当前运行期 Java」（Ceobe 自己跑在 JVM 上），
 /// C# 版进程不是 JVM，没有可继承的运行期——改为显示宿主 JAVA_HOME 的探测结果，
 /// 语义上回答同一个问题：「不装自管 JDK 时，服务端会用谁」。
 /// </summary>
@@ -23,7 +23,7 @@ public static class JdkCommands
         };
         cmd.SetAction(_ =>
         {
-            Output.Info("用法: ceobe jdk <list | install <主版本> | required <游戏版本> | use <实例> <主版本>>");
+            Output.Info("用法: Ceobe jdk <list | install <主版本> | required <游戏版本> | use <实例> <主版本>>");
             return 0;
         });
         return cmd;
@@ -50,10 +50,10 @@ public static class JdkCommands
             }
             Output.Info("宿主 Java（JAVA_HOME）: {0}", hostHome is not null
                 ? $"Java {hostMajor?.ToString() ?? "?"}（{hostHome}）"
-                : "未找到（ceobe 不依赖宿主运行期；服务端可用 `ceobe jdk install <n>` 自管）");
+                : "未找到（Ceobe 不依赖宿主运行期；服务端可用 `Ceobe jdk install <n>` 自管）");
             if (jdks.Count == 0)
             {
-                Output.Info("尚未安装 ceobe 自管 JDK。安装: ceobe jdk install <主版本>");
+                Output.Info("尚未安装 Ceobe 自管 JDK。安装: Ceobe jdk install <主版本>");
                 return 0;
             }
             var rows = jdks.Select(j => new[] { j.Major.ToString(), j.Name, j.Home }).ToList();
@@ -82,7 +82,7 @@ public static class JdkCommands
             else
             {
                 Output.Info("已安装 Java {0} → {1}", m, home);
-                Output.Info("新建实例会自动选用它；已有实例用 `ceobe jdk use <实例> {0}`", m);
+                Output.Info("新建实例会自动选用它；已有实例用 `Ceobe jdk use <实例> {0}`", m);
             }
             return 0;
         });
@@ -123,7 +123,7 @@ public static class JdkCommands
                 throw CeobeException.Of("实例 {0} 正在运行，请先停止", n);
             }
             var home = JdkStore.FindMajor(m)
-                       ?? throw CeobeException.Of("未安装 Java {0}；先运行 `ceobe jdk install {0}`", m);
+                       ?? throw CeobeException.Of("未安装 Java {0}；先运行 `Ceobe jdk install {0}`", m);
             manager.SetJavaHome(n, home);
             Output.Info("实例 {0} 的 Java 已指向 Java {1} → {2}", n, m, home);
             return 0;

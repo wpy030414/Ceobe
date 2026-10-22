@@ -20,7 +20,7 @@ public static class TunnelCommands
         cmd.SetAction(_ =>
         {
             // 与 Java 版文案一致；新增 tailscale 是本版真实能力，选项说明一并列出
-            Output.Info("用法: ceobe tunnel <up|down|status> <实例> [--kind pinggy|cloudflare|lan|tailscale]");
+            Output.Info("用法: Ceobe tunnel <up|down|status> <实例> [--kind pinggy|cloudflare|lan|tailscale]");
             return 0;
         });
         return cmd;
@@ -45,7 +45,7 @@ public static class TunnelCommands
             var status = manager.Require(inst);
             if (!status.State.IsLive())
             {
-                throw CeobeException.Of("实例 {0} 未在运行，请先 `ceobe start -d {0}`", inst);
+                throw CeobeException.Of("实例 {0} 未在运行，请先 `Ceobe start -d {0}`", inst);
             }
             var dir = manager.Dir(inst);
             if (!InstanceControl.IsAvailable(dir))
@@ -212,7 +212,7 @@ public static class TunnelCommands
             Output.Info("实例 {0}（{1}）本机端口 {2}", inst, status.State.ZhLabel(), status.Meta.Port);
             if (rows.Count == 0)
             {
-                Output.Info("当前无活动通道。开启: ceobe tunnel up {0}", inst);
+                Output.Info("当前无活动通道。开启: Ceobe tunnel up {0}", inst);
                 return 0;
             }
             Output.Table(["通道", "公网地址", "有效期至", "可达性"], rows);
