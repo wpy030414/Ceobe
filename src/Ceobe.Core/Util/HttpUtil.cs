@@ -144,10 +144,145 @@ public static class HttpUtil
         }
     }
 
+    /// <summary>启用分片下载的最小文件大小。小文件多连接反而更慢（握手 + 镜像限流）。</summary>
+    private const long RangedThreshold = 8L * 1024 * 1024;
+
+    /// <summary>分片并发数。镜像多按带宽限速而非连接数，4 路是吞吐与礼貌的折中。</summary>
+    private const int RangedConcurrency = 4;
+
+    /// <summary>
+    /// 分片下载：先探测服务器是否支持 Range，支持则并发拉取 4 段再合并。
+    /// 返回 false 表示「不支持/不适用」，由调用方回退单流下载。
+    /// </summary>
+    private static async Task<bool> TryRangedDownloadAsync(
+        string url, string target, string? sha1, string? sha256,
+        IProgress<(long Done, long Total)>? progress, CancellationToken ct)
+    {
+        long total;
+        try
+        {
+            using var probeReq = new HttpRequestMessage(HttpMethod.Get, url);
+            probeReq.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(0, 0);
+            using var probe = await Client.SendAsync(probeReq, HttpCompletionOption.ResponseHeadersRead, ct)
+                .ConfigureAwait(false);
+            if (probe.StatusCode != System.Net.HttpStatusCode.PartialContent) return false;
+            total = probe.Content.Headers.ContentRange?.Length ?? -1;
+            if (total < RangedThreshold) return false;
+        }
+        catch (Exception) when (!ct.IsCancellationRequested)
+        {
+            return false; // 探测失败 → 交给单流路径报告真实错误
+        }
+
+        Directory.CreateDirectory(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(target))!);
+        var part = target + ".part";
+        var chunkSize = (total + RangedConcurrency - 1) / RangedConcurrency;
+        var chunks = new string?[RangedConcurrency];
+        long reported = 0;
+        long lastReport = 0;
+        try
+        {
+            progress?.Report((0, total));
+            var tasks = new List<Task>(RangedConcurrency);
+            for (var i = 0; i < RangedConcurrency; i++)
+            {
+                var index = i;
+                var from = index * chunkSize;
+                var to = Math.Min(total - 1, from + chunkSize - 1);
+                if (from > to) continue;
+                chunks[index] = part + "." + index;
+                tasks.Add(Task.Run(async () =>
+                {
+                    using var req = new HttpRequestMessage(HttpMethod.Get, url);
+                    req.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(from, to);
+                    using var resp = await Client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct)
+                        .ConfigureAwait(false);
+                    if (resp.StatusCode != System.Net.HttpStatusCode.PartialContent)
+                    {
+                        throw CeobeException.Of("分片下载失败 HTTP {0}: {1}", (int)resp.StatusCode, Trim(url));
+                    }
+                    await using var body = await resp.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+                    await using var file = new FileStream(chunks[index]!, FileMode.Create, FileAccess.Write,
+                        FileShare.None, 64 * 1024, useAsync: true);
+                    var buffer = new byte[64 * 1024];
+                    while (true)
+                    {
+                        using var idle = new CancellationTokenSource(IdleTimeout);
+                        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, idle.Token);
+                        int n;
+                        try
+                        {
+                            n = await body.ReadAsync(buffer, linked.Token).ConfigureAwait(false);
+                        }
+                        catch (OperationCanceledException) when (idle.IsCancellationRequested && !ct.IsCancellationRequested)
+                        {
+                            throw new CeobeException(
+                                $"下载停滞（{IdleTimeout.TotalSeconds:0} 秒无数据）: {Trim(url)}");
+                        }
+                        if (n <= 0) break;
+                        await file.WriteAsync(buffer.AsMemory(0, n), ct).ConfigureAwait(false);
+                        var now = Interlocked.Add(ref reported, n);
+                        // 4 条流各自 64KB 回调会把 UI 线程刷爆：每 512KB 才报一次
+                        if (now - lastReport >= 512 * 1024 || now == total)
+                        {
+                            lastReport = now;
+                            progress?.Report((now, total));
+                        }
+                    }
+                }, ct));
+            }
+            await Task.WhenAll(tasks).ConfigureAwait(false);
+
+            using var h1 = sha1 is not null ? IncrementalHash.CreateHash(HashAlgorithmName.SHA1) : null;
+            using var h256 = sha256 is not null ? IncrementalHash.CreateHash(HashAlgorithmName.SHA256) : null;
+            await using (var outStream = new FileStream(part, FileMode.Create, FileAccess.Write,
+                             FileShare.None, 64 * 1024, useAsync: true))
+            {
+                foreach (var chunk in chunks)
+                {
+                    if (chunk is null) continue;
+                    await using var src = new FileStream(chunk, FileMode.Open, FileAccess.Read,
+                        FileShare.Read, 64 * 1024, useAsync: true);
+                    var buffer = new byte[64 * 1024];
+                    int n;
+                    while ((n = await src.ReadAsync(buffer, ct).ConfigureAwait(false)) > 0)
+                    {
+                        await outStream.WriteAsync(buffer.AsMemory(0, n), ct).ConfigureAwait(false);
+                        h1?.AppendData(buffer, 0, n);
+                        h256?.AppendData(buffer, 0, n);
+                    }
+                }
+            }
+            if (sha1 is not null) Verify("SHA-1", target, sha1, h1?.GetHashAndReset(), ct);
+            if (sha256 is not null) Verify("SHA-256", target, sha256, h256?.GetHashAndReset(), ct);
+            File.Move(part, target, overwrite: true);
+            progress?.Report((total, total));
+            return true;
+        }
+        catch (Exception e)
+        {
+            SafeDelete(part);
+            if (e is CeobeException or OperationCanceledException) throw;
+            throw new CeobeException($"下载中断: {Trim(url)} ({e.Message})", e);
+        }
+        finally
+        {
+            foreach (var chunk in chunks)
+            {
+                if (chunk is not null) SafeDelete(chunk);
+            }
+        }
+    }
+
     private static async Task DownloadDirectAsync(
         string url, string target, string? sha1, string? sha256,
         IProgress<(long Done, long Total)>? progress, CancellationToken ct)
     {
+        if (await TryRangedDownloadAsync(url, target, sha1, sha256, progress, ct).ConfigureAwait(false))
+        {
+            return;
+        }
+
         var part = target + ".part";
         Directory.CreateDirectory(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(target))!);
         try
