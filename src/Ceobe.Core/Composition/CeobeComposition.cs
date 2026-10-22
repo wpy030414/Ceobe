@@ -80,8 +80,9 @@ public static class CeobeComposition
     }
 
     /// <summary>装配一个可用的 InstanceManager（含 provider 安装器 + Java 定位器）。</summary>
-    public static InstanceManager NewManager() =>
-        new(new ResolverJavaLocator(), ProviderJarInstaller);
+    /// <param name="spawnSupervisor">GUI 传 true：Start 派生独立监督进程（ADR-007）。</param>
+    public static InstanceManager NewManager(bool spawnSupervisor = false) =>
+        new(new ResolverJavaLocator(), ProviderJarInstaller, spawnSupervisor);
 
     /// <summary>
     /// 为受托管实例装配隧道管理器并开启控制通道（监督进程用）。
@@ -98,7 +99,7 @@ public static class CeobeComposition
 
     /// <summary>
     /// 启动应用级服务：内嵌 Web 控制台 + 隧道管理器。
-    /// GUI 进程本身就是所启动实例的监督进程（对齐 Java 版 CeobeGui.start）。
+    /// GUI 不再直接托管实例：它只派生独立监督进程，自己保留应用级服务（Web 控制台 + 隧道）。
     /// </summary>
     /// <returns>Web 控制台启动失败时 Web 为 null（对齐 Java 版 try/catch 后 webConsole = null）。</returns>
     public static (TunnelManager Tunnels, ConsoleHost? Web) StartAppServices(InstanceManager manager)

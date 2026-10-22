@@ -29,10 +29,17 @@ public sealed partial class InstanceManager : IInstanceHost
     private readonly IJavaLocator _java;
     private readonly JarInstaller? _installJar;
 
-    public InstanceManager(IJavaLocator java, JarInstaller? installJar = null)
+    /// <summary>
+    /// true = GUI 模式：Start 派生独立监督进程，而不是在本进程持有 Java 子进程。
+    /// 必须为 true，否则关掉 GUI 就没有控制通道，重启后无法停掉仍在跑的实例（ADR-007）。
+    /// </summary>
+    private readonly bool _spawnSupervisor;
+
+    public InstanceManager(IJavaLocator java, JarInstaller? installJar = null, bool spawnSupervisor = false)
     {
         _java = java;
         _installJar = installJar;
+        _spawnSupervisor = spawnSupervisor;
     }
 
     /// <summary>事件总线：GUI/CLI/Web 订阅同一套（对齐 Java 版 listeners）。</summary>
@@ -365,6 +372,12 @@ public sealed partial class InstanceManager : IInstanceHost
         var s = Require(name);
         AssertPortExclusive(name, s.Meta.Port);
 
+        if (_spawnSupervisor)
+        {
+            StartDetached(name);
+            return;
+        }
+
         ServerProcess process;
         lock (_hostedLock)
         {
@@ -394,6 +407,40 @@ public sealed partial class InstanceManager : IInstanceHost
             throw CeobeException.Of(
                 "实例 {0} 已被其他进程托管（pid {1}），请先在那里停止，或用 `ceobe stop {0}` 后再试",
                 name, s.Pid);
+        }
+    }
+
+
+    /// <summary>
+    /// 派生独立监督进程（GUI 用）。GUI 不再直接持有 Java 子进程：
+    /// 关掉 GUI 后实例仍有控制通道（.ctl），重开 GUI 可以继续 stop / exec / 看日志。
+    /// 等待控制通道就绪最多 15 秒；Java 冷启动可能更久，状态由界面轮询 .state。
+    /// </summary>
+    public void StartDetached(string name)
+    {
+        var s = Require(name);
+        AssertPortExclusive(name, s.Meta.Port);
+        if (s.State.IsLive() && s.Pid > 0)
+        {
+            throw CeobeException.Of("实例 {0} 已在运行（pid {1}）", name, s.Pid);
+        }
+
+        var dir = Dir(name);
+        var launch = string.IsNullOrWhiteSpace(s.Meta.LaunchArgsFile) ? s.Meta.LaunchJar : s.Meta.LaunchArgsFile;
+        if (!File.Exists(Path.Combine(dir, launch!)))
+        {
+            throw CeobeException.Of("启动器 {0} 不存在，实例可能未安装完整", launch);
+        }
+
+        // 清掉上一轮遗留的 .ctl，避免读到已失效的端口
+        InstanceControl.Clear(dir);
+        Supervisor.Launch(dir, name, "--supervise");
+
+        var deadline = DateTime.UtcNow.AddSeconds(15);
+        while (DateTime.UtcNow < deadline)
+        {
+            if (InstanceControl.IsAvailable(dir)) return;
+            Thread.Sleep(200);
         }
     }
 

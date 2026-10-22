@@ -185,7 +185,7 @@ public class ConsoleViewModelTest : IDisposable
     public void 外部托管说明()
     {
         var (vm, _) = NewVm();
-        Assert.Contains("外部进程托管", vm.StatusText);
+        Assert.Contains("监督进程托管", vm.StatusText);
         Assert.Contains("增量跟随", vm.StatusText);
         vm.Detach();
     }

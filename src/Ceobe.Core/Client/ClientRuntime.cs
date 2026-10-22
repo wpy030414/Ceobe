@@ -51,6 +51,72 @@ public sealed class ClientRuntime
         }
     }
 
+
+    /// <summary>
+    /// 认领上一个 GUI 会话遗留的客户端进程：按 client.pid 里的 pid + 启动时间校验身份，
+    /// 通过就恢复为「运行中」，用户仍能停止它（关窗口或强杀）；校验失败则清掉 pid 文件。
+    /// 客户端没有控制通道，pid + 启动时间是唯一能防止 pid 复用的身份判据。
+    /// </summary>
+    public int AdoptAll()
+    {
+        var adopted = 0;
+        foreach (var meta in ClientStore.List())
+        {
+            var pidPath = ClientStore.PidFile(meta.Name);
+            if (!File.Exists(pidPath)) continue;
+            try
+            {
+                var parts = File.ReadAllText(pidPath).Split('|');
+                if (parts.Length < 2
+                    || !int.TryParse(parts[0], out var pid)
+                    || !long.TryParse(parts[1], out var ticks))
+                {
+                    File.Delete(pidPath);
+                    continue;
+                }
+                var process = Process.GetProcessById(pid);
+                var startTicks = process.StartTime.ToUniversalTime().Ticks;
+                if (process.HasExited || Math.Abs(startTicks - ticks) > TimeSpan.FromSeconds(2).Ticks)
+                {
+                    process.Dispose();
+                    File.Delete(pidPath);
+                    continue;
+                }
+                var client = new RunningClient(meta, process.StartTime.ToUniversalTime());
+                client.AttachAdopted(process);
+                client.State = ClientState.RUNNING;
+                process.EnableRaisingEvents = true;
+                process.Exited += (_, _) => OnExited(meta.Name, client);
+                lock (_gate) _running[meta.Name] = client;
+                Publish(new ClientStateChanged(meta.Name, ClientState.RUNNING, 0));
+                adopted++;
+            }
+            catch (Exception)
+            {
+                try { File.Delete(pidPath); } catch (Exception) { }
+            }
+        }
+        return adopted;
+    }
+
+    private static void WritePid(string name, Process process)
+    {
+        try
+        {
+            File.WriteAllText(ClientStore.PidFile(name),
+                process.Id + "|" + process.StartTime.ToUniversalTime().Ticks);
+        }
+        catch (Exception)
+        {
+            // 落盘失败只影响「重启后认领」，不影响本次运行
+        }
+    }
+
+    private static void TryDeletePid(string name)
+    {
+        try { File.Delete(ClientStore.PidFile(name)); } catch (Exception) { }
+    }
+
     public IReadOnlyList<string> RecentLogs(string name, int max)
     {
         lock (_gate)
@@ -100,6 +166,7 @@ public sealed class ClientRuntime
             process.Exited += (_, _) => OnExited(meta.Name, client);
             process.Start();
             client.Attach(process);
+            WritePid(meta.Name, process);
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
         }
@@ -117,7 +184,7 @@ public sealed class ClientRuntime
 
         client.State = ClientState.RUNNING;
         Publish(new ClientStateChanged(meta.Name, ClientState.RUNNING, 0));
-        Publish(new ClientLogLine(meta.Name, "[ceobe] " + plan.DisplayCommand));
+        Publish(new ClientLogLine(meta.Name, "[Ceobe] " + plan.DisplayCommand));
         return plan;
     }
 
@@ -170,6 +237,7 @@ public sealed class ClientRuntime
     private void OnExited(string name, RunningClient client)
     {
         client.Dispose();
+        TryDeletePid(name);
         lock (_gate)
         {
             if (_running.TryGetValue(name, out var current) && ReferenceEquals(current, client))
@@ -184,8 +252,8 @@ public sealed class ClientRuntime
         Publish(new ClientStateChanged(name, state, exitCode));
         Publish(new ClientLogLine(name,
             exitCode == 0
-                ? "[ceobe] 游戏已正常退出"
-                : $"[ceobe] 游戏异常退出（退出码 {exitCode}）。到「日志」分区查看崩溃归因。"));
+                ? "[Ceobe] 游戏已正常退出"
+                : $"[Ceobe] 游戏异常退出（退出码 {exitCode}）。到「日志」分区查看崩溃归因。"));
     }
 
     private static void RecordSession(ClientMeta meta, TimeSpan duration, int exitCode)
@@ -244,20 +312,27 @@ public sealed class ClientRuntime
     {
         private readonly object _lock = new();
         private readonly List<string> _ring = new(RingSize);
-        private readonly DateTimeOffset _started = DateTimeOffset.UtcNow;
+        private readonly DateTimeOffset _started;
         private readonly string _logPath;
         private StreamWriter? _log;
         private Process? _process;
 
         public RunningClient(ClientMeta meta, LaunchPlan plan)
+            : this(meta, DateTimeOffset.UtcNow)
+        {
+            Plan = plan;
+        }
+
+        /// <summary>认领模式：没有启动计划，启动时间取真实进程的 StartTime（会话时长才准确）。</summary>
+        public RunningClient(ClientMeta meta, DateTimeOffset started)
         {
             Meta = meta;
-            Plan = plan;
+            _started = started;
             _logPath = ClientStore.LatestLog(meta.Name);
         }
 
         public ClientMeta Meta { get; }
-        public LaunchPlan Plan { get; }
+        public LaunchPlan? Plan { get; }
         public ClientState State { get; set; } = ClientState.STARTING;
         public TimeSpan Duration => DateTimeOffset.UtcNow - _started;
 
@@ -295,13 +370,16 @@ public sealed class ClientRuntime
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(_logPath)!);
                 _log = new StreamWriter(_logPath, append: false, Encoding.UTF8) { AutoFlush = false };
-                _log.WriteLine($"[ceobe] {DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss} 启动 {Meta.Name}（{Meta.DetailLine}）");
+                _log.WriteLine($"[Ceobe] {DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss} 启动 {Meta.Name}（{Meta.DetailLine}）");
             }
             catch (Exception)
             {
                 _log = null;   // 日志文件不可写不影响游戏
             }
         }
+
+        /// <summary>认领已有进程：不截断 latest.log（那是上一轮会话的日志）。</summary>
+        public void AttachAdopted(Process process) => _process = process;
 
         public void OnLine(string? line, Action<IClientEvent> publish)
         {

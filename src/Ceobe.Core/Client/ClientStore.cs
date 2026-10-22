@@ -55,6 +55,9 @@ public static class ClientStore
 
     public static string ServersDat(string name) => Path.Combine(Dir(name), "servers.dat");
 
+    /// <summary>运行中客户端的 pid 落盘（pid|启动时间 ticks），供 GUI 重启后认领。</summary>
+    public static string PidFile(string name) => Path.Combine(Dir(name), "client.pid");
+
     /// <summary>本次会话的日志文件（每次启动覆盖，与 .minecraft/logs/latest.log 同语义）。</summary>
     public static string LatestLog(string name) => Path.Combine(LogsDir(name), "latest.log");
 

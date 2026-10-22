@@ -158,7 +158,7 @@ public partial class ConsoleViewModel : ObservableObject
         var status = _manager.Find(_instance);
         State = status?.State ?? InstanceState.STOPPED;
         HasError = false;
-        StatusText = _hosted ? "" : "该实例由外部进程托管（CLI 启动），日志按文件增量跟随";
+        StatusText = _hosted ? "" : "该实例由监督进程托管，日志按文件增量跟随";
     }
 
     private IReadOnlyList<string> ReadFileTail(int tail)
@@ -233,7 +233,7 @@ public partial class ConsoleViewModel : ObservableObject
                 break;
             case TunnelChanged tc:
                 // 隧道地址变化对控制台也有用：直接贴出来方便复制发给朋友
-                Append($"[ceobe] {tc.Kind} 地址: {tc.PublicUrl}");
+                Append($"[Ceobe] {tc.Kind} 地址: {tc.PublicUrl}");
                 break;
         }
     }
@@ -246,7 +246,7 @@ public partial class ConsoleViewModel : ObservableObject
         {
             await Task.Run(() => _manager.Start(_instance), ct).ConfigureAwait(true);
             HasError = false;
-            StatusText = "已启动（本界面即监督进程）";
+            StatusText = "已启动（独立监督进程）";
         }
         catch (OperationCanceledException)
         {
@@ -257,7 +257,7 @@ public partial class ConsoleViewModel : ObservableObject
             // 启动失败必须可见：Java 版曾因异常只写进文本框而表现为「静默失败」（ADR-018）
             HasError = true;
             StatusText = "启动失败: " + e.Message;
-            Append("[ceobe] 启动失败: " + e.Message);
+            Append("[Ceobe] 启动失败: " + e.Message);
         }
         finally
         {
@@ -288,7 +288,7 @@ public partial class ConsoleViewModel : ObservableObject
             }, ct).ConfigureAwait(true);
             HasError = false;
             StatusText = "已请求停止";
-            Append("[ceobe] 已请求停止");
+            Append("[Ceobe] 已请求停止");
         }
         catch (OperationCanceledException)
         {
@@ -298,7 +298,7 @@ public partial class ConsoleViewModel : ObservableObject
         {
             HasError = true;
             StatusText = "停止失败: " + e.Message;
-            Append("[ceobe] 停止失败: " + e.Message);
+            Append("[Ceobe] 停止失败: " + e.Message);
         }
         finally
         {
@@ -338,7 +338,7 @@ public partial class ConsoleViewModel : ObservableObject
         {
             HasError = true;
             StatusText = "命令发送失败: " + e.Message;
-            Append("[ceobe] 命令发送失败: " + e.Message);
+            Append("[Ceobe] 命令发送失败: " + e.Message);
             Command = cmd;   // 发送失败把命令还回去，用户可以改了重发
         }
     }
@@ -365,7 +365,7 @@ public partial class ConsoleViewModel : ObservableObject
             Deleted = true;
             HasError = false;
             StatusText = purge ? "实例已删除（含世界数据）" : "实例已删除（世界数据保留在目录中）";
-            Append("[ceobe] " + StatusText);
+            Append("[Ceobe] " + StatusText);
         }
         catch (CeobeException e)
         {

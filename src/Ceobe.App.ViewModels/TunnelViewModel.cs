@@ -32,7 +32,7 @@ public partial class TunnelViewModel : ObservableObject
     private readonly string _dir;
 
     /// <summary>
-    /// 本进程托管时的隧道管理器（GUI 进程本身就是监督进程，对齐 Java 版 CeobeGui）。
+    /// 应用级隧道管理器（GUI 本身不托管实例，实例由独立监督进程管理）。
     /// 为 null 表示实例由别的进程托管，此时只能走控制通道。
     /// </summary>
     private readonly TunnelManager? _localTunnels;

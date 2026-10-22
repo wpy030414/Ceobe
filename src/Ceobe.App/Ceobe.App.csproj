@@ -11,6 +11,7 @@
     <Platforms>x64</Platforms>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
     <UseWinUI>true</UseWinUI>
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <EnableMsixTooling>true</EnableMsixTooling>
     <!-- 非打包分发：不生成 MSIX，直接跑 exe（免旁加载与证书） -->
     <WindowsPackageType>None</WindowsPackageType>

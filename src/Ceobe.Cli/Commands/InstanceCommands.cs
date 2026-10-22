@@ -50,8 +50,8 @@ public static class InstanceCommands
             if (statuses.Count == 0)
             {
                 Output.Info(manager.List().Count > 0
-                    ? "无运行中的实例（`ceobe ps -a` 显示全部）"
-                    : "暂无实例。用 `ceobe create <名称> --type paper` 创建一个。");
+                    ? "无运行中的实例（`Ceobe ps -a` 显示全部）"
+                    : "暂无实例。用 `Ceobe create <名称> --type paper` 创建一个。");
                 return 0;
             }
             var rows = statuses.Select(s => new[]
@@ -146,7 +146,7 @@ public static class InstanceCommands
             {
                 Output.Info("实例 {0} 创建完成（{1} {2}，端口 {3}，内存 {4}MB）",
                     meta.Name, meta.ServerType, meta.GameVersion, meta.Port, meta.MemoryMb);
-                Output.Info("启动: ceobe start {0}", meta.Name);
+                Output.Info("启动: Ceobe start {0}", meta.Name);
             }
 
             // JDK 可用性提醒：创建成功但起不来是最糟的体验，这里先说清楚
@@ -203,7 +203,7 @@ public static class InstanceCommands
         var dir = manager.Dir(name);
         // 清理上一轮遗留的控制通道信息，避免读到已失效端口
         InstanceControl.Clear(dir);
-        SpawnSupervisor(dir, name);
+        Supervisor.Launch(dir, name, "supervise");
 
         var deadline = DateTime.UtcNow.AddSeconds(300);
         while (DateTime.UtcNow < deadline)
@@ -233,58 +233,7 @@ public static class InstanceCommands
         else
         {
             Output.Info("实例 {0} 已就绪 ✓  本机地址: {1}", name, address);
-            Output.Info("开启玩家通道: ceobe tunnel up {0} --kind pinggy", name);
-        }
-    }
-
-    /// <summary>
-    /// 拉起监督进程。C# 版比 Java 版简单得多：重新拉起**自身可执行文件** + 隐藏的
-    /// <c>supervise</c> 子命令，不需要 classpath 也不需要 java 启动器
-    /// （Java 版这里要靠 JavaEnv 找 launcher，且踩过 ADR-018 的坑）。
-    /// </summary>
-    private static void SpawnSupervisor(string instanceDir, string name)
-    {
-        var self = Environment.ProcessPath
-                   ?? throw new CeobeException("无法定位自身可执行文件，无法派生监督进程");
-
-        var psi = new ProcessStartInfo
-        {
-            FileName = self,
-            WorkingDirectory = instanceDir,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            // 把父进程的数据目录传给子进程，否则子进程会回落到 %USERPROFILE%\.ceobe
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-        };
-        psi.ArgumentList.Add("supervise");
-        psi.ArgumentList.Add(name);
-        var home = Ceobe.Core.Store.CeobeHome.Override;
-        if (!string.IsNullOrEmpty(home))
-        {
-            psi.Environment["CEOBE_HOME"] = home;
-        }
-
-        var p = Process.Start(psi) ?? throw new CeobeException("监督进程未能启动");
-        // 监督进程的 stdout/stderr 追加到 supervisor.log（排障用），必须持续泵否则会写满管道缓冲区导致挂死
-        var log = Path.Combine(instanceDir, "supervisor.log");
-        _ = PumpToFileAsync(p.StandardOutput, log);
-        _ = PumpToFileAsync(p.StandardError, log);
-    }
-
-    private static async Task PumpToFileAsync(StreamReader reader, string logFile)
-    {
-        try
-        {
-            string? line;
-            while ((line = await reader.ReadLineAsync().ConfigureAwait(false)) is not null)
-            {
-                File.AppendAllText(logFile, line + Environment.NewLine, new UTF8Encoding(false));
-            }
-        }
-        catch (Exception)
-        {
-            // 日志落盘失败不影响实例运行
+            Output.Info("开启玩家通道: Ceobe tunnel up {0} --kind pinggy", name);
         }
     }
 

@@ -93,8 +93,10 @@ public sealed partial class MainWindow : Window
         Instance = this;
         Title = "Ceobe";
 
-        _manager = CeobeComposition.NewManager();
+        _manager = CeobeComposition.NewManager(spawnSupervisor: true);
         _clientRuntime = new ClientRuntime();
+        // 认领上次会话遗留的客户端进程（GUI 关掉后游戏可能还在跑）
+        _clientRuntime.AdoptAll();
 
         // GUI 进程本身就要起应用级服务：内嵌 Web 控制台 + 隧道管理器。
         var services = CeobeComposition.StartAppServices(_manager);
@@ -293,7 +295,7 @@ public sealed partial class MainWindow : Window
             client ? (System.Collections.Specialized.INotifyCollectionChanged)VmClientList.Rows : VmList.Rows,
             client ? VmClientList.Rows.Cast<object>() : VmList.Rows.Cast<object>());
         Nav.SelectedItem = client ? VmClientList.SelectedRow : VmList.SelectedRow;
-        UpdateStatusBar();
+         UpdateStatusBar();
         if (client)
         {
             if (VmClientList.SelectedName is null && VmClientList.Rows.Count > 0)

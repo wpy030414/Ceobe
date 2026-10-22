@@ -3,8 +3,8 @@ using Microsoft.UI.Xaml;
 namespace Ceobe.App;
 
 /// <summary>
-/// WinUI 3 应用入口。本进程即所启动实例的「监督进程」（含控制通道与隧道管理），
-/// 对齐 Java 版 CeobeGui。
+/// WinUI 3 应用入口。GUI 不再直接托管实例——启动时派生独立监督进程（ADR-007），
+/// 自己只保留应用级服务（Web 控制台与隧道管理）。
 /// </summary>
 public partial class App : Application
 {
@@ -15,6 +15,7 @@ public partial class App : Application
         InitializeComponent();
         UnhandledException += OnUnhandledException;
     }
+
 
     /// <summary>
     /// 关于 Windows App SDK 引导：**本工程不调用 Bootstrap.Initialize**。

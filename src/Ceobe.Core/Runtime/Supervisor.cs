@@ -1,15 +1,17 @@
+using System.Diagnostics;
+using System.Text;
 using Ceobe.Core.Composition;
 using Ceobe.Core.Event;
 using Ceobe.Core.Model;
 using Ceobe.Core.Runtime;
 using Ceobe.Core.Util;
 
-namespace Ceobe.Cli.Commands;
+namespace Ceobe.Core.Runtime;
 
 /// <summary>
 /// 实例监督进程：托管一个 MC 服务端 + 开放控制通道（ADR-007）。
 ///
-/// <c>ceobe start -d</c> 以独立进程重新拉起本可执行文件并传入 <c>supervise</c> 子命令；
+/// <c>Ceobe start -d</c> 以独立进程重新拉起本可执行文件并传入 <c>supervise</c> 子命令；
 /// 前台模式则由 <c>start</c> 直接调用 <see cref="RunAsync"/>。
 /// 之所以是「监督进程」而非全局 daemon：一个实例一个进程，实例停了进程就退，
 /// 不留常驻服务，也就不需要开机自启与权限提升。
@@ -19,7 +21,7 @@ public static class Supervisor
     /// <summary>阻塞运行直至实例停止；返回进程退出码。</summary>
     public static async Task<int> RunAsync(string name, bool foreground, CancellationToken ct = default)
     {
-        var manager = CoreWiring.NewManager();
+        var manager = CeobeComposition.NewManager();
         var meta = manager.Meta(name);
         var dir = manager.Dir(name);
 
@@ -33,10 +35,10 @@ public static class Supervisor
                     Console.WriteLine(log.Line);
                     break;
                 case StateChanged sc when foreground:
-                    Console.WriteLine($"[ceobe] {name} -> {sc.State.ZhLabel()}");
+                    Console.WriteLine($"[Ceobe] {name} -> {sc.State.ZhLabel()}");
                     break;
                 case TunnelChanged tc when foreground:
-                    Console.WriteLine($"[ceobe] {tc.Kind} 地址: {tc.PublicUrl}");
+                    Console.WriteLine($"[Ceobe] {tc.Kind} 地址: {tc.PublicUrl}");
                     break;
             }
             if (evt is StateChanged s
@@ -57,8 +59,8 @@ public static class Supervisor
         {
             // Web 控制台可能因端口被占而起不来（StartAppServices 返回 null），不能盲解引用
             Console.WriteLine(web is null
-                ? "[ceobe] Web 控制台未能启动（端口被占？）；不影响实例运行"
-                : $"[ceobe] Web 控制台: {web.BaseUrl}");
+                ? "[Ceobe] Web 控制台未能启动（端口被占？）；不影响实例运行"
+                : $"[Ceobe] Web 控制台: {web.BaseUrl}");
         }
 
         // 进程退出前优雅停止服务端：否则关掉终端会留下孤儿 MC 进程继续占端口
@@ -72,13 +74,13 @@ public static class Supervisor
         {
             // 启动失败（缺 JDK、端口占用、jar 不存在）必须可见：
             // Java 版曾因异常只写进 GUI 文本框而表现为「静默失败」（ADR-018）
-            Console.Error.WriteLine($"[ceobe] 启动失败: {e.Message}");
+            Console.Error.WriteLine($"[Ceobe] 启动失败: {e.Message}");
             tunnels.Close();
             return 1;
         }
 
         // ⚠ 控制通道必须在 Start 之后开：OpenControl 取的是「本进程托管的进程句柄」，
-        // 启动前它还是 null，会直接抛「实例 X 未在本进程运行」——`ceobe start -d` 曾因此
+        // 启动前它还是 null，会直接抛「实例 X 未在本进程运行」——`Ceobe start -d` 曾因此
         // 一启动就死，supervisor.log 里只有这一行错误。
         await using var control = manager.OpenControl(name, tunnels);
 
@@ -88,7 +90,7 @@ public static class Supervisor
             Console.CancelKeyPress += (_, e) =>
             {
                 e.Cancel = true;
-                Console.WriteLine("[ceobe] 收到中断，正在优雅停止…");
+                Console.WriteLine("[Ceobe] 收到中断，正在优雅停止…");
                 try { manager.Stop(name); } catch (CeobeException) { }
             };
         }
@@ -109,7 +111,7 @@ public static class Supervisor
         {
             var p = manager.ProcessOf(name);
             if (p is null || !p.IsAlive) return;
-            if (foreground) Console.WriteLine("[ceobe] 进程退出，正在优雅停止服务端…");
+            if (foreground) Console.WriteLine("[Ceobe] 进程退出，正在优雅停止服务端…");
             try
             {
                 p.Stop(TimeSpan.FromSeconds(90));
@@ -147,6 +149,53 @@ public static class Supervisor
         {
             AppDomain.CurrentDomain.ProcessExit -= OnExit;
             Run();
+        }
+}
+
+    /// <summary>
+    /// 派生监督进程：重新拉起自身可执行文件（GUI 或 CLI）并传入隐藏的 supervise 子命令。
+    /// stdout/stderr 追加到实例目录的 supervisor.log——必须持续泵，否则管道写满会挂死。
+    /// </summary>
+    /// <param name="commandToken">GUI 传 <c>--supervise</c>，CLI 传 <c>supervise</c>。</param>
+    public static void Launch(string instanceDir, string name, string commandToken)
+    {
+        var self = Environment.ProcessPath
+                   ?? throw new CeobeException("无法定位自身可执行文件，无法派生监督进程");
+
+        var psi = new ProcessStartInfo
+        {
+            FileName = self,
+            WorkingDirectory = instanceDir,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        psi.ArgumentList.Add(commandToken);
+        psi.ArgumentList.Add(name);
+        // 把父进程的数据目录传给子进程，否则子进程会回落到 %USERPROFILE%\.ceobe
+        var home = Ceobe.Core.Store.CeobeHome.Override;
+        if (!string.IsNullOrEmpty(home)) psi.Environment["CEOBE_HOME"] = home;
+
+        var p = Process.Start(psi) ?? throw new CeobeException("监督进程未能启动");
+        var log = Path.Combine(instanceDir, "supervisor.log");
+        _ = PumpToFileAsync(p.StandardOutput, log);
+        _ = PumpToFileAsync(p.StandardError, log);
+    }
+
+    private static async Task PumpToFileAsync(StreamReader reader, string logFile)
+    {
+        try
+        {
+            string? line;
+            while ((line = await reader.ReadLineAsync().ConfigureAwait(false)) is not null)
+            {
+                File.AppendAllText(logFile, line + Environment.NewLine, new UTF8Encoding(false));
+            }
+        }
+        catch (Exception)
+        {
+            // 日志落盘失败不影响实例运行
         }
     }
 }
