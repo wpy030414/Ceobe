@@ -11,7 +11,14 @@
       · 状态胶囊本身就是开关（没有 checkbox + 保存按钮）；
       · 只有已启用项才有上/下移动（顺序即优先级，停用的项没有优先级可言）。
     -->
-    <Grid Padding="24,8,24,24" ColumnSpacing="16">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0" Text="资源包" Margin="24,8,24,0"
+                   Style="{StaticResource CeobeSectionTitleStyle}" />
+    <Grid Grid.Row="1" Padding="24,8,24,24" ColumnSpacing="16">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="420" />
@@ -168,5 +175,6 @@
                            Style="{StaticResource CeobeCaptionSecondaryStyle}" TextWrapping="Wrap" />
             </Grid>
         </Border>
+    </Grid>
     </Grid>
 </UserControl>

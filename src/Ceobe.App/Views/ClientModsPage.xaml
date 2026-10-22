@@ -18,7 +18,14 @@
       Mod 管理（设计稿 03）：左侧表格，右侧详情。
       「依赖健康」是列级信息——它决定游戏能不能起来，不该藏进详情面板。
     -->
-    <Grid Padding="24,8,24,24" RowSpacing="12" AllowDrop="True" DragOver="OnDragOver" Drop="OnDrop">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0" Text="Mod" Margin="24,8,24,0"
+                   Style="{StaticResource CeobeSectionTitleStyle}" />
+    <Grid Grid.Row="1" Padding="24,8,24,24" RowSpacing="12" AllowDrop="True" DragOver="OnDragOver" Drop="OnDrop">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -178,5 +185,6 @@
                 </ScrollViewer>
             </Border>
         </Grid>
+    </Grid>
     </Grid>
 </UserControl>

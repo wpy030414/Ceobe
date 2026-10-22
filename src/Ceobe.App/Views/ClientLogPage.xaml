@@ -9,7 +9,14 @@
       日志与崩溃（设计稿 06）。主视觉是结论，日志退为证据：
       「哪个 Mod、为什么、怎么办」放左边第一眼，原始输出放右边供核对。
     -->
-    <Grid Padding="24,8,24,24" ColumnSpacing="12">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0" Text="日志" Margin="24,8,24,0"
+                   Style="{StaticResource CeobeSectionTitleStyle}" />
+    <Grid Grid.Row="1" Padding="24,8,24,24" ColumnSpacing="12">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="440" />
             <ColumnDefinition Width="*" />
@@ -125,5 +132,6 @@
                 </ListView>
             </Grid>
         </Border>
+    </Grid>
     </Grid>
 </UserControl>

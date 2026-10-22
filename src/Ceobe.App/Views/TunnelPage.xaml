@@ -11,7 +11,14 @@
       每条通道都要有「已实测可达 / 无法验证 / 未探测」三态，并且 server-ip 绑定冲突
       要在开启之前就警告——那正是「本地能连、外部连不上」最常见的原因。
     -->
-    <Grid Padding="24,8,24,24" RowSpacing="12">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0" Text="穿透" Margin="24,8,24,0"
+                   Style="{StaticResource CeobeSectionTitleStyle}" />
+    <Grid Grid.Row="1" Padding="24,8,24,24" RowSpacing="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -113,5 +120,6 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
+    </Grid>
     </Grid>
 </UserControl>

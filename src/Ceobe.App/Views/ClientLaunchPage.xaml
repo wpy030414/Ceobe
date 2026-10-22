@@ -9,7 +9,14 @@
       启动页（设计稿 01）。一屏只允许一个 Accent 按钮：启动游戏。
       其余动作（修复、删除、强制结束）都降级为文字链或溢出菜单里的二次确认。
     -->
-    <Grid Padding="24,8,24,24" ColumnSpacing="16">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0" Text="启动" Margin="24,8,24,0"
+                   Style="{StaticResource CeobeSectionTitleStyle}" />
+    <Grid Grid.Row="1" Padding="24,8,24,24" ColumnSpacing="16">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="340" />
@@ -248,5 +255,6 @@
                 </Border>
             </StackPanel>
         </ScrollViewer>
+    </Grid>
     </Grid>
 </UserControl>

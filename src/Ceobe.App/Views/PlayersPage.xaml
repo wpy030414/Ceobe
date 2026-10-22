@@ -18,7 +18,14 @@
       玩家页（整改项 2）：白名单开关置顶，四个名单分段编辑。
       运行中的改动走服务端命令热生效，停机时才本地写文件——后果在状态栏如实区分。
     -->
-    <Grid Padding="24,8,24,24" RowSpacing="12">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0" Text="玩家" Margin="24,8,24,0"
+                   Style="{StaticResource CeobeSectionTitleStyle}" />
+    <Grid Grid.Row="1" Padding="24,8,24,24" RowSpacing="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -341,5 +348,6 @@
         <InfoBar Grid.Row="3" IsOpen="{x:Bind Vm.HasError, Mode=OneWay}" Severity="Error"
                  IsClosable="True" Title="操作未完成"
                  Message="{x:Bind Vm.StatusText, Mode=OneWay}" />
+    </Grid>
     </Grid>
 </UserControl>

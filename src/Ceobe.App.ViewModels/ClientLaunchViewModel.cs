@@ -96,7 +96,8 @@ public partial class ClientLaunchViewModel : ObservableObject
     /// 启动页那颗按钮的文案。它**只负责启动**——运行中的停止入口在实例头，
     /// 一屏只有一个主行动，不能出现两颗都能「启停」的按钮抢焦点。
     /// </summary>
-    public string PrimaryActionLabel => IsLive ? "游戏运行中" : "启动游戏";
+    /// <summary>按钮文案固定：状态变化只影响可用性，不改变文字（训练员要求）。</summary>
+    public string PrimaryActionLabel => "启动游戏";
 
     public bool CanLaunch => !IsLive && !IsBusy;
 
@@ -363,7 +364,7 @@ public partial class ClientLaunchViewModel : ObservableObject
                 break;
             case ClientLogLine log:
                 // 启动阶段的关键行直接显示在按钮下方：用户不必切到日志页就能看到「正在下载 assets」
-                if (log.Line.StartsWith("[ceobe]", StringComparison.Ordinal)) ProgressText = log.Line[7..].Trim();
+                if (log.Line.StartsWith("[Ceobe]", StringComparison.Ordinal)) ProgressText = log.Line[7..].Trim();
                 break;
         }
     }

@@ -9,7 +9,14 @@
       设置（设计稿 08）。全局层与实例层分开放，卡片标题直接写明作用域——
       「这个参数改完全都生效还是只对这个实例生效」是用户最容易搞错的一件事。
     -->
-    <ScrollViewer Padding="24,8,24,24" VerticalScrollBarVisibility="Auto">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0" Text="设置" Margin="24,8,24,0"
+                   Style="{StaticResource CeobeSectionTitleStyle}" />
+    <ScrollViewer Grid.Row="1" Padding="24,8,24,24" VerticalScrollBarVisibility="Auto">
         <Grid ColumnSpacing="16">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -186,4 +193,5 @@
             </StackPanel>
         </Grid>
     </ScrollViewer>
+    </Grid>
 </UserControl>

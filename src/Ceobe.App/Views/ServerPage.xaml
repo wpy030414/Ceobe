@@ -10,7 +10,14 @@
       与「游戏配置」页分工——本页不碰 server.properties，避免两页互相覆盖。
       运行中禁止修改（改了不生效会让用户误判）。业务在 ServerViewModel（闸门 C 可单测）。
     -->
-    <Grid Padding="24,8,24,24" RowSpacing="16">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0" Text="服务器配置" Margin="24,8,24,0"
+                   Style="{StaticResource CeobeSectionTitleStyle}" />
+    <Grid Grid.Row="1" Padding="24,8,24,24" RowSpacing="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -115,5 +122,6 @@
                     IsEnabled="{x:Bind Vm.CanSave, Mode=OneWay}"
                     Style="{StaticResource AccentButtonStyle}" />
         </Grid>
+    </Grid>
     </Grid>
 </UserControl>

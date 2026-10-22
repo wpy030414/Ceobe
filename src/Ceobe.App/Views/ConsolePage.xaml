@@ -15,7 +15,14 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid Padding="24,8,24,24" RowSpacing="12">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0" Text="控制台" Margin="24,8,24,0"
+                   Style="{StaticResource CeobeSectionTitleStyle}" />
+    <Grid Grid.Row="1" Padding="24,8,24,24" RowSpacing="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -122,5 +129,6 @@
                 </Grid>
             </Grid>
         </Border>
+    </Grid>
     </Grid>
 </UserControl>

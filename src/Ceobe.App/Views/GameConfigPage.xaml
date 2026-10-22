@@ -31,7 +31,14 @@
       游戏配置页（整改项 5）：server.properties 三级视图 + 资源包/数据包复合控件。
       业务在 GameConfigViewModel（闸门 C 可单测），本页只做绑定。
     -->
-    <Grid Padding="24,8,24,24" RowSpacing="12">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0" Text="游戏配置" Margin="24,8,24,0"
+                   Style="{StaticResource CeobeSectionTitleStyle}" />
+    <Grid Grid.Row="1" Padding="24,8,24,24" RowSpacing="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -159,5 +166,6 @@
                     IsEnabled="{x:Bind Vm.CanSave, Mode=OneWay}"
                     Style="{StaticResource AccentButtonStyle}" />
         </Grid>
+    </Grid>
     </Grid>
 </UserControl>

@@ -20,7 +20,14 @@
       ① 装到当前实例（必须版本/加载器完全一致）；
       ② 按整合包新建实例（版本与加载器由包索引决定，用户不必自己判断）。
     -->
-    <Grid Padding="24,8,24,24" RowSpacing="12">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0" Text="整合包" Margin="24,8,24,0"
+                   Style="{StaticResource CeobeSectionTitleStyle}" />
+    <Grid Grid.Row="1" Padding="24,8,24,24" RowSpacing="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -169,5 +176,6 @@
                            Style="{StaticResource CeobeCaptionSecondaryStyle}" />
             </StackPanel>
         </Border>
+    </Grid>
     </Grid>
 </UserControl>

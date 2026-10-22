@@ -20,7 +20,14 @@
       Mod 页：Modrinth 搜索/安装/卸载 + 一键导入（整改项 4）。
       两个 VM 各自独立、各自可单测（闸门 C）。原版/Paper 无 mods 目录时整页空状态。
     -->
-    <Grid Padding="24,8,24,24" AllowDrop="True" Drop="OnDrop" DragOver="OnDragOver">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0" Text="Mod" Margin="24,8,24,0"
+                   Style="{StaticResource CeobeSectionTitleStyle}" />
+    <Grid Grid.Row="1" Padding="24,8,24,24" AllowDrop="True" Drop="OnDrop" DragOver="OnDragOver">
         <!-- 不支持模组时的整页说明 -->
         <controls:EmptyState Visibility="{x:Bind ShowUnsupported}"
                              Glyph="&#xE7BA;"
@@ -248,5 +255,6 @@
                 </StackPanel>
             </Expander>
         </Grid>
+    </Grid>
     </Grid>
 </UserControl>

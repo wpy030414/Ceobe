@@ -293,7 +293,6 @@ public sealed partial class MainWindow : Window
             client ? (System.Collections.Specialized.INotifyCollectionChanged)VmClientList.Rows : VmList.Rows,
             client ? VmClientList.Rows.Cast<object>() : VmList.Rows.Cast<object>());
         Nav.SelectedItem = client ? VmClientList.SelectedRow : VmList.SelectedRow;
-        CreateButtonText.Text = client ? "新建客户端实例" : "新建实例";
         UpdateStatusBar();
         if (client)
         {
@@ -438,7 +437,7 @@ public sealed partial class MainWindow : Window
     {
         var newButton = new Button
         {
-            Content = client ? "新建客户端实例" : "新建实例",
+            Content = "新建实例",
             Style = (Style)Application.Current.Resources["AccentButtonStyle"],
         };
         newButton.Click += async (_, _) =>
